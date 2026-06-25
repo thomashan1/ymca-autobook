@@ -22,9 +22,13 @@ on:
   workflow_dispatch:
     inputs:
       class_key:
-        description: "Class key to book now (see classes.yml). Blank = decide from schedule."
+        description: "Class key to book (see classes.yml). Blank = decide from schedule."
         required: false
         default: ""
+      book_now:
+        description: "Skip the wait and book immediately (use for manual tests)."
+        type: boolean
+        default: false
 
 concurrency:
   group: book-${{ github.run_id }}
@@ -49,8 +53,9 @@ jobs:
           EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
           EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
         run: |
+          BOOK_NOW=$([[ "${{ github.event.inputs.book_now }}" == "true" ]] && echo "--book-now" || echo "")
           if [ -n "${{ github.event.inputs.class_key }}" ]; then
-            python -m src.main --class "${{ github.event.inputs.class_key }}"
+            python -m src.main --class "${{ github.event.inputs.class_key }}" $BOOK_NOW
           else
             python scripts/run_due.py
           fi

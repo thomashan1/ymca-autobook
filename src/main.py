@@ -243,6 +243,7 @@ def main(argv=None) -> int:
     ap.add_argument("--headed", action="store_true")
     ap.add_argument("--book-now", action="store_true", help="skip the wait; book immediately")
     ap.add_argument("--cancel-id", type=int, help="cancel a booking by occurrence id")
+    ap.add_argument("--book-id", type=int, help="book any occurrence by id (for testing)")
     args = ap.parse_args(argv)
 
     cfg = load_config()
@@ -270,6 +271,14 @@ def main(argv=None) -> int:
                 resp = fisikal.cancel(context, csrf, args.cancel_id)
                 print(f"cancel {args.cancel_id} -> HTTP {resp.status}: {resp.text()[:200]}")
                 return 0 if resp.ok else 1
+
+            if args.book_id:
+                resp = fisikal.join(context, csrf, args.book_id, lock_version=0)
+                ok, msg, _ = fisikal.parse_join_result(resp)
+                print(f"book-id {args.book_id} -> {msg}")
+                if ok:
+                    print(f"Booked! Cancel with: --cancel-id {args.book_id}")
+                return 0 if ok else 1
 
             if not args.klass:
                 raise SystemExit("Provide --class <key> (or --list).")

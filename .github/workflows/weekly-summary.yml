@@ -1,0 +1,27 @@
+name: Weekly class summary
+
+on:
+  schedule:
+    - cron: "0 15 * * 1"  # Mon 08:00 PT (PDT = UTC-7)
+    - cron: "0 16 * * 1"  # Mon 08:00 PT (PST = UTC-8)
+  workflow_dispatch: {}
+
+concurrency:
+  group: weekly-summary-${{ github.run_id }}
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Summarise booked classes
+        env:
+          EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
+          EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
+        run: python scripts/weekly_summary.py

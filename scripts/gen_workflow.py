@@ -1,10 +1,14 @@
 """Generate .github/workflows/book.yml from classes.yml.
 
 Booking opens 167h before a class = same weekday, (start time + 1 hour). We fire
-each job FIRE_LEAD_MIN minutes before that. GitHub cron is fixed UTC and ignores
-Pacific DST, so we emit two cron lines per class (PDT = UTC-7, PST = UTC-8); the
-script computes the true open instant and waits, and the redundant off-season run
-no-ops via the OPEN_GUARD. Run:  python scripts/gen_workflow.py
+each job at several FIRE_LEAD_MINS minutes before that. GitHub cron is best-effort
+and silently drops/delays triggers under load, so we emit a redundant trigger at
+each lead — if one is skipped, another still fires before the open, waits for the
+true instant, and books. GitHub cron is also fixed UTC and ignores Pacific DST, so
+each lead emits two cron lines (PDT = UTC-7, PST = UTC-8); the script computes the
+true open instant and waits, and any redundant run no-ops via the OPEN_GUARD (the
+booking API is idempotent, so a duplicate just sees "already booked"). Run:
+  python scripts/gen_workflow.py
 """
 
 from __future__ import annotations
@@ -14,7 +18,10 @@ from datetime import datetime, timedelta
 
 import yaml
 
-FIRE_LEAD_MIN = 25  # fire this many minutes before booking opens
+# Fire a trigger at each of these minutes before booking opens. Multiple leads give
+# redundancy against GitHub dropping a scheduled trigger; all fire before the open
+# so whichever runs waits for the precise instant and books on the first attempt.
+FIRE_LEAD_MINS = [25, 15]
 CRON_DOW = {"Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6, "Sun": 0}
 HERE = os.path.dirname(__file__)
 CONFIG = os.path.join(HERE, os.pardir, "classes.yml")
@@ -25,16 +32,21 @@ def cron_lines(klass) -> list[tuple[str, str]]:
     """Return [(cron_expr, comment), ...] for a class — one per UTC offset."""
     dow = klass["weekday"]
     h, m = (int(x) for x in klass["start"].split(":"))
-    # open = start + 1h; fire = open - FIRE_LEAD_MIN, as a same-day local time.
-    fire = datetime(2000, 1, 3, h, m) + timedelta(hours=1) - timedelta(minutes=FIRE_LEAD_MIN)
     out = []
-    for off, season in ((7, "PDT"), (8, "PST")):
-        ut = fire + timedelta(hours=off)            # local -> UTC
-        # day-of-week only shifts if the +offset crosses midnight; our fire times
-        # are late morning/midday Pacific so UTC stays the same calendar weekday.
-        assert ut.day == fire.day, "offset crossed midnight; handle DOW shift"
-        out.append((f"{ut.minute} {ut.hour} * * {CRON_DOW[dow]}",
-                    f"{klass['key']} — opens {dow} {h+1:02d}:{m:02d} PT ({season})"))
+    for i, lead in enumerate(FIRE_LEAD_MINS):
+        # First lead is the primary trigger; the rest are redundant retries in case
+        # GitHub drops/delays the earlier one.
+        role = "primary" if i == 0 else f"retry {i}"
+        # open = start + 1h; fire = open - lead, as a same-day local time.
+        fire = datetime(2000, 1, 3, h, m) + timedelta(hours=1) - timedelta(minutes=lead)
+        for off, season in ((7, "PDT"), (8, "PST")):
+            ut = fire + timedelta(hours=off)            # local -> UTC
+            # day-of-week only shifts if the +offset crosses midnight; our fire times
+            # are late morning/midday Pacific so UTC stays the same calendar weekday.
+            assert ut.day == fire.day, "offset crossed midnight; handle DOW shift"
+            out.append((f"{ut.minute} {ut.hour} * * {CRON_DOW[dow]}",
+                        f"{klass['key']} — opens {dow} {h+1:02d}:{m:02d} PT "
+                        f"({season}, {role}, fire -{lead}m)"))
     return out
 
 

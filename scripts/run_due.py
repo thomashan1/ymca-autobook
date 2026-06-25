@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright
 
@@ -17,12 +19,22 @@ from playwright.sync_api import sync_playwright
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import main as m          # noqa: E402
+from src import pauses             # noqa: E402
 from src.login import login        # noqa: E402
 from src.notify import notify      # noqa: E402
 
 
 def run() -> int:
     cfg = m.load_config()
+
+    # Skip the whole run if today falls in an away-period (kept in a private repo).
+    tz = ZoneInfo(cfg.get("timezone", "America/Los_Angeles"))
+    today = datetime.now(tz).date()
+    paused = pauses.active_pause(today)
+    if paused:
+        print(f"Paused {paused[0]}..{paused[1]} (today is {today}); skipping all bookings.")
+        return 0
+
     user = os.environ.get("EGYM_USERNAME")
     pw = os.environ.get("EGYM_PASSWORD")
     if not user or not pw:

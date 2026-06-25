@@ -1,0 +1,13 @@
+# TEMPLATE — the REAL file lives in a separate PRIVATE repo (default:
+# thomashan1/ymca-private) so your away-dates are never published here.
+#
+# Each entry is an inclusive date range in the schedule's local timezone:
+# booking is skipped on every day from `start` to `end`. You resume on the day
+# AFTER `end`. `end` may be omitted for a single day.
+#
+# Edit the copy in the private repo (GitHub web/mobile: open file -> edit ->
+# commit). This template is only here to document the format.
+
+pauses:
+  - {start: 2026-07-03, end: 2026-07-03}   # single day off (Fri)
+  - {start: 2026-07-07, end: 2026-07-12}   # away; resume Mon 7/13

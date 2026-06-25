@@ -61,17 +61,44 @@ python scripts/run_due.py  # what the scheduler runs: book whatever's due now
 1. Push this repo (the `.gitignore` keeps `.env`, `classes.yml`, and `*.har` out).
 2. In **Settings → Secrets and variables → Actions**, add:
    - `EGYM_USERNAME`, `EGYM_PASSWORD`
+   - `PRIVATE_REPO_TOKEN` *(optional — only needed for the pause feature below)*
 3. The workflow runs on the generated cron schedule. Trigger a manual test from the **Actions**
-   tab → *Book YMCA classes* → *Run workflow* (pass a `class_key` and check *Skip the wait*
-   to book immediately).
+   tab → *Book YMCA classes* → *Run workflow*. Pass a `class_key` to book one now, or a
+   `cancel_id` (occurrence id) to cancel an existing booking.
+
+## Pausing bookings (vacations)
+When you'll be away, skip booking for date ranges **without publishing your schedule** in this
+public repo. The away-dates live in a **separate private repo** (default
+`thomashan1/ymca-private`) as a small `pauses.yml` (see `pauses.example.yml` for the format):
+
+```yaml
+pauses:
+  - {start: 2026-07-03, end: 2026-07-03}   # single day
+  - {start: 2026-07-07, end: 2026-07-12}   # away; resume 7/13
+```
+
+Each range is inclusive in the schedule's local timezone; you resume the day after `end`.
+One-time setup:
+1. Create a **private** repo (e.g. `ymca-private`) containing `pauses.yml`.
+2. Create a fine-grained PAT with **read** access to that repo and add it as the
+   `PRIVATE_REPO_TOKEN` secret on this repo.
+
+Then just edit `pauses.yml` in the private repo whenever plans change — open it on GitHub
+(web/mobile), edit, commit. Each scheduled run reads it first and skips everything if today is
+inside a range. It **fails open**: if the token is missing or the file can't be read, booking
+proceeds as normal (so a misconfig never silently stops bookings). Manual `--class` / `cancel_id`
+runs ignore pauses.
 
 ### Timing notes
 - Booking correctness never depends on cron: the script computes the true open instant in
   Pacific time and waits for it. Cron only needs to fire shortly before.
-- The cron fires **25 minutes early** to absorb GitHub's scheduling lag (runs can be delayed
-  up to ~15 min under load). The script then busy-waits to the exact second.
-- GitHub cron is fixed UTC, so each class has **two cron lines** (PDT = UTC−7, PST = UTC−8).
-  The off-season line no-ops via the 60-min "already booked / too far out" guard.
+- The primary cron fires **25 minutes early** to absorb GitHub's scheduling lag (runs can be
+  delayed up to ~15 min under load). The script then busy-waits to the exact second.
+- GitHub cron is best-effort and silently drops triggers under load, so each class also has a
+  **retry** trigger 10 min later (`-15m`). Whichever fires waits for the true open and books;
+  a duplicate run no-ops (idempotent booking + the "too far out" guard).
+- GitHub cron is fixed UTC, so each (primary/retry) trigger emits **two cron lines**
+  (PDT = UTC−7, PST = UTC−8) — four per class. The off-season line no-ops via the 60-min guard.
 - If a class ever fills in seconds, move to an always-on VPS (same code, swap the trigger).
 
 ## Security

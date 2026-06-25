@@ -62,16 +62,17 @@ def run() -> int:
     if not booked:
         lines.append("_No classes booked this week._\n")
     else:
-        lines.append("| Day | Date | Time | Class | Location |")
-        lines.append("|-----|------|------|-------|----------|")
+        lines.append("| Day | Date | Time | Class | Instructor | Location |")
+        lines.append("|-----|------|------|-------|------------|----------|")
         for o in booked:
             dt = datetime.fromisoformat(o["occurs_at"].replace("Z", "+00:00")).astimezone(tz)
-            day  = dt.strftime("%a")
-            date = dt.strftime("%b %d")
-            time = dt.strftime("%I:%M %p").lstrip("0")
-            name = (o.get("service_title") or "").strip()
-            loc  = (o.get("location_name") or "").replace("Silicon Valley YMCA - ", "")
-            lines.append(f"| {day} | {date} | {time} | {name} | {loc} |")
+            day        = dt.strftime("%a")
+            date       = dt.strftime("%b %d")
+            time       = dt.strftime("%I:%M %p").lstrip("0")
+            name       = (o.get("service_title") or "").strip()
+            instructor = (o.get("trainer_name") or "—").strip()
+            loc        = (o.get("location_name") or "").replace("Silicon Valley YMCA - ", "")
+            lines.append(f"| {day} | {date} | {time} | {name} | {instructor} | {loc} |")
         lines.append(f"\n**{len(booked)} class{'es' if len(booked) != 1 else ''} booked.**\n")
 
     summary = "\n".join(lines)

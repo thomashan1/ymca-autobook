@@ -26,4 +26,6 @@ jobs:
         env:
           EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
           EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: python scripts/weekly_summary.py

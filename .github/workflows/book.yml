@@ -15,6 +15,8 @@ on:
     - cron: "5 19 * * 3"  # core-wed — opens Wed 11:30 PT (PST)
     - cron: "50 17 * * 4"  # cycle-sculpt-thu — opens Thu 11:15 PT (PDT)
     - cron: "50 18 * * 4"  # cycle-sculpt-thu — opens Thu 11:15 PT (PST)
+    - cron: "5 19 * * 4"  # therapeutic-yoga-thu — opens Thu 12:30 PT (PDT)
+    - cron: "5 20 * * 4"  # therapeutic-yoga-thu — opens Thu 12:30 PT (PST)
     - cron: "20 17 * * 5"  # core-fri — opens Fri 10:45 PT (PDT)
     - cron: "20 18 * * 5"  # core-fri — opens Fri 10:45 PT (PST)
     - cron: "55 18 * * 5"  # lift-hiit-fri — opens Fri 12:20 PT (PDT)
@@ -22,13 +24,9 @@ on:
   workflow_dispatch:
     inputs:
       class_key:
-        description: "Class key to book (see classes.yml). Blank = decide from schedule."
+        description: "Class key to book now (see classes.yml). Blank = decide from schedule."
         required: false
         default: ""
-      book_now:
-        description: "Skip the wait and book immediately (use for manual tests)."
-        type: boolean
-        default: false
 
 concurrency:
   group: book-${{ github.run_id }}
@@ -53,9 +51,8 @@ jobs:
           EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
           EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
         run: |
-          BOOK_NOW=$([[ "${{ github.event.inputs.book_now }}" == "true" ]] && echo "--book-now" || echo "")
           if [ -n "${{ github.event.inputs.class_key }}" ]; then
-            python -m src.main --class "${{ github.event.inputs.class_key }}" $BOOK_NOW
+            python -m src.main --class "${{ github.event.inputs.class_key }}"
           else
             python scripts/run_due.py
           fi

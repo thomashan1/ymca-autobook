@@ -55,12 +55,6 @@ classes:
     start: "10:15"
     location_ids: [1392]
 
-  - key: therapeutic-yoga-thu       # Southwest - Studio 2
-    name: "Therapeutic Yoga"
-    weekday: Thu
-    start: "11:30"
-    location_ids: [1392]
-
   - key: core-fri                  # Northwest - Family Pavilion
     name: "Les Mills CORE"
     weekday: Fri

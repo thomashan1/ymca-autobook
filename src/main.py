@@ -63,8 +63,10 @@ def _fmt(dt: datetime, tz: str) -> str:
 
 
 _EXCLUDE_KEYWORDS = {
-    "dance", "salsa", "zumba", "hip hop", "cha cha", "cumbia", "jazzercise",  # dance
-    "swim", "aqua", "lap ", "pool",                                             # water
+    "dance", "salsa", "zumba", "hip hop", "cha cha", "cumbia", "jazzercise", "bollyx",  # dance
+    "swim", "aqua", "lap ", "pool",                                                       # water
+    "senior fitness", "craft club", "gym ventures",                                       # clubs/seniors
+    "pickleball",                                                                          # group games
 }
 _BROWSE_BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
 _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"]

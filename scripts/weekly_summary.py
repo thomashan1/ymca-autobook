@@ -31,16 +31,15 @@ def _build_rows(booked: list[dict], tz: ZoneInfo) -> list[dict]:
     for o in booked:
         dt = datetime.fromisoformat(o["occurs_at"].replace("Z", "+00:00")).astimezone(tz)
         rows.append({
-            "dt":          dt,
-            "day":         dt.strftime("%a"),
-            "date":        dt.strftime("%b %d"),
-            "isodate":     dt.date(),
-            "isoweek":     dt.isocalendar()[1],
-            "time":        dt.strftime("%I:%M %p").lstrip("0"),
-            "name":        (o.get("service_title") or "").strip(),
-            "instructor":  (o.get("trainer_name") or "—").strip(),
-            "sub_location":(o.get("sub_location_name") or "—").strip(),
-            "location":    (o.get("location_name") or "").replace("Silicon Valley YMCA - ", ""),
+            "dt":           dt,
+            "day":          dt.strftime("%a"),
+            "date":         dt.strftime("%b %d"),
+            "isodate":      dt.date(),
+            "isoweek":      dt.isocalendar()[1],
+            "time":         dt.strftime("%I:%M %p").lstrip("0"),
+            "name":         (o.get("service_title") or "").strip(),
+            "instructor":   (o.get("trainer_name") or "—").strip(),
+            "sub_location": (o.get("sub_location_name") or "—").strip(),
         })
     return rows
 
@@ -51,30 +50,27 @@ def _markdown(rows: list[dict], title: str, count: int) -> str:
         lines.append("_No classes booked this week._\n")
         return "\n".join(lines)
 
-    header = "| Day | Date | Time | Class | Instructor | Studio | Branch |"
-    sep    = "|-----|------|------|-------|------------|--------|--------|"
+    header = "| Day | Date | Time | Class | Instructor | Studio |"
+    sep    = "|-----|------|------|-------|------------|--------|"
 
     prev_date: date | None = None
     prev_week: int | None = None
     for r in rows:
-        # Week break (bold horizontal rule before the new week's first class)
         if prev_week is not None and r["isoweek"] != prev_week:
             lines.append("\n---\n")
             lines.append(header)
             lines.append(sep)
-        # Day break (blank line + fresh header for each new day)
         elif prev_date is not None and r["isodate"] != prev_date:
             lines.append("")
             lines.append(header)
             lines.append(sep)
-        # First row
         elif prev_date is None:
             lines.append(header)
             lines.append(sep)
 
         lines.append(
             f"| {r['day']} | {r['date']} | {r['time']} | {r['name']} "
-            f"| {r['instructor']} | {r['sub_location']} | {r['location']} |"
+            f"| {r['instructor']} | {r['sub_location']} |"
         )
         prev_date = r["isodate"]
         prev_week = r["isoweek"]
@@ -86,7 +82,7 @@ def _markdown(rows: list[dict], title: str, count: int) -> str:
 def _html(rows: list[dict], title: str, count: int) -> str:
     GREEN  = "#2d6a4f"
     DGREEN = "#1b4332"
-    COLS   = ["Day", "Date", "Time", "Class", "Instructor", "Studio", "Branch"]
+    COLS   = ["Day", "Date", "Time", "Class", "Instructor", "Studio"]
 
     if not rows:
         body = "<p><em>No classes booked this week.</em></p>"
@@ -100,14 +96,12 @@ def _html(rows: list[dict], title: str, count: int) -> str:
         stripe = 0
 
         for r in rows:
-            # Week break — bold divider row spanning all columns
             if prev_week is not None and r["isoweek"] != prev_week:
                 trs += (
                     f"<tr><td colspan='{len(COLS)}' style='"
                     f"background:{DGREEN};height:4px;padding:0'></td></tr>"
                 )
                 stripe = 0
-            # Day break — spacer row
             elif prev_date is not None and r["isodate"] != prev_date:
                 trs += (
                     f"<tr><td colspan='{len(COLS)}' style='"
@@ -119,7 +113,7 @@ def _html(rows: list[dict], title: str, count: int) -> str:
             cells = "".join(
                 f"<td style='padding:7px 12px'>{v}</td>"
                 for v in [r["day"], r["date"], r["time"], r["name"],
-                          r["instructor"], r["sub_location"], r["location"]]
+                          r["instructor"], r["sub_location"]]
             )
             trs += f"<tr style='background:{bg}'>{cells}</tr>"
             stripe += 1

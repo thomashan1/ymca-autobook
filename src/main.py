@@ -62,14 +62,17 @@ def _fmt(dt: datetime, tz: str) -> str:
     return dt.astimezone(ZoneInfo(tz)).strftime("%a %Y-%m-%d %H:%M %Z")
 
 
-_DANCE_KEYWORDS = {"dance", "salsa", "zumba", "hip hop", "cha cha", "cumbia", "jazzercise"}
+_EXCLUDE_KEYWORDS = {
+    "dance", "salsa", "zumba", "hip hop", "cha cha", "cumbia", "jazzercise",  # dance
+    "swim", "aqua", "lap ", "pool",                                             # water
+}
 _BROWSE_BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
+_DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
 
 def run_browse(context, csrf, cfg) -> None:
-    """Print Mon-Fri classes between 9:30 and 15:00 (local time), excluding dance/fee."""
-    tz_name = cfg["timezone"]
-    zone = ZoneInfo(tz_name)
+    """Print Mon-Fri classes 9:30–15:00 (local), grouped by day, no fee/dance/swim."""
+    zone = ZoneInfo(cfg["timezone"])
     now = datetime.now(timezone.utc)
     occs = fisikal.list_occurrences(
         context, csrf,
@@ -77,31 +80,24 @@ def run_browse(context, csrf, cfg) -> None:
         now + timedelta(days=LIST_WINDOW_DAYS),
         location_ids=_BROWSE_BOTH_LOCATIONS,
     )
-    rows = sorted(occs, key=lambda o: o["occurs_at"])
 
-    seen = set()  # deduplicate recurring slots: (title, weekday, start_hhmm, location)
-    printed = 0
-    print(f"\n{'CLASS':<32} {'DAY':<4} {'TIME':<6}  {'WHERE':<26}  {'JOINED'}")
-    print("-" * 90)
-    for o in rows:
+    by_day: dict[int, list[tuple]] = {d: [] for d in range(5)}
+    seen: set = set()
+
+    for o in occs:
         title = (o.get("service_title") or "").strip()
         title_l = title.lower()
-        if any(kw in title_l for kw in _DANCE_KEYWORDS):
+        if title_l.startswith("$"):
             continue
-        # filter paid classes: skip if cost/price field is present and non-zero
-        cost = o.get("cost") or o.get("price") or o.get("cost_in_cents") or 0
-        try:
-            if float(cost) > 0:
-                continue
-        except (TypeError, ValueError):
-            pass
+        if any(kw in title_l for kw in _EXCLUDE_KEYWORDS):
+            continue
 
         occurs = datetime.fromisoformat(o["occurs_at"].replace("Z", "+00:00")).astimezone(zone)
         dow = occurs.weekday()
-        if dow >= 5:  # skip Sat/Sun
+        if dow >= 5:
             continue
         start_min = occurs.hour * 60 + occurs.minute
-        if start_min < 9 * 60 + 30 or start_min >= 15 * 60:  # 9:30–15:00
+        if start_min < 9 * 60 + 30 or start_min >= 15 * 60:
             continue
 
         location = (o.get("location_name") or "").replace("Silicon Valley YMCA - ", "")
@@ -110,11 +106,21 @@ def run_browse(context, csrf, cfg) -> None:
             continue
         seen.add(key)
 
-        day_abbr = ["Mon", "Tue", "Wed", "Thu", "Fri"][dow]
         joined = "✓" if o.get("is_joined") else ""
-        print(f"{title:<32} {day_abbr:<4} {occurs.strftime('%H:%M'):<6}  {location:<26}  {joined}")
-        printed += 1
-    print(f"\n{printed} unique classes shown (Mon–Fri, 9:30–15:00, no dance).")
+        by_day[dow].append((occurs.hour * 60 + occurs.minute, title, location, joined))
+
+    total = 0
+    for dow in range(5):
+        rows = sorted(by_day[dow])
+        if not rows:
+            continue
+        print(f"\n── {_DAY_NAMES[dow]} ──────────────────────────────────────────────────────────")
+        print(f"  {'TIME':<6}  {'CLASS':<34}  {'WHERE':<26}  JOINED")
+        for mins, title, location, joined in rows:
+            t = f"{mins // 60:02d}:{mins % 60:02d}"
+            print(f"  {t:<6}  {title:<34}  {location:<26}  {joined}")
+            total += 1
+    print(f"\n{total} unique classes (Mon–Fri, 9:30–15:00, no fee/dance/swim).")
 
 
 def run_list(context, csrf, cfg, name_filter: str | None) -> None:

@@ -1,9 +1,11 @@
 # TEMPLATE — the REAL file lives in a separate PRIVATE repo (default:
 # thomashan1/ymca-private) so your away-dates are never published here.
 #
-# Each entry is an inclusive date range in the schedule's local timezone:
-# booking is skipped on every day from `start` to `end`. You resume on the day
-# AFTER `end`. `end` may be omitted for a single day.
+# Each entry is an inclusive date range in the schedule's local timezone listing
+# the dates of CLASSES you won't attend. The bot skips booking any class whose
+# own date falls in a range (matched on the class date, not the run date —
+# booking opens ~7 days ahead). You resume on the day AFTER `end`. `end` may be
+# omitted for a single day.
 #
 # Edit the copy in the private repo (GitHub web/mobile: open file -> edit ->
 # commit). This template is only here to document the format.

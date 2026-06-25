@@ -180,13 +180,25 @@ def refresh_lock_version(context, csrf, klass, target_id, target_occurs_at) -> i
     return None
 
 
-def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool) -> tuple[bool, str]:
+def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
+         pause_ranges: list | None = None) -> tuple[bool, str]:
     tz = cfg["timezone"]
     label = f"{klass['name']} {klass['weekday']} {klass['start']}"
 
     target = pick_target(context, csrf, cfg, klass)
     if not target:
         return False, f"No upcoming bookable occurrence found for {label}."
+
+    # Skip if the class we'd book falls on an away-date. We match on the
+    # occurrence's own (local) date, not "today" — booking opens ~7 days ahead,
+    # so the run booking a paused class fires the week before.
+    if pause_ranges:
+        occ_local = datetime.fromisoformat(
+            target["occurs_at"].replace("Z", "+00:00")).astimezone(ZoneInfo(tz)).date()
+        for start, end in pause_ranges:
+            if start <= occ_local <= end:
+                return True, (f"Paused {start}..{end}: skipping '{label}' on "
+                              f"{occ_local} (away).")
 
     open_dt = _open_dt(target)
     plan = (f"{label}\n  occurrence id={target['id']} at "

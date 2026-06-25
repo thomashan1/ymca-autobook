@@ -4,14 +4,16 @@ GitHub `schedule` triggers can't pass which class to a run, so we log in once an
 loop over every class. book() bails out cheaply (OPEN_GUARD) for classes whose
 next opening is far off, and waits + books the one whose window is about to open.
 Emails are sent only for real booking attempts, not the no-op skips.
+
+Away-periods (vacations) live in a private repo (see src/pauses.py). We load them
+once and skip booking any class whose own date falls in a range — matching the
+class date, not today, because booking opens ~7 days ahead.
 """
 
 from __future__ import annotations
 
 import os
 import sys
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright
 
@@ -27,13 +29,11 @@ from src.notify import notify      # noqa: E402
 def run() -> int:
     cfg = m.load_config()
 
-    # Skip the whole run if today falls in an away-period (kept in a private repo).
-    tz = ZoneInfo(cfg.get("timezone", "America/Los_Angeles"))
-    today = datetime.now(tz).date()
-    paused = pauses.active_pause(today)
-    if paused:
-        print(f"Paused {paused[0]}..{paused[1]} (today is {today}); skipping all bookings.")
-        return 0
+    # Away-dates kept in a private repo; skip booking classes that land in one.
+    pause_ranges = pauses.load_ranges()
+    if pause_ranges:
+        print(f"Loaded {len(pause_ranges)} pause range(s): "
+              + ", ".join(f"{s}..{e}" for s, e in pause_ranges))
 
     user = os.environ.get("EGYM_USERNAME")
     pw = os.environ.get("EGYM_PASSWORD")
@@ -53,12 +53,14 @@ def run() -> int:
                 print(f"\n--- {klass['key']} ---")
                 try:
                     ok, detail = m.book(context, csrf, cfg, klass,
-                                        dry_run=False, book_now=False)
+                                        dry_run=False, book_now=False,
+                                        pause_ranges=pause_ranges)
                 except Exception as exc:  # one class failing must not kill the rest
                     ok, detail = False, f"{label}\nException: {exc!r}"
                 print(("OK: " if ok else "FAILED: ") + detail)
-                if detail.startswith("Nothing to book"):
-                    continue  # cheap skip — not a real attempt, no email
+                # Cheap skips (nothing due, or paused) aren't real attempts — no email.
+                if detail.startswith("Nothing to book") or detail.startswith("Paused"):
+                    continue
                 notify(ok, label, detail)
                 booked_any = booked_any or ok
                 failed_any = failed_any or not ok

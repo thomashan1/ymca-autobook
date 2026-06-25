@@ -33,7 +33,6 @@ branch `location_ids`). Then regenerate the workflow and update the `CLASSES_YML
 
 ```bash
 .venv/bin/python scripts/gen_workflow.py   # rewrites .github/workflows/book.yml
-cat classes.yml | gh secret set CLASSES_YML --repo <your-repo>
 ```
 
 ## Local setup & testing
@@ -42,9 +41,8 @@ cat classes.yml | gh secret set CLASSES_YML --repo <your-repo>
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m playwright install chromium
 
-# credentials and class schedule (both git-ignored, stay local)
+# credentials (git-ignored, stays local)
 cp .env.example .env               # fill in EGYM_USERNAME / EGYM_PASSWORD
-cp classes.example.yml classes.yml # fill in your classes
 set -a; . ./.env; set +a
 ```
 
@@ -63,8 +61,6 @@ python scripts/run_due.py  # what the scheduler runs: book whatever's due now
 1. Push this repo (the `.gitignore` keeps `.env`, `classes.yml`, and `*.har` out).
 2. In **Settings → Secrets and variables → Actions**, add:
    - `EGYM_USERNAME`, `EGYM_PASSWORD`
-   - `CLASSES_YML` — contents of your local `classes.yml` (keep this secret; it reveals
-     your weekly schedule)
 3. The workflow runs on the generated cron schedule. Trigger a manual test from the **Actions**
    tab → *Book YMCA classes* → *Run workflow* (pass a `class_key` and check *Skip the wait*
    to book immediately).
@@ -79,5 +75,5 @@ python scripts/run_due.py  # what the scheduler runs: book whatever's due now
 - If a class ever fills in seconds, move to an always-on VPS (same code, swap the trigger).
 
 ## Security
-- `*.har`, `.env`, `classes.yml`, and `capture/` are git-ignored. Credentials and your class
-  schedule live only in env vars / GitHub secrets — never in the repo.
+- `*.har`, `.env`, and `capture/` are git-ignored. Credentials live only in env vars /
+  GitHub secrets — never in the repo.

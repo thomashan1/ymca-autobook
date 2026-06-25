@@ -2,9 +2,8 @@
 capture/
 *.har
 
-# Secrets / local env — copy the .example files and fill in
+# Secrets / local env — copy .env.example and fill in
 .env
-classes.yml
 *.local
 
 # Python

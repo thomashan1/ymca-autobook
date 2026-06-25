@@ -29,7 +29,8 @@ from .notify import notify
 from .schedule import open_instant, wait_until
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), os.pardir, "classes.yml")
-RETRY_WINDOW_SECONDS = 60.0   # keep retrying past the open instant (absorbs skew)
+MAX_RETRY_ATTEMPTS = 3        # max booking attempts (avoids hammering the server)
+RETRY_SLEEP_SECONDS = 5.0     # seconds between retries
 LIST_WINDOW_DAYS = 16         # how far ahead to look for occurrences
 # If the next unbooked instance opens more than this far out, this week is
 # already booked (or it isn't this class's run) -> exit instead of waiting.
@@ -211,11 +212,8 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool) -> tuple[bool
     # Retry loop: fire at the open instant; keep trying through "too early"
     # (advance_time_restriction) and refresh lock_version only on lock conflicts.
     lock = target.get("lock_version")
-    deadline = time.monotonic() + RETRY_WINDOW_SECONDS
     last = "no attempt"
-    attempt = 0
-    while time.monotonic() < deadline:
-        attempt += 1
+    for attempt in range(1, MAX_RETRY_ATTEMPTS + 1):
         resp = fisikal.join(context, csrf, target["id"], lock)
         ok, msg, errors = fisikal.parse_join_result(resp)
         last = f"attempt {attempt}: {msg}"
@@ -229,9 +227,10 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool) -> tuple[bool
             fresh = refresh_lock_version(context, csrf, klass, target["id"], target["occurs_at"])
             if fresh is not None:
                 lock = fresh
-        time.sleep(0.75)
+        if attempt < MAX_RETRY_ATTEMPTS:
+            time.sleep(RETRY_SLEEP_SECONDS)
 
-    return False, f"{label}\nGave up after {RETRY_WINDOW_SECONDS}s. Last: {last}"
+    return False, f"{label}\nGave up after {MAX_RETRY_ATTEMPTS} attempts. Last: {last}"
 
 
 def main(argv=None) -> int:

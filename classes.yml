@@ -1,0 +1,68 @@
+# Recurring weekly classes to auto-book.
+#
+# Booking-open timing is read automatically from each occurrence in the Fisikal
+# API (restrict_to_book_in_advance_time = 167h here), so there's no "X" to set.
+# The bot books next week's instance the moment booking opens.
+#
+# Each class is matched by:  name + weekday + start time + branch (location_ids).
+# That combination is unique for these classes, and deliberately does NOT pin the
+# room or instructor — both vary week to week (e.g. Tue Cycle moves between the
+# Group Exercise Room and the Rec Room; instructors get substituted).
+#   name         - exact class title (service_title)
+#   weekday      - Mon Tue Wed Thu Fri Sat Sun
+#   start        - LOCAL start time "HH:MM" (timezone below)
+#   location_ids - BRANCH id to query: Southwest=1392, Northwest=1388.
+#                  (Without it the API only returns your home branch.)
+#
+# To stop booking a class: delete its entry (and its cron line in the workflow).
+
+timezone: America/Los_Angeles
+
+classes:
+  - key: vinyasa-yoga-mon          # usually Southwest - Studio 2
+    name: "Vinyasa Yoga"
+    weekday: Mon
+    start: "10:15"
+    location_ids: [1392]
+
+  - key: lift-hiit-mon             # usually Southwest - Group Exercise Room
+    name: "Lift & H.I.I.T."
+    weekday: Mon
+    start: "11:20"
+    location_ids: [1392]
+
+  - key: cycle-tue                 # Southwest - room varies (GER / Rec Room)
+    name: "Cycle"
+    weekday: Tue
+    start: "10:15"
+    location_ids: [1392]
+
+  - key: rpm-wed                   # Northwest - Group Exercise Room
+    name: "RPM"
+    weekday: Wed
+    start: "09:30"
+    location_ids: [1388]
+
+  - key: core-wed                  # Northwest - Family Pavilion
+    name: "Les Mills CORE"
+    weekday: Wed
+    start: "10:30"
+    location_ids: [1388]
+
+  - key: cycle-sculpt-thu          # Southwest - Group Exercise Room
+    name: "Cycle Sculpt"
+    weekday: Thu
+    start: "10:15"
+    location_ids: [1392]
+
+  - key: core-fri                  # Northwest - Family Pavilion
+    name: "Les Mills CORE"
+    weekday: Fri
+    start: "09:45"
+    location_ids: [1388]
+
+  - key: lift-hiit-fri             # usually Southwest - Group Exercise Room
+    name: "Lift & H.I.I.T."
+    weekday: Fri
+    start: "11:20"
+    location_ids: [1392]

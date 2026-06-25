@@ -8,11 +8,14 @@ separate private repo (default: thomashan1/ymca-private) as a small pauses.yml:
       - {start: 2026-07-03, end: 2026-07-03}   # single day
       - {start: 2026-07-07, end: 2026-07-12}   # away, resume 7/13
 
-run_due.py calls active_pause(today) at the start of a scheduled run and skips
-all booking if today falls inside any range.
+Each range lists the dates of CLASSES you won't attend. run_due.py loads the
+ranges once per scheduled run and skips booking any occurrence whose own date
+falls inside one — NOT the run date. Booking opens ~7 days ahead, so the run
+that books a paused class fires a week earlier; matching on the class date
+(not "today") is what actually keeps you off the roster while you're away.
 
 FAIL-OPEN by design: a missing token, network error, or unparseable file means
-"not paused" so a misconfiguration can never silently stop bookings — the worst
+"no pauses" so a misconfiguration can never silently stop bookings — the worst
 case is booking a class during a week you're away, which you can still cancel.
 """
 
@@ -69,18 +72,22 @@ def parse_ranges(text: str) -> list[tuple[date, date]]:
     return ranges
 
 
-def active_pause(today: date, token: str | None = None) -> tuple[date, date] | None:
-    """Return the pause range covering `today`, or None. Fail-open on any error."""
+def load_ranges(token: str | None = None) -> list[tuple[date, date]]:
+    """Fetch + parse the away-ranges from the private repo. Fail-open -> []."""
     token = token or os.environ.get("PRIVATE_REPO_TOKEN")
     if not token:
         print("[pause] PRIVATE_REPO_TOKEN not set; skipping pause check.")
-        return None
+        return []
     try:
-        ranges = parse_ranges(_fetch_yaml(token))
+        return parse_ranges(_fetch_yaml(token))
     except Exception as exc:  # network / auth / parse — never block booking
         print(f"[pause] could not read pauses ({exc!r}); proceeding to book.")
-        return None
+        return []
+
+
+def covering(ranges: list[tuple[date, date]], day: date) -> tuple[date, date] | None:
+    """Return the range covering `day`, or None."""
     for start, end in ranges:
-        if start <= today <= end:
+        if start <= day <= end:
             return (start, end)
     return None

@@ -15,8 +15,6 @@ on:
     - cron: "5 19 * * 3"  # core-wed — opens Wed 11:30 PT (PST)
     - cron: "50 17 * * 4"  # cycle-sculpt-thu — opens Thu 11:15 PT (PDT)
     - cron: "50 18 * * 4"  # cycle-sculpt-thu — opens Thu 11:15 PT (PST)
-    - cron: "5 19 * * 4"  # therapeutic-yoga-thu — opens Thu 12:30 PT (PDT)
-    - cron: "5 20 * * 4"  # therapeutic-yoga-thu — opens Thu 12:30 PT (PST)
     - cron: "20 17 * * 5"  # core-fri — opens Fri 10:45 PT (PDT)
     - cron: "20 18 * * 5"  # core-fri — opens Fri 10:45 PT (PST)
     - cron: "55 18 * * 5"  # lift-hiit-fri — opens Fri 12:20 PT (PDT)

@@ -62,6 +62,61 @@ def _fmt(dt: datetime, tz: str) -> str:
     return dt.astimezone(ZoneInfo(tz)).strftime("%a %Y-%m-%d %H:%M %Z")
 
 
+_DANCE_KEYWORDS = {"dance", "salsa", "zumba", "hip hop", "cha cha", "cumbia", "jazzercise"}
+_BROWSE_BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
+
+
+def run_browse(context, csrf, cfg) -> None:
+    """Print Mon-Fri classes between 9:30 and 15:00 (local time), excluding dance/fee."""
+    tz_name = cfg["timezone"]
+    zone = ZoneInfo(tz_name)
+    now = datetime.now(timezone.utc)
+    occs = fisikal.list_occurrences(
+        context, csrf,
+        now - timedelta(hours=1),
+        now + timedelta(days=LIST_WINDOW_DAYS),
+        location_ids=_BROWSE_BOTH_LOCATIONS,
+    )
+    rows = sorted(occs, key=lambda o: o["occurs_at"])
+
+    seen = set()  # deduplicate recurring slots: (title, weekday, start_hhmm, location)
+    printed = 0
+    print(f"\n{'CLASS':<32} {'DAY':<4} {'TIME':<6}  {'WHERE':<26}  {'JOINED'}")
+    print("-" * 90)
+    for o in rows:
+        title = (o.get("service_title") or "").strip()
+        title_l = title.lower()
+        if any(kw in title_l for kw in _DANCE_KEYWORDS):
+            continue
+        # filter paid classes: skip if cost/price field is present and non-zero
+        cost = o.get("cost") or o.get("price") or o.get("cost_in_cents") or 0
+        try:
+            if float(cost) > 0:
+                continue
+        except (TypeError, ValueError):
+            pass
+
+        occurs = datetime.fromisoformat(o["occurs_at"].replace("Z", "+00:00")).astimezone(zone)
+        dow = occurs.weekday()
+        if dow >= 5:  # skip Sat/Sun
+            continue
+        start_min = occurs.hour * 60 + occurs.minute
+        if start_min < 9 * 60 + 30 or start_min >= 15 * 60:  # 9:30–15:00
+            continue
+
+        location = (o.get("location_name") or "").replace("Silicon Valley YMCA - ", "")
+        key = (title_l, dow, occurs.hour, occurs.minute, location)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        day_abbr = ["Mon", "Tue", "Wed", "Thu", "Fri"][dow]
+        joined = "✓" if o.get("is_joined") else ""
+        print(f"{title:<32} {day_abbr:<4} {occurs.strftime('%H:%M'):<6}  {location:<26}  {joined}")
+        printed += 1
+    print(f"\n{printed} unique classes shown (Mon–Fri, 9:30–15:00, no dance).")
+
+
 def run_list(context, csrf, cfg, name_filter: str | None) -> None:
     tz = cfg["timezone"]
     now = datetime.now(timezone.utc)
@@ -174,6 +229,8 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool) -> tuple[bool
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--class", dest="klass", help="class key from classes.yml")
+    ap.add_argument("--browse", action="store_true",
+                    help="show all Mon-Fri 9:30–15:00 classes (both branches, no dance/fee)")
     ap.add_argument("--list", nargs="?", const="", help="list upcoming occurrences (optional name filter)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--headed", action="store_true")
@@ -193,6 +250,10 @@ def main(argv=None) -> int:
         try:
             _, csrf = login(context, username, password)
             print("Logged in; csrf acquired.")
+
+            if args.browse:
+                run_browse(context, csrf, cfg)
+                return 0
 
             if args.list is not None:
                 run_list(context, csrf, cfg, args.list or None)

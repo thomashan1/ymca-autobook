@@ -77,11 +77,6 @@ jobs:
         env:
           EGYM_USERNAME: ${{{{ secrets.EGYM_USERNAME }}}}
           EGYM_PASSWORD: ${{{{ secrets.EGYM_PASSWORD }}}}
-          SMTP_HOST: ${{{{ secrets.SMTP_HOST }}}}
-          SMTP_PORT: ${{{{ secrets.SMTP_PORT }}}}
-          SMTP_USER: ${{{{ secrets.SMTP_USER }}}}
-          SMTP_PASS: ${{{{ secrets.SMTP_PASS }}}}
-          NOTIFY_EMAIL: ${{{{ secrets.NOTIFY_EMAIL }}}}
         run: |
           if [ -n "${{{{ github.event.inputs.class_key }}}}" ]; then
             python -m src.main --class "${{{{ github.event.inputs.class_key }}}}"

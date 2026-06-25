@@ -41,9 +41,10 @@ cp .env.example .env   # then fill in EGYM_USERNAME / EGYM_PASSWORD / SMTP_*
 set -a; . ./.env; set +a
 ```
 
-Useful commands (all via `.venv/bin/python -m src.main`):
+Useful commands (run from repo root via `.venv/bin/python -m src.main`):
 ```bash
---list [name]          # print upcoming occurrences (verify filters)
+--browse                   # Mon–Fri 9:30–15:00 classes at both branches (no dance/fee)
+--list [name]              # print upcoming occurrences (verify filters)
 --class <key> --dry-run    # find the target + open time, don't book
 --class <key> --book-now   # attempt the booking immediately (testing)
 --cancel-id <occ_id>       # cancel a booking by occurrence id
@@ -55,8 +56,8 @@ python scripts/run_due.py  # what the scheduler runs: book whatever's due now
 2. Push this directory (the `.gitignore` keeps `.env` and `*.har` out).
 3. In **Settings → Secrets and variables → Actions**, add:
    - `EGYM_USERNAME`, `EGYM_PASSWORD`
-   - `SMTP_HOST` (`smtp.gmail.com`), `SMTP_PORT` (`587`), `SMTP_USER`, `SMTP_PASS`
-     (a Gmail **App Password**, not your normal password), `NOTIFY_EMAIL`
+   - (The YMCA already sends a booking confirmation email from noreply@ymcasv.org, so
+     no SMTP secrets needed. Run results appear in the Actions job log.)
 4. The workflow runs on the generated cron schedule. Trigger a manual test from the **Actions**
    tab → *Book YMCA classes* → *Run workflow* (optionally pass a `class_key`).
 

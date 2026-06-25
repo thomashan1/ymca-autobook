@@ -3,10 +3,11 @@
 Automatically books recurring Silicon Valley YMCA classes the moment they open.
 
 The YMCA (Fisikal backend, egym SSO) opens each class for booking exactly **167 hours
-before it starts** — that is, the same weekday one hour after the class start time the
-previous week. For example, a Thursday 10:15 AM class opens for booking the prior Thursday
-at 11:15 AM. The value 167h comes directly from the API (`restrict_to_book_in_advance_time_in_hours`)
-and is not hardcoded. This bot logs in, waits for that exact moment, and books next week's
+before it starts** — that is 1 week (168h) minus 1 hour, which works out to the same
+weekday one hour *after* the class start time the previous week. For example, a Thursday
+10:15 AM class opens for booking the prior Thursday at 11:15 AM — right after that week's
+session ends. The value 167h comes directly from the API
+(`restrict_to_book_in_advance_time_in_hours`) and is not hardcoded. This bot logs in, waits for that exact moment, and books next week's
 class for you — running unattended on GitHub Actions.
 
 ## How it works

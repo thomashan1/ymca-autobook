@@ -33,7 +33,10 @@ def cron_lines(klass) -> list[tuple[str, str]]:
     dow = klass["weekday"]
     h, m = (int(x) for x in klass["start"].split(":"))
     out = []
-    for lead in FIRE_LEAD_MINS:
+    for i, lead in enumerate(FIRE_LEAD_MINS):
+        # First lead is the primary trigger; the rest are redundant retries in case
+        # GitHub drops/delays the earlier one.
+        role = "primary" if i == 0 else f"retry {i}"
         # open = start + 1h; fire = open - lead, as a same-day local time.
         fire = datetime(2000, 1, 3, h, m) + timedelta(hours=1) - timedelta(minutes=lead)
         for off, season in ((7, "PDT"), (8, "PST")):
@@ -43,7 +46,7 @@ def cron_lines(klass) -> list[tuple[str, str]]:
             assert ut.day == fire.day, "offset crossed midnight; handle DOW shift"
             out.append((f"{ut.minute} {ut.hour} * * {CRON_DOW[dow]}",
                         f"{klass['key']} — opens {dow} {h+1:02d}:{m:02d} PT "
-                        f"({season}, fire -{lead}m)"))
+                        f"({season}, {role}, fire -{lead}m)"))
     return out
 
 
@@ -67,6 +70,10 @@ on:
         description: "Class key to book now (see classes.yml). Blank = decide from schedule."
         required: false
         default: ""
+      cancel_id:
+        description: "Occurrence id to CANCEL an existing booking. Takes priority over class_key."
+        required: false
+        default: ""
 
 concurrency:
   group: book-${{{{ github.run_id }}}}
@@ -87,7 +94,9 @@ jobs:
           EGYM_USERNAME: ${{{{ secrets.EGYM_USERNAME }}}}
           EGYM_PASSWORD: ${{{{ secrets.EGYM_PASSWORD }}}}
         run: |
-          if [ -n "${{{{ github.event.inputs.class_key }}}}" ]; then
+          if [ -n "${{{{ github.event.inputs.cancel_id }}}}" ]; then
+            python -m src.main --cancel-id "${{{{ github.event.inputs.cancel_id }}}}"
+          elif [ -n "${{{{ github.event.inputs.class_key }}}}" ]; then
             python -m src.main --class "${{{{ github.event.inputs.class_key }}}}"
           else
             python scripts/run_due.py

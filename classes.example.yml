@@ -1,0 +1,38 @@
+# Copy to classes.yml and fill in your own classes (classes.yml is git-ignored).
+#
+# Booking-open timing is read automatically from each occurrence in the Fisikal
+# API (restrict_to_book_in_advance_time = 167h here), so there's no "X" to set.
+# The bot books next week's instance the moment booking opens.
+#
+# Each class is matched by:  name + weekday + start time + branch (location_ids).
+# That combination is unique for these classes, and deliberately does NOT pin the
+# room or instructor — both vary week to week.
+#   name         - exact class title as shown on the schedule (service_title)
+#   weekday      - Mon Tue Wed Thu Fri Sat Sun
+#   start        - LOCAL start time "HH:MM" (timezone below)
+#   location_ids - branch id(s) to query; without it the API only returns your
+#                  home branch.  Find your branch ids by running --list and noting
+#                  which occurrences come back.
+#
+# To stop booking a class: delete its entry, then re-run scripts/gen_workflow.py.
+
+timezone: America/Los_Angeles
+
+classes:
+  - key: yoga-mon
+    name: "Vinyasa Yoga"
+    weekday: Mon
+    start: "09:00"
+    location_ids: [1234]
+
+  - key: hiit-wed
+    name: "H.I.I.T."
+    weekday: Wed
+    start: "10:00"
+    location_ids: [1234]
+
+  - key: cycle-fri
+    name: "Cycle"
+    weekday: Fri
+    start: "08:30"
+    location_ids: [5678]

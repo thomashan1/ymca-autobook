@@ -23,8 +23,9 @@ opening now (others are skipped cheaply). `scripts/gen_workflow.py` regenerates 
 Actions cron schedule from `classes.yml`.
 
 ## Configure your classes
-Edit [`classes.yml`](classes.yml) — one entry per recurring class (name, weekday, local start
-time, and branch `location_ids`: Southwest=1392, Northwest=1388). Then regenerate the workflow:
+Copy [`classes.example.yml`](classes.example.yml) to `classes.yml` (git-ignored, stays local)
+and fill in your classes — one entry per recurring class (name, weekday, local start time, and
+branch `location_ids`). Then regenerate the workflow:
 
 ```bash
 .venv/bin/python scripts/gen_workflow.py   # rewrites .github/workflows/book.yml
@@ -36,8 +37,9 @@ time, and branch `location_ids`: Southwest=1392, Northwest=1388). Then regenerat
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m playwright install chromium
 
-# credentials for local runs (these become GitHub secrets in the cloud)
-cp .env.example .env   # then fill in EGYM_USERNAME / EGYM_PASSWORD / SMTP_*
+# credentials and class schedule (both git-ignored, stay local)
+cp .env.example .env               # fill in EGYM_USERNAME / EGYM_PASSWORD
+cp classes.example.yml classes.yml # fill in your classes
 set -a; . ./.env; set +a
 ```
 

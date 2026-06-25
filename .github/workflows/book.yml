@@ -64,6 +64,7 @@ jobs:
         env:
           EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
           EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
         run: |
           if [ -n "${{ github.event.inputs.cancel_id }}" ]; then
             python -m src.main --cancel-id "${{ github.event.inputs.cancel_id }}"

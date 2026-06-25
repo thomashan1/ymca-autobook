@@ -41,7 +41,9 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m playwright install --with-deps chromium
       - name: Write classes config
-        run: echo "${{ secrets.CLASSES_YML }}" > classes.yml
+        env:
+          CLASSES_YML: ${{ secrets.CLASSES_YML }}
+        run: printf '%s' "$CLASSES_YML" > classes.yml
       - name: Book
         env:
           EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}

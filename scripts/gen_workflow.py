@@ -73,6 +73,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python -m playwright install --with-deps chromium
+      - name: Write classes config
+        run: echo "${{{{ secrets.CLASSES_YML }}}}" > classes.yml
       - name: Book
         env:
           EGYM_USERNAME: ${{{{ secrets.EGYM_USERNAME }}}}

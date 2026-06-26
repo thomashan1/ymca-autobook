@@ -110,10 +110,11 @@ def run_browse(context, csrf, cfg) -> None:
         seen.add(key)
 
         joined = "✓" if o.get("is_joined") else ""
+        trainer = (o.get("trainer_name") or "—").strip()
         # Duration is split across two fields: a whole-hour class is reported
         # as hours=1, minutes=0 (so reading minutes alone gives a bogus 0).
         dur = int(o.get("duration_in_hours") or 0) * 60 + int(o.get("duration_in_minutes") or 0)
-        by_day[dow].append((occurs.hour * 60 + occurs.minute, dur, title, location, joined))
+        by_day[dow].append((occurs.hour * 60 + occurs.minute, dur, title, location, trainer, joined))
 
     total = 0
     for dow in range(5):
@@ -121,10 +122,10 @@ def run_browse(context, csrf, cfg) -> None:
         if not rows:
             continue
         # Time spans of classes already booked, to flag overlaps below.
-        booked = [(m, m + d) for m, d, _, _, j in rows if j]
+        booked = [(m, m + d) for m, d, *_ , j in rows if j]
         print(f"\n── {_DAY_NAMES[dow]} ──────────────────────────────────────────────────────────")
-        print(f"  {'START':<6} {'END':<6}  {'MIN':<4} {'CLASS':<34}  {'WHERE':<26}  JOINED")
-        for mins, dur, title, location, joined in rows:
+        print(f"  {'START':<6} {'END':<6}  {'MIN':<4} {'CLASS':<34}  {'WHERE':<16}  {'INSTRUCTOR':<16}  JOINED")
+        for mins, dur, title, location, trainer, joined in rows:
             end = mins + dur
             t = f"{mins // 60:02d}:{mins % 60:02d}"
             te = f"{end // 60:02d}:{end % 60:02d}"
@@ -132,7 +133,7 @@ def run_browse(context, csrf, cfg) -> None:
                 "  ⚠ overlaps booked"
                 if any(mins < b_end and end > b_start for b_start, b_end in booked) else ""
             )
-            print(f"  {t:<6} {te:<6}  {dur:<4} {title:<34}  {location:<26}  {joined}{clash}")
+            print(f"  {t:<6} {te:<6}  {dur:<4} {title:<34}  {location:<16}  {trainer:<16}  {joined}{clash}")
             total += 1
     print(f"\n{total} unique classes (Mon–Fri, 9:30–15:00, no fee/dance/swim).")
 

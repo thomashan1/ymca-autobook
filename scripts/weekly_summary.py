@@ -231,16 +231,21 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
         f"<p style='font-family:sans-serif;font-size:13px;color:#555;margin:4px 0 10px'>"
         f"{count} class{'es' if count != 1 else ''} booked.</p>"
     )
+    # Return a fragment (no html/body wrapper) so callers can combine sections.
     return (
-        f"<!DOCTYPE html><html><body style='margin:20px'>"
         f"<h2 style='font-family:sans-serif;color:{GREEN};margin-bottom:2px'>{title}</h2>"
         f"{count_line}"
         f"<table style='border-collapse:collapse;width:100%;min-width:600px'>"
         f"<thead><tr>{time_th}{day_ths}</tr></thead>"
         f"<tbody>{body_rows}</tbody>"
         f"</table>"
-        f"</body></html>"
     )
+
+
+def _wrap_html(*sections: str) -> str:
+    divider = "<hr style='border:none;border-top:2px solid #ddd;margin:28px 0'>"
+    body = divider.join(sections)
+    return f"<!DOCTYPE html><html><body style='margin:20px'>{body}</body></html>"
 
 
 def send_email(to: str, password: str, subject: str, html: str, text: str) -> None:
@@ -268,13 +273,13 @@ def run() -> int:
     notify_email = os.environ.get("NOTIFY_EMAIL")
     gmail_app_pw = os.environ.get("GMAIL_APP_PASSWORD")
 
-    today      = datetime.now(tz).date()
-    # Mon–Thu: show this week; Fri–Sun: show next week (booking preview)
-    offset     = 7 - today.weekday() if today.weekday() >= 4 else -today.weekday()
-    week_start = today + timedelta(days=offset)                 # Monday of target week
-    week_sun   = week_start + timedelta(days=6)                 # Sunday
-    win_start  = datetime(week_start.year, week_start.month, week_start.day, tzinfo=tz)
-    win_end    = win_start + timedelta(days=7)
+    today        = datetime.now(tz).date()
+    is_friday    = today.weekday() >= 4  # Fri–Sun → also show next week
+    this_mon     = today - timedelta(days=today.weekday())
+    next_mon     = this_mon + timedelta(days=7)
+    # Query window: this week only (Mon–Thu) or two weeks (Fri–Sun)
+    win_start    = datetime(this_mon.year, this_mon.month, this_mon.day, tzinfo=tz)
+    win_end      = win_start + timedelta(days=14 if is_friday else 7)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -289,13 +294,33 @@ def run() -> int:
             context.close()
             browser.close()
 
-    booked = sorted([o for o in occs if o.get("is_joined")], key=lambda o: o["occurs_at"])
-    rows   = _build_rows(booked, tz)
-    title  = f"YMCA classes: {week_start.strftime('%a %b %d')} – {week_sun.strftime('%a %b %d')}"
-    count  = len(rows)
+    all_booked = sorted([o for o in occs if o.get("is_joined")], key=lambda o: o["occurs_at"])
 
-    md   = _markdown(rows, title, count)
-    html = _html(rows, title, count, week_start)
+    def _rows_for(mon: date) -> list[dict]:
+        sun = mon + timedelta(days=6)
+        return _build_rows(
+            [o for o in all_booked
+             if mon <= datetime.fromisoformat(o["occurs_at"].replace("Z", "+00:00"))
+                                .astimezone(tz).date() <= sun],
+            tz,
+        )
+
+    this_rows  = _rows_for(this_mon)
+    this_title = f"YMCA classes: {this_mon.strftime('%a %b %d')} – {(this_mon + timedelta(days=6)).strftime('%a %b %d')}"
+
+    if is_friday:
+        next_rows  = _rows_for(next_mon)
+        next_title = f"YMCA classes: {next_mon.strftime('%a %b %d')} – {(next_mon + timedelta(days=6)).strftime('%a %b %d')}"
+        count  = len(this_rows) + len(next_rows)
+        md     = _markdown(this_rows, this_title, len(this_rows)) + "\n" + _markdown(next_rows, next_title, len(next_rows))
+        html   = _wrap_html(_html(this_rows, this_title, len(this_rows), this_mon),
+                            _html(next_rows, next_title, len(next_rows), next_mon))
+        title  = f"{this_title} + next week"
+    else:
+        count = len(this_rows)
+        md    = _markdown(this_rows, this_title, count)
+        html  = _wrap_html(_html(this_rows, this_title, count, this_mon))
+        title = this_title
 
     print(md)
 

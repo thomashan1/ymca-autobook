@@ -116,8 +116,8 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
 
     def _col_header(grp: list[date]) -> tuple[str, str]:
         if len(grp) == 1:
-            return grp[0].strftime("%a"), grp[0].strftime("%b %d")
-        return "Weekend", f"{grp[0].strftime('%b %d')}–{grp[-1].strftime('%d')}"
+            return grp[0].strftime("%a"), grp[0].strftime("%-m/%-d")
+        return "Weekend", f"{grp[0].strftime('%-m/%-d')}–{grp[-1].strftime('%-m/%-d')}"
 
     # Grid time range: floor earliest start to hour, ceil latest end to hour + padding
     starts = [r["dt"].hour * 60 + r["dt"].minute for r in rows]
@@ -136,9 +136,11 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
         for r in col_rows:
             start_m = r["dt"].hour * 60 + r["dt"].minute
             start_s = (start_m - grid_start) // SLOT
-            end_m   = start_m + r["duration"]
-            end_s   = (end_m - grid_start + SLOT - 1) // SLOT  # ceil to next slot
-            span    = max(1, end_s - start_s)
+            # Base span on class duration, not grid position — position-based
+            # ceiling over-extends when start_time is not slot-aligned (e.g.
+            # 10:15 + 60 min = 11:15 → ⌈4.5⌉ = 5 slots instead of 2), causing
+            # the next class's cell to overflow into the wrong column.
+            span    = max(1, (r["duration"] + SLOT - 1) // SLOT)
             if 0 <= start_s < total_slots:
                 grid[col_idx][start_s] = (r, span)
                 for s in range(start_s + 1, min(start_s + span, total_slots)):
@@ -274,12 +276,12 @@ def run() -> int:
     gmail_app_pw = os.environ.get("GMAIL_APP_PASSWORD")
 
     today        = datetime.now(tz).date()
-    is_friday    = today.weekday() >= 4  # Fri–Sun → also show next week
-    this_mon     = today - timedelta(days=today.weekday())
+    dow          = today.weekday()  # 0=Mon … 4=Fri … 6=Sun
+    this_mon     = today - timedelta(days=dow)
     next_mon     = this_mon + timedelta(days=7)
-    # Query window: this week only (Mon–Thu) or two weeks (Fri–Sun)
+    # Always fetch 14 days; per-week filtering happens below.
     win_start    = datetime(this_mon.year, this_mon.month, this_mon.day, tzinfo=tz)
-    win_end      = win_start + timedelta(days=14 if is_friday else 7)
+    win_end      = win_start + timedelta(days=14)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -296,6 +298,8 @@ def run() -> int:
 
     all_booked = sorted([o for o in occs if o.get("is_joined")], key=lambda o: o["occurs_at"])
 
+
+
     def _rows_for(mon: date) -> list[dict]:
         sun = mon + timedelta(days=6)
         return _build_rows(
@@ -306,21 +310,28 @@ def run() -> int:
         )
 
     this_rows  = _rows_for(this_mon)
-    this_title = f"YMCA classes: {this_mon.strftime('%a %b %d')} – {(this_mon + timedelta(days=6)).strftime('%a %b %d')}"
+    next_rows  = _rows_for(next_mon)
+    this_fri   = this_mon + timedelta(days=4)
+    next_fri   = next_mon + timedelta(days=4)
+    this_title = f"YMCA classes: {this_mon.strftime('%a %-m/%-d')} – {this_fri.strftime('%a %-m/%-d')}"
+    next_title = f"YMCA classes: {next_mon.strftime('%a %-m/%-d')} – {next_fri.strftime('%a %-m/%-d')}"
 
-    if is_friday:
-        next_rows  = _rows_for(next_mon)
-        next_title = f"YMCA classes: {next_mon.strftime('%a %b %d')} – {(next_mon + timedelta(days=6)).strftime('%a %b %d')}"
-        count  = len(this_rows) + len(next_rows)
-        md     = _markdown(this_rows, this_title, len(this_rows)) + "\n" + _markdown(next_rows, next_title, len(next_rows))
-        html   = _wrap_html(_html(this_rows, this_title, len(this_rows), this_mon),
-                            _html(next_rows, next_title, len(next_rows), next_mon))
-        title  = f"{this_title} + next week"
-    else:
+    if dow == 0:  # Monday: this week only
         count = len(this_rows)
         md    = _markdown(this_rows, this_title, count)
         html  = _wrap_html(_html(this_rows, this_title, count, this_mon))
         title = this_title
+    elif dow <= 3:  # Tue–Thu: this week + next week
+        count = len(this_rows) + len(next_rows)
+        md    = _markdown(this_rows, this_title, len(this_rows)) + "\n" + _markdown(next_rows, next_title, len(next_rows))
+        html  = _wrap_html(_html(this_rows, this_title, len(this_rows), this_mon),
+                           _html(next_rows, next_title, len(next_rows), next_mon))
+        title = f"{this_title} + next week"
+    else:  # Fri–Sun: next week only (classes not yet open for booking)
+        count = len(next_rows)
+        md    = _markdown(next_rows, next_title, count)
+        html  = _wrap_html(_html(next_rows, next_title, count, next_mon))
+        title = next_title
 
     print(md)
 

@@ -79,62 +79,82 @@ def _markdown(rows: list[dict], title: str, count: int) -> str:
     return "\n".join(lines)
 
 
-def _html(rows: list[dict], title: str, count: int) -> str:
+def _html(rows: list[dict], title: str, count: int, today: date) -> str:
     GREEN  = "#2d6a4f"
     DGREEN = "#1b4332"
-    COLS   = ["Day", "Date", "Time", "Class", "Instructor", "Studio"]
+
+    day_map: dict[date, list[dict]] = {}
+    for r in rows:
+        day_map.setdefault(r["isodate"], []).append(r)
+
+    days = [today + timedelta(days=i) for i in range(7)]
+
+    # Detect ISO-week boundary so we can draw a thick divider between weeks.
+    week_boundary: int | None = None
+    for i in range(len(days) - 1):
+        if days[i].isocalendar()[1] != days[i + 1].isocalendar()[1]:
+            week_boundary = i
+            break
+
+    def _col_border(i: int) -> str:
+        if i == week_boundary:
+            return f"border-right:3px solid {DGREEN}"
+        return "border-right:1px solid #e0e0e0" if i < len(days) - 1 else ""
+
+    ths = ""
+    for i, d in enumerate(days):
+        ths += (
+            f"<th style='padding:8px 4px;text-align:center;background:{GREEN};"
+            f"color:#fff;{_col_border(i)};width:14.28%;font-family:sans-serif'>"
+            f"{d.strftime('%a')}"
+            f"<br><span style='font-size:11px;font-weight:normal'>{d.strftime('%b %d')}</span>"
+            f"</th>"
+        )
+
+    tds = ""
+    for i, d in enumerate(days):
+        classes = day_map.get(d, [])
+        cards = ""
+        for r in classes:
+            cards += (
+                f"<div style='background:#e8f5ee;border-left:3px solid {GREEN};"
+                f"margin-bottom:5px;padding:5px 6px;border-radius:3px;"
+                f"font-family:sans-serif;font-size:12px'>"
+                f"<div style='font-weight:bold;color:{DGREEN}'>{r['time']}</div>"
+                f"<div style='margin-top:2px'>{r['name']}</div>"
+                f"<div style='color:#555;font-size:11px;margin-top:2px'>{r['instructor']}</div>"
+                f"<div style='color:#888;font-size:11px'>{r['sub_location']}</div>"
+                f"</div>"
+            )
+        bg = "#fafafa" if not classes else "#fff"
+        placeholder = '<span style="color:#ccc;font-size:12px;font-family:sans-serif">—</span>'
+        tds += (
+            f"<td style='padding:6px 4px;vertical-align:top;{_col_border(i)};"
+            f"border-bottom:1px solid #e0e0e0;background:{bg}'>"
+            f"{cards if cards else placeholder}"
+            f"</td>"
+        )
 
     if not rows:
-        body = "<p><em>No classes booked this week.</em></p>"
+        cal = "<p style='font-family:sans-serif'><em>No classes booked this week.</em></p>"
     else:
-        thead = "".join(
-            f"<th style='padding:8px 12px;text-align:left'>{h}</th>" for h in COLS
+        cal = (
+            f"<table style='border-collapse:collapse;width:100%'>"
+            f"<thead><tr>{ths}</tr></thead>"
+            f"<tbody><tr>{tds}</tr></tbody>"
+            f"</table>"
         )
-        trs = ""
-        prev_date: date | None = None
-        prev_week: int | None = None
-        stripe = 0
 
-        for r in rows:
-            if prev_week is not None and r["isoweek"] != prev_week:
-                trs += (
-                    f"<tr><td colspan='{len(COLS)}' style='"
-                    f"background:{DGREEN};height:4px;padding:0'></td></tr>"
-                )
-                stripe = 0
-            elif prev_date is not None and r["isodate"] != prev_date:
-                trs += (
-                    f"<tr><td colspan='{len(COLS)}' style='"
-                    f"background:#e0e0e0;height:2px;padding:0'></td></tr>"
-                )
-                stripe = 0
-
-            bg = "#f4f9f6" if stripe % 2 else "#ffffff"
-            cells = "".join(
-                f"<td style='padding:7px 12px'>{v}</td>"
-                for v in [r["day"], r["date"], r["time"], r["name"],
-                          r["instructor"], r["sub_location"]]
-            )
-            trs += f"<tr style='background:{bg}'>{cells}</tr>"
-            stripe += 1
-            prev_date = r["isodate"]
-            prev_week = r["isoweek"]
-
-        body = f"""
-        <table style='border-collapse:collapse;font-family:sans-serif;font-size:14px;width:100%'>
-          <thead>
-            <tr style='background:{GREEN};color:#fff'>{thead}</tr>
-          </thead>
-          <tbody>{trs}</tbody>
-        </table>
-        <p style='font-family:sans-serif;font-size:13px;color:#555;margin-top:8px'>
-          {count} class{'es' if count != 1 else ''} booked.
-        </p>"""
-
-    return f"""<!DOCTYPE html><html><body style='margin:20px'>
-    <h2 style='font-family:sans-serif;color:{GREEN}'>{title}</h2>
-    {body}
-    </body></html>"""
+    footer = (
+        f"<p style='font-family:sans-serif;font-size:13px;color:#555;margin-top:8px'>"
+        f"{count} class{'es' if count != 1 else ''} booked.</p>"
+    )
+    return (
+        f"<!DOCTYPE html><html><body style='margin:20px'>"
+        f"<h2 style='font-family:sans-serif;color:{GREEN}'>{title}</h2>"
+        f"{cal}{footer}"
+        f"</body></html>"
+    )
 
 
 def send_email(to: str, password: str, subject: str, html: str, text: str) -> None:
@@ -181,11 +201,11 @@ def run() -> int:
     booked = sorted([o for o in occs if o.get("is_joined")], key=lambda o: o["occurs_at"])
     rows   = _build_rows(booked, tz)
     today  = datetime.now(tz).date()
-    title  = f"YMCA classes: {today.strftime('%b %d')} – {(today + timedelta(days=7)).strftime('%b %d')}"
+    title  = f"YMCA classes: {today.strftime('%a %b %d')} – {(today + timedelta(days=6)).strftime('%a %b %d')}"
     count  = len(rows)
 
     md   = _markdown(rows, title, count)
-    html = _html(rows, title, count)
+    html = _html(rows, title, count, today)
 
     print(md)
 

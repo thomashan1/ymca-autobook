@@ -296,6 +296,12 @@ def run() -> int:
 
     all_booked = sorted([o for o in occs if o.get("is_joined")], key=lambda o: o["occurs_at"])
 
+    import json as _json
+    print("=== RAW BOOKED OCCURRENCES ===")
+    for o in all_booked:
+        print(_json.dumps(o, indent=2))
+    print("=== END RAW ===")
+
     def _rows_for(mon: date) -> list[dict]:
         sun = mon + timedelta(days=6)
         return _build_rows(

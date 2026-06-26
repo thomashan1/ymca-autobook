@@ -116,8 +116,8 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
 
     def _col_header(grp: list[date]) -> tuple[str, str]:
         if len(grp) == 1:
-            return grp[0].strftime("%a"), grp[0].strftime("%b %d")
-        return "Weekend", f"{grp[0].strftime('%b %d')}–{grp[-1].strftime('%d')}"
+            return grp[0].strftime("%a"), grp[0].strftime("%-m/%-d")
+        return "Weekend", f"{grp[0].strftime('%-m/%-d')}–{grp[-1].strftime('%-m/%-d')}"
 
     # Grid time range: floor earliest start to hour, ceil latest end to hour + padding
     starts = [r["dt"].hour * 60 + r["dt"].minute for r in rows]
@@ -309,8 +309,8 @@ def run() -> int:
     next_rows  = _rows_for(next_mon)
     this_fri   = this_mon + timedelta(days=4)
     next_fri   = next_mon + timedelta(days=4)
-    this_title = f"YMCA classes: {this_mon.strftime('%a %b %d')} – {this_fri.strftime('%a %b %d')}"
-    next_title = f"YMCA classes: {next_mon.strftime('%a %b %d')} – {next_fri.strftime('%a %b %d')}"
+    this_title = f"YMCA classes: {this_mon.strftime('%a %-m/%-d')} – {this_fri.strftime('%a %-m/%-d')}"
+    next_title = f"YMCA classes: {next_mon.strftime('%a %-m/%-d')} – {next_fri.strftime('%a %-m/%-d')}"
 
     if dow == 0:  # Monday: this week only
         count = len(this_rows)

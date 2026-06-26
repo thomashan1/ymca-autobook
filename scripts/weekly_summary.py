@@ -40,7 +40,10 @@ def _build_rows(booked: list[dict], tz: ZoneInfo) -> list[dict]:
             "name":         (o.get("service_title") or "").strip(),
             "instructor":   (o.get("trainer_name") or "—").strip(),
             "sub_location": (o.get("sub_location_name") or "—").strip(),
-            "duration":     int(o.get("duration_in_minutes") or 60),
+            # Duration is split across two fields: a whole-hour class reports
+            # hours=1, minutes=0, so reading minutes alone yields a bogus 0.
+            "duration":     (int(o.get("duration_in_hours") or 0) * 60
+                             + int(o.get("duration_in_minutes") or 0)) or 60,
         })
     return rows
 
@@ -316,18 +319,25 @@ def run() -> int:
     this_title = f"YMCA classes: {this_mon.strftime('%a %-m/%-d')} – {this_fri.strftime('%a %-m/%-d')}"
     next_title = f"YMCA classes: {next_mon.strftime('%a %-m/%-d')} – {next_fri.strftime('%a %-m/%-d')}"
 
-    if dow == 0:  # Monday: this week only
+    # Which week(s) to show. Normally derived from the day of week:
+    #   Mon -> this week only; Tue–Thu -> this + next; Fri–Sun -> next only.
+    # SUMMARY_WEEKS (this|next|both|auto) overrides this for manual test sends.
+    weeks = os.environ.get("SUMMARY_WEEKS", "auto").strip().lower()
+    if weeks not in ("this", "next", "both"):
+        weeks = "this" if dow == 0 else ("both" if dow <= 3 else "next")
+
+    if weeks == "this":
         count = len(this_rows)
         md    = _markdown(this_rows, this_title, count)
         html  = _wrap_html(_html(this_rows, this_title, count, this_mon))
         title = this_title
-    elif dow <= 3:  # Tue–Thu: this week + next week
+    elif weeks == "both":
         count = len(this_rows) + len(next_rows)
         md    = _markdown(this_rows, this_title, len(this_rows)) + "\n" + _markdown(next_rows, next_title, len(next_rows))
         html  = _wrap_html(_html(this_rows, this_title, len(this_rows), this_mon),
                            _html(next_rows, next_title, len(next_rows), next_mon))
         title = f"{this_title} + next week"
-    else:  # Fri–Sun: next week only (classes not yet open for booking)
+    else:  # next week only (classes not yet open for booking)
         count = len(next_rows)
         md    = _markdown(next_rows, next_title, count)
         html  = _wrap_html(_html(next_rows, next_title, count, next_mon))

@@ -84,6 +84,15 @@ def run_browse(context, csrf, cfg) -> None:
         location_ids=_BROWSE_BOTH_LOCATIONS,
     )
 
+    import json as _json
+    # TEMP: inspect available fields to find a reliable duration source.
+    for o in occs:
+        if "h.i.i.t" in (o.get("service_title") or "").lower():
+            print("RAW SAMPLE (H.I.I.T.):")
+            print(_json.dumps(o, indent=2, default=str))
+            break
+    print("ALL KEYS:", sorted({k for o in occs for k in o.keys()}))
+
     by_day: dict[int, list[tuple]] = {d: [] for d in range(5)}
     seen: set = set()
 

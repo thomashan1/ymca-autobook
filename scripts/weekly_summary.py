@@ -40,7 +40,10 @@ def _build_rows(booked: list[dict], tz: ZoneInfo) -> list[dict]:
             "name":         (o.get("service_title") or "").strip(),
             "instructor":   (o.get("trainer_name") or "—").strip(),
             "sub_location": (o.get("sub_location_name") or "—").strip(),
-            "duration":     int(o.get("duration_in_minutes") or 60),
+            # Duration is split across two fields: a whole-hour class reports
+            # hours=1, minutes=0, so reading minutes alone yields a bogus 0.
+            "duration":     (int(o.get("duration_in_hours") or 0) * 60
+                             + int(o.get("duration_in_minutes") or 0)) or 60,
         })
     return rows
 

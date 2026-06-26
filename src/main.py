@@ -84,15 +84,6 @@ def run_browse(context, csrf, cfg) -> None:
         location_ids=_BROWSE_BOTH_LOCATIONS,
     )
 
-    import json as _json
-    # TEMP: inspect available fields to find a reliable duration source.
-    for o in occs:
-        if "h.i.i.t" in (o.get("service_title") or "").lower():
-            print("RAW SAMPLE (H.I.I.T.):")
-            print(_json.dumps(o, indent=2, default=str))
-            break
-    print("ALL KEYS:", sorted({k for o in occs for k in o.keys()}))
-
     by_day: dict[int, list[tuple]] = {d: [] for d in range(5)}
     seen: set = set()
 
@@ -119,7 +110,9 @@ def run_browse(context, csrf, cfg) -> None:
         seen.add(key)
 
         joined = "✓" if o.get("is_joined") else ""
-        dur = int(o.get("duration_in_minutes") or 0)
+        # Duration is split across two fields: a whole-hour class is reported
+        # as hours=1, minutes=0 (so reading minutes alone gives a bogus 0).
+        dur = int(o.get("duration_in_hours") or 0) * 60 + int(o.get("duration_in_minutes") or 0)
         by_day[dow].append((occurs.hour * 60 + occurs.minute, dur, title, location, joined))
 
     total = 0

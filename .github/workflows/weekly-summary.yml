@@ -2,8 +2,12 @@ name: Weekly class summary
 
 on:
   schedule:
+    # Each slot has a PDT and a PST cron; both fire, but the script's hour-guard
+    # lets only the one matching the intended local time actually send.
     - cron: "0 15 * * 1"  # Mon 08:00 PT (PDT = UTC-7) — this week's booked classes
     - cron: "0 16 * * 1"  # Mon 08:00 PT (PST = UTC-8)
+    - cron: "0 22 * * 3"  # Wed 15:00 PT (PDT = UTC-7) — midweek update (this + next week)
+    - cron: "0 23 * * 3"  # Wed 15:00 PT (PST = UTC-8)
     - cron: "0 22 * * 5"  # Fri 15:00 PT (PDT = UTC-7) — preview next week's bookings
     - cron: "0 23 * * 5"  # Fri 15:00 PT (PST = UTC-8)
   workflow_dispatch:

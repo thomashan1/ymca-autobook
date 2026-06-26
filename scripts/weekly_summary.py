@@ -278,8 +278,22 @@ def run() -> int:
     notify_email = os.environ.get("NOTIFY_EMAIL")
     gmail_app_pw = os.environ.get("GMAIL_APP_PASSWORD")
 
-    today        = datetime.now(tz).date()
+    now_local    = datetime.now(tz)
+    today        = now_local.date()
     dow          = today.weekday()  # 0=Mon … 4=Fri … 6=Sun
+
+    # DST-safe scheduling: GitHub cron is UTC-only, so each slot has two crons
+    # (one per DST offset) and both fire. To avoid a duplicate, a scheduled run
+    # only proceeds when the local hour matches the slot's intended PT hour;
+    # the off-season cron lands an hour early/late and bows out here. Manual
+    # (workflow_dispatch) and local runs are never gated.
+    _SLOT_HOUR = {0: 8, 2: 15, 4: 15}  # Mon 08:00, Wed 15:00, Fri 15:00 PT
+    if os.environ.get("GITHUB_EVENT_NAME") == "schedule":
+        want_hour = _SLOT_HOUR.get(dow)
+        if want_hour is not None and now_local.hour != want_hour:
+            print(f"[skip] {now_local:%a %H:%M %Z}: off-DST cron "
+                  f"(slot fires at {want_hour:02d}:00 PT). Skipping duplicate.")
+            return 0
     this_mon     = today - timedelta(days=dow)
     next_mon     = this_mon + timedelta(days=7)
     # Always fetch 14 days; per-week filtering happens below.

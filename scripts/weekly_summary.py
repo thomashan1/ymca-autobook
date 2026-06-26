@@ -81,10 +81,11 @@ def _markdown(rows: list[dict], title: str, count: int) -> str:
 
 
 def _html(rows: list[dict], title: str, count: int, today: date) -> str:
-    GREEN  = "#2d6a4f"
-    DGREEN = "#1b4332"
-    SLOT   = 30  # minutes per grid row
-    ROW_H  = 28  # px per row (30-min slot)
+    GREEN   = "#2d6a4f"
+    DGREEN  = "#1b4332"
+    WKND_BG = "#6a8a7a"  # muted green for weekend header
+    SLOT    = 30  # minutes per grid row
+    ROW_H   = 28  # px per row (30-min slot)
 
     days = [today + timedelta(days=i) for i in range(7)]
 
@@ -101,6 +102,23 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
     for r in rows:
         day_map.setdefault(r["isodate"], []).append(r)
 
+    # Group consecutive Sat/Sun into a single "Weekend" column; weekdays stay separate.
+    col_groups: list[list[date]] = []
+    for d in days:
+        if d.weekday() >= 5:  # Sat=5, Sun=6
+            if col_groups and col_groups[-1][-1].weekday() >= 5:
+                col_groups[-1].append(d)
+            else:
+                col_groups.append([d])
+        else:
+            col_groups.append([d])
+    num_cols = len(col_groups)
+
+    def _col_header(grp: list[date]) -> tuple[str, str]:
+        if len(grp) == 1:
+            return grp[0].strftime("%a"), grp[0].strftime("%b %d")
+        return "Weekend", f"{grp[0].strftime('%b %d')}–{grp[-1].strftime('%d')}"
+
     # Grid time range: floor earliest start to hour, ceil latest end to hour + padding
     starts = [r["dt"].hour * 60 + r["dt"].minute for r in rows]
     ends   = [r["dt"].hour * 60 + r["dt"].minute + r["duration"] for r in rows]
@@ -108,31 +126,35 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
     grid_end   = ((max(ends) + 59) // 60) * 60 + SLOT
     total_slots = (grid_end - grid_start) // SLOT
 
-    # Build occupancy grid: grid[day_idx][slot] = None | (row_dict, rowspan) | "skip"
-    grid: list[list] = [[None] * total_slots for _ in range(7)]
-    for day_idx, d in enumerate(days):
-        for r in sorted(day_map.get(d, []), key=lambda x: x["dt"]):
+    # Build occupancy grid: grid[col_idx][slot] = None | (row_dict, rowspan) | "skip"
+    grid: list[list] = [[None] * total_slots for _ in range(num_cols)]
+    for col_idx, grp in enumerate(col_groups):
+        col_rows = sorted(
+            [r for d in grp for r in day_map.get(d, [])],
+            key=lambda x: x["dt"],
+        )
+        for r in col_rows:
             start_m = r["dt"].hour * 60 + r["dt"].minute
             start_s = (start_m - grid_start) // SLOT
             end_m   = start_m + r["duration"]
             end_s   = (end_m - grid_start + SLOT - 1) // SLOT  # ceil to next slot
             span    = max(1, end_s - start_s)
             if 0 <= start_s < total_slots:
-                grid[day_idx][start_s] = (r, span)
+                grid[col_idx][start_s] = (r, span)
                 for s in range(start_s + 1, min(start_s + span, total_slots)):
-                    grid[day_idx][s] = "skip"
+                    grid[col_idx][s] = "skip"
 
     # Week boundary: thick right-border between ISO weeks
     week_boundary: int | None = None
-    for i in range(len(days) - 1):
-        if days[i].isocalendar()[1] != days[i + 1].isocalendar()[1]:
+    for i in range(num_cols - 1):
+        if col_groups[i][-1].isocalendar()[1] != col_groups[i + 1][0].isocalendar()[1]:
             week_boundary = i
             break
 
-    def _day_border(i: int) -> str:
+    def _col_border(i: int) -> str:
         if i == week_boundary:
             return f"border-right:3px solid {DGREEN}"
-        return "border-right:1px solid #ddd" if i < 6 else ""
+        return "border-right:1px solid #ddd" if i < num_cols - 1 else ""
 
     # Header row
     time_th = (
@@ -140,12 +162,15 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
         f"border-right:1px solid #ccc;border-bottom:2px solid #bbb'></th>"
     )
     day_ths = ""
-    for i, d in enumerate(days):
+    for i, grp in enumerate(col_groups):
+        day_label, date_label = _col_header(grp)
+        is_wknd = grp[0].weekday() >= 5
+        bg = WKND_BG if is_wknd else GREEN
         day_ths += (
-            f"<th style='padding:7px 3px;text-align:center;background:{GREEN};color:#fff;"
-            f"font-family:sans-serif;font-size:13px;{_day_border(i)};border-bottom:2px solid {DGREEN}'>"
-            f"{d.strftime('%a')}<br>"
-            f"<span style='font-size:11px;font-weight:normal'>{d.strftime('%b %d')}</span>"
+            f"<th style='padding:7px 3px;text-align:center;background:{bg};color:#fff;"
+            f"font-family:sans-serif;font-size:13px;{_col_border(i)};border-bottom:2px solid {DGREEN}'>"
+            f"{day_label}<br>"
+            f"<span style='font-size:11px;font-weight:normal'>{date_label}</span>"
             f"</th>"
         )
 
@@ -167,13 +192,14 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
         )
 
         day_tds = ""
-        for day_idx in range(7):
-            cell = grid[day_idx][slot_idx]
+        for col_idx in range(num_cols):
+            cell = grid[col_idx][slot_idx]
             if cell == "skip":
                 continue
 
-            col_border = _day_border(day_idx)
-            bg = "#f9f9f9" if not is_hour else "#ffffff"
+            col_border = _col_border(col_idx)
+            is_wknd = col_groups[col_idx][0].weekday() >= 5
+            bg = "#f4f6f5" if is_wknd else ("#f9f9f9" if not is_hour else "#ffffff")
 
             if cell is None:
                 day_tds += (

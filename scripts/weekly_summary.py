@@ -136,9 +136,11 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
         for r in col_rows:
             start_m = r["dt"].hour * 60 + r["dt"].minute
             start_s = (start_m - grid_start) // SLOT
-            end_m   = start_m + r["duration"]
-            end_s   = (end_m - grid_start + SLOT - 1) // SLOT  # ceil to next slot
-            span    = max(1, end_s - start_s)
+            # Base span on class duration, not grid position — position-based
+            # ceiling over-extends when start_time is not slot-aligned (e.g.
+            # 10:15 + 60 min = 11:15 → ⌈4.5⌉ = 5 slots instead of 2), causing
+            # the next class's cell to overflow into the wrong column.
+            span    = max(1, (r["duration"] + SLOT - 1) // SLOT)
             if 0 <= start_s < total_slots:
                 grid[col_idx][start_s] = (r, span)
                 for s in range(start_s + 1, min(start_s + span, total_slots)):
@@ -296,11 +298,7 @@ def run() -> int:
 
     all_booked = sorted([o for o in occs if o.get("is_joined")], key=lambda o: o["occurs_at"])
 
-    import json as _json
-    print("=== RAW BOOKED OCCURRENCES ===")
-    for o in all_booked:
-        print(_json.dumps(o, indent=2))
-    print("=== END RAW ===")
+
 
     def _rows_for(mon: date) -> list[dict]:
         sun = mon + timedelta(days=6)

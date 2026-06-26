@@ -227,18 +227,18 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
 
         body_rows += f"<tr>{time_td}{day_tds}</tr>"
 
-    footer = (
-        f"<p style='font-family:sans-serif;font-size:13px;color:#555;margin-top:10px'>"
+    count_line = (
+        f"<p style='font-family:sans-serif;font-size:13px;color:#555;margin:4px 0 10px'>"
         f"{count} class{'es' if count != 1 else ''} booked.</p>"
     )
     return (
         f"<!DOCTYPE html><html><body style='margin:20px'>"
-        f"<h2 style='font-family:sans-serif;color:{GREEN}'>{title}</h2>"
+        f"<h2 style='font-family:sans-serif;color:{GREEN};margin-bottom:2px'>{title}</h2>"
+        f"{count_line}"
         f"<table style='border-collapse:collapse;width:100%;min-width:600px'>"
         f"<thead><tr>{time_th}{day_ths}</tr></thead>"
         f"<tbody>{body_rows}</tbody>"
         f"</table>"
-        f"{footer}"
         f"</body></html>"
     )
 
@@ -268,8 +268,11 @@ def run() -> int:
     notify_email = os.environ.get("NOTIFY_EMAIL")
     gmail_app_pw = os.environ.get("GMAIL_APP_PASSWORD")
 
-    now      = datetime.now(timezone.utc)
-    week_end = now + timedelta(days=7)
+    today      = datetime.now(tz).date()
+    week_start = today - timedelta(days=today.weekday())        # Monday of current week
+    week_sun   = week_start + timedelta(days=6)                 # Sunday
+    win_start  = datetime(week_start.year, week_start.month, week_start.day, tzinfo=tz)
+    win_end    = win_start + timedelta(days=7)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -277,7 +280,7 @@ def run() -> int:
         try:
             _, csrf = login(context, user, pw)
             occs = fisikal.list_occurrences(
-                context, csrf, now, week_end,
+                context, csrf, win_start, win_end,
                 location_ids=_BOTH_LOCATIONS,
             )
         finally:
@@ -286,12 +289,11 @@ def run() -> int:
 
     booked = sorted([o for o in occs if o.get("is_joined")], key=lambda o: o["occurs_at"])
     rows   = _build_rows(booked, tz)
-    today  = datetime.now(tz).date()
-    title  = f"YMCA classes: {today.strftime('%a %b %d')} – {(today + timedelta(days=6)).strftime('%a %b %d')}"
+    title  = f"YMCA classes: {week_start.strftime('%a %b %d')} – {week_sun.strftime('%a %b %d')}"
     count  = len(rows)
 
     md   = _markdown(rows, title, count)
-    html = _html(rows, title, count, today)
+    html = _html(rows, title, count, week_start)
 
     print(md)
 

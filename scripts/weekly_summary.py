@@ -40,6 +40,7 @@ def _build_rows(booked: list[dict], tz: ZoneInfo) -> list[dict]:
             "name":         (o.get("service_title") or "").strip(),
             "instructor":   (o.get("trainer_name") or "—").strip(),
             "sub_location": (o.get("sub_location_name") or "—").strip(),
+            "duration":     int(o.get("duration_in_minutes") or 60),
         })
     return rows
 
@@ -82,77 +83,136 @@ def _markdown(rows: list[dict], title: str, count: int) -> str:
 def _html(rows: list[dict], title: str, count: int, today: date) -> str:
     GREEN  = "#2d6a4f"
     DGREEN = "#1b4332"
+    SLOT   = 30  # minutes per grid row
+    ROW_H  = 28  # px per row (30-min slot)
 
+    days = [today + timedelta(days=i) for i in range(7)]
+
+    if not rows:
+        return (
+            f"<!DOCTYPE html><html><body style='margin:20px'>"
+            f"<h2 style='font-family:sans-serif;color:{GREEN}'>{title}</h2>"
+            f"<p style='font-family:sans-serif'><em>No classes booked this week.</em></p>"
+            f"</body></html>"
+        )
+
+    # Build per-day class list
     day_map: dict[date, list[dict]] = {}
     for r in rows:
         day_map.setdefault(r["isodate"], []).append(r)
 
-    days = [today + timedelta(days=i) for i in range(7)]
+    # Grid time range: floor earliest start to hour, ceil latest end to hour + padding
+    starts = [r["dt"].hour * 60 + r["dt"].minute for r in rows]
+    ends   = [r["dt"].hour * 60 + r["dt"].minute + r["duration"] for r in rows]
+    grid_start = (min(starts) // 60) * 60
+    grid_end   = ((max(ends) + 59) // 60) * 60 + SLOT
+    total_slots = (grid_end - grid_start) // SLOT
 
-    # Detect ISO-week boundary so we can draw a thick divider between weeks.
+    # Build occupancy grid: grid[day_idx][slot] = None | (row_dict, rowspan) | "skip"
+    grid: list[list] = [[None] * total_slots for _ in range(7)]
+    for day_idx, d in enumerate(days):
+        for r in sorted(day_map.get(d, []), key=lambda x: x["dt"]):
+            start_m = r["dt"].hour * 60 + r["dt"].minute
+            start_s = (start_m - grid_start) // SLOT
+            end_m   = start_m + r["duration"]
+            end_s   = (end_m - grid_start + SLOT - 1) // SLOT  # ceil to next slot
+            span    = max(1, end_s - start_s)
+            if 0 <= start_s < total_slots:
+                grid[day_idx][start_s] = (r, span)
+                for s in range(start_s + 1, min(start_s + span, total_slots)):
+                    grid[day_idx][s] = "skip"
+
+    # Week boundary: thick right-border between ISO weeks
     week_boundary: int | None = None
     for i in range(len(days) - 1):
         if days[i].isocalendar()[1] != days[i + 1].isocalendar()[1]:
             week_boundary = i
             break
 
-    def _col_border(i: int) -> str:
+    def _day_border(i: int) -> str:
         if i == week_boundary:
             return f"border-right:3px solid {DGREEN}"
-        return "border-right:1px solid #e0e0e0" if i < len(days) - 1 else ""
+        return "border-right:1px solid #ddd" if i < 6 else ""
 
-    ths = ""
+    # Header row
+    time_th = (
+        f"<th style='min-width:52px;padding:4px;background:#f0f0f0;"
+        f"border-right:1px solid #ccc;border-bottom:2px solid #bbb'></th>"
+    )
+    day_ths = ""
     for i, d in enumerate(days):
-        ths += (
-            f"<th style='padding:8px 4px;text-align:center;background:{GREEN};"
-            f"color:#fff;{_col_border(i)};width:14.28%;font-family:sans-serif'>"
-            f"{d.strftime('%a')}"
-            f"<br><span style='font-size:11px;font-weight:normal'>{d.strftime('%b %d')}</span>"
+        day_ths += (
+            f"<th style='padding:7px 3px;text-align:center;background:{GREEN};color:#fff;"
+            f"font-family:sans-serif;font-size:13px;{_day_border(i)};border-bottom:2px solid {DGREEN}'>"
+            f"{d.strftime('%a')}<br>"
+            f"<span style='font-size:11px;font-weight:normal'>{d.strftime('%b %d')}</span>"
             f"</th>"
         )
 
-    tds = ""
-    for i, d in enumerate(days):
-        classes = day_map.get(d, [])
-        cards = ""
-        for r in classes:
-            cards += (
-                f"<div style='background:#e8f5ee;border-left:3px solid {GREEN};"
-                f"margin-bottom:5px;padding:5px 6px;border-radius:3px;"
-                f"font-family:sans-serif;font-size:12px'>"
-                f"<div style='font-weight:bold;color:{DGREEN}'>{r['time']}</div>"
-                f"<div style='margin-top:2px'>{r['name']}</div>"
-                f"<div style='color:#555;font-size:11px;margin-top:2px'>{r['instructor']}</div>"
-                f"<div style='color:#888;font-size:11px'>{r['sub_location']}</div>"
-                f"</div>"
-            )
-        bg = "#fafafa" if not classes else "#fff"
-        placeholder = '<span style="color:#ccc;font-size:12px;font-family:sans-serif">—</span>'
-        tds += (
-            f"<td style='padding:6px 4px;vertical-align:top;{_col_border(i)};"
-            f"border-bottom:1px solid #e0e0e0;background:{bg}'>"
-            f"{cards if cards else placeholder}"
-            f"</td>"
+    # Time-grid body rows
+    body_rows = ""
+    for slot_idx in range(total_slots):
+        minutes  = grid_start + slot_idx * SLOT
+        is_hour  = (minutes % 60 == 0)
+        h        = minutes // 60
+        ampm     = "am" if h < 12 else "pm"
+        label    = f"{h % 12 or 12}:00 {ampm}" if is_hour else ""
+        row_top_border = "border-top:1px solid #ccc" if is_hour else "border-top:1px dashed #eee"
+
+        time_td = (
+            f"<td style='background:#f0f0f0;{row_top_border};border-right:1px solid #ccc;"
+            f"padding:0 4px;height:{ROW_H}px;vertical-align:top;"
+            f"font-family:sans-serif;font-size:10px;color:#888;text-align:right;"
+            f"white-space:nowrap'>{label}</td>"
         )
 
-    if not rows:
-        cal = "<p style='font-family:sans-serif'><em>No classes booked this week.</em></p>"
-    else:
-        cal = (
-            f"<table style='border-collapse:collapse;width:100%'>"
-            f"<thead><tr>{ths}</tr></thead>"
-            f"<tbody><tr>{tds}</tr></tbody>"
-            f"</table>"
-        )
+        day_tds = ""
+        for day_idx in range(7):
+            cell = grid[day_idx][slot_idx]
+            if cell == "skip":
+                continue
+
+            col_border = _day_border(day_idx)
+            bg = "#f9f9f9" if not is_hour else "#ffffff"
+
+            if cell is None:
+                day_tds += (
+                    f"<td style='height:{ROW_H}px;{row_top_border};{col_border};"
+                    f"background:{bg};padding:0'></td>"
+                )
+            else:
+                r, span = cell
+                end_dt  = r["dt"] + timedelta(minutes=r["duration"])
+                end_str = end_dt.strftime("%I:%M %p").lstrip("0").lower()
+                block_h = span * ROW_H - 4
+                day_tds += (
+                    f"<td rowspan='{span}' style='vertical-align:top;{row_top_border};"
+                    f"{col_border};padding:2px 3px;background:#fff'>"
+                    f"<div style='background:#e8f5ee;border-left:3px solid {GREEN};"
+                    f"border-radius:3px;padding:3px 5px;min-height:{block_h}px;overflow:hidden;"
+                    f"font-family:sans-serif;font-size:11px;box-sizing:border-box'>"
+                    f"<div style='font-size:10px;color:#555;white-space:nowrap'>"
+                    f"{r['time'].lower()} – {end_str}</div>"
+                    f"<div style='font-weight:bold;color:{DGREEN};margin-top:1px'>{r['name']}</div>"
+                    f"<div style='color:#444;margin-top:1px'>{r['instructor']}</div>"
+                    f"<div style='color:#888;font-size:10px;margin-top:1px'>{r['sub_location']}</div>"
+                    f"</div></td>"
+                )
+
+        body_rows += f"<tr>{time_td}{day_tds}</tr>"
 
     footer = (
-        f"<p style='font-family:sans-serif;font-size:13px;color:#555;margin-top:8px'>"
+        f"<p style='font-family:sans-serif;font-size:13px;color:#555;margin-top:10px'>"
         f"{count} class{'es' if count != 1 else ''} booked.</p>"
     )
     return (
         f"<!DOCTYPE html><html><body style='margin:20px'>"
         f"<h2 style='font-family:sans-serif;color:{GREEN}'>{title}</h2>"
-        f"{cal}{footer}"
+        f"<table style='border-collapse:collapse;width:100%;min-width:600px'>"
+        f"<thead><tr>{time_th}{day_ths}</tr></thead>"
+        f"<tbody>{body_rows}</tbody>"
+        f"</table>"
+        f"{footer}"
         f"</body></html>"
     )
 

@@ -274,12 +274,12 @@ def run() -> int:
     gmail_app_pw = os.environ.get("GMAIL_APP_PASSWORD")
 
     today        = datetime.now(tz).date()
-    is_friday    = today.weekday() >= 4  # Fri–Sun → also show next week
-    this_mon     = today - timedelta(days=today.weekday())
+    dow          = today.weekday()  # 0=Mon … 4=Fri … 6=Sun
+    this_mon     = today - timedelta(days=dow)
     next_mon     = this_mon + timedelta(days=7)
-    # Query window: this week only (Mon–Thu) or two weeks (Fri–Sun)
+    # Always fetch 14 days; per-week filtering happens below.
     win_start    = datetime(this_mon.year, this_mon.month, this_mon.day, tzinfo=tz)
-    win_end      = win_start + timedelta(days=14 if is_friday else 7)
+    win_end      = win_start + timedelta(days=14)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -306,21 +306,26 @@ def run() -> int:
         )
 
     this_rows  = _rows_for(this_mon)
+    next_rows  = _rows_for(next_mon)
     this_title = f"YMCA classes: {this_mon.strftime('%a %b %d')} – {(this_mon + timedelta(days=6)).strftime('%a %b %d')}"
+    next_title = f"YMCA classes: {next_mon.strftime('%a %b %d')} – {(next_mon + timedelta(days=6)).strftime('%a %b %d')}"
 
-    if is_friday:
-        next_rows  = _rows_for(next_mon)
-        next_title = f"YMCA classes: {next_mon.strftime('%a %b %d')} – {(next_mon + timedelta(days=6)).strftime('%a %b %d')}"
-        count  = len(this_rows) + len(next_rows)
-        md     = _markdown(this_rows, this_title, len(this_rows)) + "\n" + _markdown(next_rows, next_title, len(next_rows))
-        html   = _wrap_html(_html(this_rows, this_title, len(this_rows), this_mon),
-                            _html(next_rows, next_title, len(next_rows), next_mon))
-        title  = f"{this_title} + next week"
-    else:
+    if dow == 0:  # Monday: this week only
         count = len(this_rows)
         md    = _markdown(this_rows, this_title, count)
         html  = _wrap_html(_html(this_rows, this_title, count, this_mon))
         title = this_title
+    elif dow <= 3:  # Tue–Thu: this week + next week
+        count = len(this_rows) + len(next_rows)
+        md    = _markdown(this_rows, this_title, len(this_rows)) + "\n" + _markdown(next_rows, next_title, len(next_rows))
+        html  = _wrap_html(_html(this_rows, this_title, len(this_rows), this_mon),
+                           _html(next_rows, next_title, len(next_rows), next_mon))
+        title = f"{this_title} + next week"
+    else:  # Fri–Sun: next week only (classes not yet open for booking)
+        count = len(next_rows)
+        md    = _markdown(next_rows, next_title, count)
+        html  = _wrap_html(_html(next_rows, next_title, count, next_mon))
+        title = next_title
 
     print(md)
 

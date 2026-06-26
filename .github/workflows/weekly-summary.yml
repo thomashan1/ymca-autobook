@@ -6,7 +6,13 @@ on:
     - cron: "0 16 * * 1"  # Mon 08:00 PT (PST = UTC-8)
     - cron: "0 22 * * 5"  # Fri 15:00 PT (PDT = UTC-7) — preview next week's bookings
     - cron: "0 23 * * 5"  # Fri 15:00 PT (PST = UTC-8)
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      weeks:
+        description: "Which week(s) to include (manual runs)"
+        type: choice
+        default: auto
+        options: [auto, this, next, both]
 
 concurrency:
   group: weekly-summary-${{ github.run_id }}
@@ -28,4 +34,5 @@ jobs:
           EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SUMMARY_WEEKS: ${{ inputs.weeks }}
         run: python scripts/weekly_summary.py

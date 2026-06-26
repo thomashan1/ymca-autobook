@@ -269,7 +269,9 @@ def run() -> int:
     gmail_app_pw = os.environ.get("GMAIL_APP_PASSWORD")
 
     today      = datetime.now(tz).date()
-    week_start = today - timedelta(days=today.weekday())        # Monday of current week
+    # Mon–Thu: show this week; Fri–Sun: show next week (booking preview)
+    offset     = 7 - today.weekday() if today.weekday() >= 4 else -today.weekday()
+    week_start = today + timedelta(days=offset)                 # Monday of target week
     week_sun   = week_start + timedelta(days=6)                 # Sunday
     win_start  = datetime(week_start.year, week_start.month, week_start.day, tzinfo=tz)
     win_end    = win_start + timedelta(days=7)

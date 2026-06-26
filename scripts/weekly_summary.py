@@ -307,8 +307,10 @@ def run() -> int:
 
     this_rows  = _rows_for(this_mon)
     next_rows  = _rows_for(next_mon)
-    this_title = f"YMCA classes: {this_mon.strftime('%a %b %d')} – {(this_mon + timedelta(days=6)).strftime('%a %b %d')}"
-    next_title = f"YMCA classes: {next_mon.strftime('%a %b %d')} – {(next_mon + timedelta(days=6)).strftime('%a %b %d')}"
+    this_fri   = this_mon + timedelta(days=4)
+    next_fri   = next_mon + timedelta(days=4)
+    this_title = f"YMCA classes: {this_mon.strftime('%a %b %d')} – {this_fri.strftime('%a %b %d')}"
+    next_title = f"YMCA classes: {next_mon.strftime('%a %b %d')} – {next_fri.strftime('%a %b %d')}"
 
     if dow == 0:  # Monday: this week only
         count = len(this_rows)

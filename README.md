@@ -54,8 +54,12 @@ never appear in this public repo. Create a `pauses.yml` there following
 ```yaml
 pauses:
   - {start: 2026-07-03, end: 2026-07-03}   # single day off
+  - {start: 2026-07-06, end: 2026-07-06, except: [lift-hiit-mon]}  # off, but keep one class
   - {start: 2026-07-07, end: 2026-07-12}   # away week; resume Mon 7/13
 ```
+
+Use `except` to keep booking specific classes on a paused day — list their **keys**
+(from [`classes.yml`](classes.yml)). Everything else on those dates is still skipped.
 
 The bot matches on the **class date** (not the run date) — booking opens ~7 days ahead,
 so the run that would book a paused class fires a week earlier. Add `PRIVATE_REPO_TOKEN`

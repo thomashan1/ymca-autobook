@@ -195,9 +195,14 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
     if pause_ranges:
         occ_local = datetime.fromisoformat(
             target["occurs_at"].replace("Z", "+00:00")).astimezone(ZoneInfo(tz)).date()
-        for start, end in pause_ranges:
-            if start <= occ_local <= end:
-                return True, (f"Paused {start}..{end}: skipping '{label}' on "
+        for rng in pause_ranges:
+            if rng.start <= occ_local <= rng.end:
+                # An `except` entry keeps this specific class bookable while away.
+                if klass["key"] in rng.except_keys:
+                    print(f"Paused {rng.start}..{rng.end}, but '{klass['key']}' is "
+                          f"an exception — booking {occ_local}.")
+                    break
+                return True, (f"Paused {rng.start}..{rng.end}: skipping '{label}' on "
                               f"{occ_local} (away).")
 
     open_dt = _open_dt(target)

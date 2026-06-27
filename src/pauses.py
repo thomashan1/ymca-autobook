@@ -6,7 +6,11 @@ separate private repo (default: thomashan1/ymca-private) as a small pauses.yml:
     # inclusive start..end, local schedule timezone; resume = day after `end`
     pauses:
       - {start: 2026-07-03, end: 2026-07-03}   # single day
+      - {start: 2026-07-06, end: 2026-07-06, except: [lift-hiit-mon]}  # keep one class
       - {start: 2026-07-07, end: 2026-07-12}   # away, resume 7/13
+
+`except` (optional) lists class keys (from classes.yml) to keep booking despite
+the pause — handy when you're "off" but still want one specific class that day.
 
 Each range lists the dates of CLASSES you won't attend. run_due.py loads the
 ranges once per scheduled run and skips booking any occurrence whose own date
@@ -23,9 +27,17 @@ from __future__ import annotations
 
 import os
 from datetime import date, datetime
+from typing import NamedTuple
 
 import httpx
 import yaml
+
+
+class PauseRange(NamedTuple):
+    """An inclusive away-window. `except_keys` are class keys still booked anyway."""
+    start: date
+    end: date
+    except_keys: frozenset[str] = frozenset()
 
 # The private file's location. Overridable via env (handy for tests).
 PAUSE_REPO = os.environ.get("PAUSE_REPO", "thomashan1/ymca-private")
@@ -59,8 +71,8 @@ def _fetch_yaml(token: str) -> str:
     return resp.text
 
 
-def parse_ranges(text: str) -> list[tuple[date, date]]:
-    """Parse pauses.yml text into [(start, end), ...] inclusive ranges."""
+def parse_ranges(text: str) -> list[PauseRange]:
+    """Parse pauses.yml text into inclusive PauseRanges (with any exceptions)."""
     data = yaml.safe_load(text) or {}
     ranges = []
     for p in data.get("pauses", []) or []:
@@ -68,11 +80,16 @@ def parse_ranges(text: str) -> list[tuple[date, date]]:
         end = _as_date(p.get("end", p["start"]))
         if end < start:
             start, end = end, start
-        ranges.append((start, end))
+        # `except` (optional): class key(s) to keep booking despite the pause.
+        raw = p.get("except") or []
+        if isinstance(raw, str):
+            raw = [raw]
+        except_keys = frozenset(str(k).strip() for k in raw)
+        ranges.append(PauseRange(start, end, except_keys))
     return ranges
 
 
-def load_ranges(token: str | None = None) -> list[tuple[date, date]]:
+def load_ranges(token: str | None = None) -> list[PauseRange]:
     """Fetch + parse the away-ranges from the private repo. Fail-open -> []."""
     token = token or os.environ.get("PRIVATE_REPO_TOKEN")
     if not token:
@@ -85,9 +102,9 @@ def load_ranges(token: str | None = None) -> list[tuple[date, date]]:
         return []
 
 
-def covering(ranges: list[tuple[date, date]], day: date) -> tuple[date, date] | None:
+def covering(ranges: list[PauseRange], day: date) -> PauseRange | None:
     """Return the range covering `day`, or None."""
-    for start, end in ranges:
-        if start <= day <= end:
-            return (start, end)
+    for r in ranges:
+        if r.start <= day <= r.end:
+            return r
     return None

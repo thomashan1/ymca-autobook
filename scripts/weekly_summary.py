@@ -283,17 +283,33 @@ def run() -> int:
     dow          = today.weekday()  # 0=Mon … 4=Fri … 6=Sun
 
     # DST-safe scheduling: GitHub cron is UTC-only, so each slot has two crons
-    # (one per DST offset) and both fire. To avoid a duplicate, a scheduled run
-    # only proceeds when the local hour matches the slot's intended PT hour;
-    # the off-season cron lands an hour early/late and bows out here. Manual
-    # (workflow_dispatch) and local runs are never gated.
-    _SLOT_HOUR = {0: 8, 2: 15, 4: 15}  # Mon 08:00, Wed 15:00, Fri 15:00 PT
-    if os.environ.get("GITHUB_EVENT_NAME") == "schedule":
-        want_hour = _SLOT_HOUR.get(dow)
-        if want_hour is not None and now_local.hour != want_hour:
-            print(f"[skip] {now_local:%a %H:%M %Z}: off-DST cron "
-                  f"(slot fires at {want_hour:02d}:00 PT). Skipping duplicate.")
-            return 0
+    # (one per DST offset) and both fire. To send exactly once, we look at WHICH
+    # cron triggered this run (github.event.schedule, passed as SCHEDULE_CRON)
+    # and skip the one whose UTC hour doesn't match the slot's intended local
+    # time for the current DST offset. Keying off the cron expression — not the
+    # wall-clock execution time — keeps this correct even when GitHub delays a
+    # scheduled run by an hour or more. Manual/local runs have no cron and send.
+    #
+    # cron day-of-week: 1=Mon … 5=Fri. Intended local hour per slot:
+    _SLOT_LOCAL_HOUR = {1: 8, 3: 15, 5: 15}  # Mon 08:00, Wed 15:00, Fri 15:00 PT
+    cron = os.environ.get("SCHEDULE_CRON", "").strip()
+    if cron:
+        parts = cron.split()
+        try:
+            cron_hour, cron_dow = int(parts[1]), int(parts[4])
+        except (IndexError, ValueError):
+            cron_hour = cron_dow = None
+        want_local = _SLOT_LOCAL_HOUR.get(cron_dow)
+        if cron_hour is not None and want_local is not None:
+            # UTC hour matching want_local PT today, given the current DST offset.
+            correct_utc_hour = now_local.replace(
+                hour=want_local, minute=0, second=0, microsecond=0
+            ).astimezone(timezone.utc).hour
+            if cron_hour != correct_utc_hour:
+                print(f"[skip] cron '{cron}' is the off-DST pair for "
+                      f"{want_local:02d}:00 PT (correct UTC hour today is "
+                      f"{correct_utc_hour:02d}:00); skipping duplicate.")
+                return 0
     this_mon     = today - timedelta(days=dow)
     next_mon     = this_mon + timedelta(days=7)
     # Always fetch 14 days; per-week filtering happens below.

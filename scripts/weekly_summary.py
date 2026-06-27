@@ -350,11 +350,12 @@ def run() -> int:
     next_title = f"YMCA classes: {next_mon.strftime('%a %-m/%-d')} – {next_fri.strftime('%a %-m/%-d')}"
 
     # Which week(s) to show. Normally derived from the day of week:
-    #   Mon -> this week only; Tue–Thu -> this + next; Fri–Sun -> next only.
+    #   Mon -> this week only; Tue–Fri -> this + next (Fri doubles as an
+    #   end-of-week recap of the classes just done); Sat/Sun -> next only.
     # SUMMARY_WEEKS (this|next|both|auto) overrides this for manual test sends.
     weeks = os.environ.get("SUMMARY_WEEKS", "auto").strip().lower()
     if weeks not in ("this", "next", "both"):
-        weeks = "this" if dow == 0 else ("both" if dow <= 3 else "next")
+        weeks = "this" if dow == 0 else ("both" if dow <= 4 else "next")
 
     if weeks == "this":
         count = len(this_rows)

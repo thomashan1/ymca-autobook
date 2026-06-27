@@ -33,7 +33,10 @@ def run() -> int:
     pause_ranges = pauses.load_ranges()
     if pause_ranges:
         print(f"Loaded {len(pause_ranges)} pause range(s): "
-              + ", ".join(f"{s}..{e}" for s, e in pause_ranges))
+              + ", ".join(
+                  f"{r.start}..{r.end}"
+                  + (f" except {sorted(r.except_keys)}" if r.except_keys else "")
+                  for r in pause_ranges))
 
     user = os.environ.get("EGYM_USERNAME")
     pw = os.environ.get("EGYM_PASSWORD")

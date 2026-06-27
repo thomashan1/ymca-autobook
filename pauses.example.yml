@@ -10,6 +10,9 @@
 # Edit the copy in the private repo (GitHub web/mobile: open file -> edit ->
 # commit). This template is only here to document the format.
 
+# `except` (optional): class key(s) from classes.yml to KEEP booking even though
+# the day is paused — e.g. you're "off" but still want one specific class.
 pauses:
   - {start: 2026-07-03, end: 2026-07-03}   # single day off (Fri)
+  - {start: 2026-07-06, end: 2026-07-06, except: [lift-hiit-mon]}  # off, but keep Lift & H.I.I.T.
   - {start: 2026-07-07, end: 2026-07-12}   # away; resume Mon 7/13

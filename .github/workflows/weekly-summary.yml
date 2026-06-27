@@ -2,8 +2,9 @@ name: Weekly class summary
 
 on:
   schedule:
-    # Each slot has a PDT and a PST cron; both fire, but the script's hour-guard
-    # lets only the one matching the intended local time actually send.
+    # Each slot has a PDT and a PST cron; both fire, but the script inspects
+    # which cron triggered (github.event.schedule) and lets only the one matching
+    # the current DST offset actually send — robust to GitHub's scheduling lag.
     - cron: "0 15 * * 1"  # Mon 08:00 PT (PDT = UTC-7) — this week's booked classes
     - cron: "0 16 * * 1"  # Mon 08:00 PT (PST = UTC-8)
     - cron: "0 22 * * 3"  # Wed 15:00 PT (PDT = UTC-7) — midweek update (this + next week)
@@ -39,4 +40,5 @@ jobs:
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           SUMMARY_WEEKS: ${{ inputs.weeks }}
+          SCHEDULE_CRON: ${{ github.event.schedule }}
         run: python scripts/weekly_summary.py

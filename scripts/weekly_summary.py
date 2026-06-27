@@ -20,10 +20,27 @@ from playwright.sync_api import sync_playwright
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import fisikal              # noqa: E402
+from src import pauses              # noqa: E402
 from src.login import login         # noqa: E402
 from src.main import load_config    # noqa: E402
 
 _BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
+
+
+def _fmt_date_ranges(dates) -> str:
+    """Compress sorted dates into a compact 'M/D, M/D–M/D' string."""
+    ds = sorted(set(dates))
+    out, i = [], 0
+    while i < len(ds):
+        j = i
+        while j + 1 < len(ds) and (ds[j + 1] - ds[j]).days == 1:
+            j += 1
+        if j == i:
+            out.append(ds[i].strftime("%-m/%-d"))
+        else:
+            out.append(f"{ds[i].strftime('%-m/%-d')}–{ds[j].strftime('%-m/%-d')}")
+        i = j + 1
+    return ", ".join(out)
 
 
 def _build_rows(booked: list[dict], tz: ZoneInfo) -> list[dict]:
@@ -48,10 +65,11 @@ def _build_rows(booked: list[dict], tz: ZoneInfo) -> list[dict]:
     return rows
 
 
-def _markdown(rows: list[dict], title: str, count: int) -> str:
+def _markdown(rows: list[dict], title: str, count: int, away_days=()) -> str:
     lines = [f"## {title}\n"]
+    away_note = f"_Away (no booking): {_fmt_date_ranges(away_days)}._\n" if away_days else ""
     if not rows:
-        lines.append("_No classes booked this week._\n")
+        lines.append(away_note or "_No classes booked this week._\n")
         return "\n".join(lines)
 
     header = "| Day | Date | Time | Class | Instructor | Studio |"
@@ -80,19 +98,26 @@ def _markdown(rows: list[dict], title: str, count: int) -> str:
         prev_week = r["isoweek"]
 
     lines.append(f"\n**{count} class{'es' if count != 1 else ''} booked.**\n")
+    if away_note:
+        lines.append(away_note)
     return "\n".join(lines)
 
 
-def _html(rows: list[dict], title: str, count: int, today: date) -> str:
-    GREEN   = "#2d6a4f"
-    DGREEN  = "#1b4332"
-    WKND_BG = "#6a8a7a"  # muted green for weekend header
-    SLOT    = 30  # minutes per grid row
-    ROW_H   = 28  # px per row (30-min slot)
+def _html(rows: list[dict], title: str, count: int, today: date,
+          paused_dates: frozenset[date] = frozenset()) -> str:
+    GREEN    = "#2d6a4f"
+    DGREEN   = "#1b4332"
+    WKND_BG  = "#6a8a7a"  # muted green for weekend header
+    AWAY_HDR = "#8a8f8c"  # gray header for away days
+    AWAY_BG  = "#e6e6e6"  # blocked-out cell fill
+    SLOT     = 30  # minutes per grid row
+    ROW_H    = 28  # px per row (30-min slot)
 
     days = [today + timedelta(days=i) for i in range(7)]
+    away_days = [d for d in days if d in paused_dates]
 
-    if not rows:
+    # Nothing to show only when there are neither bookings nor away markers.
+    if not rows and not away_days:
         return (
             f"<!DOCTYPE html><html><body style='margin:20px'>"
             f"<h2 style='font-family:sans-serif;color:{GREEN}'>{title}</h2>"
@@ -116,20 +141,29 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
         else:
             col_groups.append([d])
     num_cols = len(col_groups)
+    # A column is "away" when every date in it is paused.
+    col_away = [all(d in paused_dates for d in grp) for grp in col_groups]
 
     def _col_header(grp: list[date]) -> tuple[str, str]:
         if len(grp) == 1:
             return grp[0].strftime("%a"), grp[0].strftime("%-m/%-d")
         return "Weekend", f"{grp[0].strftime('%-m/%-d')}–{grp[-1].strftime('%-m/%-d')}"
 
-    # Grid time range: floor earliest start to hour, ceil latest end to hour + padding
-    starts = [r["dt"].hour * 60 + r["dt"].minute for r in rows]
-    ends   = [r["dt"].hour * 60 + r["dt"].minute + r["duration"] for r in rows]
-    grid_start = (min(starts) // 60) * 60
-    grid_end   = ((max(ends) + 59) // 60) * 60 + SLOT
+    # Grid time range: derive from bookings; widen to a full daytime window when
+    # the week has away days, so blocked columns read as full-day blocks.
+    if rows:
+        starts = [r["dt"].hour * 60 + r["dt"].minute for r in rows]
+        ends   = [r["dt"].hour * 60 + r["dt"].minute + r["duration"] for r in rows]
+        grid_start = (min(starts) // 60) * 60
+        grid_end   = ((max(ends) + 59) // 60) * 60 + SLOT
+    else:
+        grid_start, grid_end = 9 * 60, 15 * 60
+    if away_days:
+        grid_start = min(grid_start, 9 * 60)
+        grid_end   = max(grid_end, 15 * 60)
     total_slots = (grid_end - grid_start) // SLOT
 
-    # Build occupancy grid: grid[col_idx][slot] = None | (row_dict, rowspan) | "skip"
+    # Occupancy grid: None | (row_dict, span) | ("AWAY", span) | "skip"
     grid: list[list] = [[None] * total_slots for _ in range(num_cols)]
     for col_idx, grp in enumerate(col_groups):
         col_rows = sorted(
@@ -148,6 +182,12 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
                 grid[col_idx][start_s] = (r, span)
                 for s in range(start_s + 1, min(start_s + span, total_slots)):
                     grid[col_idx][s] = "skip"
+    # A fully-away column with no bookings becomes one tall "Away" block.
+    for col_idx in range(num_cols):
+        if col_away[col_idx] and all(c is None for c in grid[col_idx]):
+            grid[col_idx][0] = ("AWAY", total_slots)
+            for s in range(1, total_slots):
+                grid[col_idx][s] = "skip"
 
     # Week boundary: thick right-border between ISO weeks
     week_boundary: int | None = None
@@ -170,12 +210,18 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
     for i, grp in enumerate(col_groups):
         day_label, date_label = _col_header(grp)
         is_wknd = grp[0].weekday() >= 5
-        bg = WKND_BG if is_wknd else GREEN
+        if col_away[i]:
+            bg = AWAY_HDR
+            tag = ("<br><span style='font-size:9px;font-weight:normal;"
+                   "letter-spacing:1.5px'>AWAY</span>")
+        else:
+            bg = WKND_BG if is_wknd else GREEN
+            tag = ""
         day_ths += (
             f"<th style='padding:7px 3px;text-align:center;background:{bg};color:#fff;"
             f"font-family:sans-serif;font-size:13px;{_col_border(i)};border-bottom:2px solid {DGREEN}'>"
             f"{day_label}<br>"
-            f"<span style='font-size:11px;font-weight:normal'>{date_label}</span>"
+            f"<span style='font-size:11px;font-weight:normal'>{date_label}</span>{tag}"
             f"</th>"
         )
 
@@ -207,9 +253,18 @@ def _html(rows: list[dict], title: str, count: int, today: date) -> str:
             bg = "#f4f6f5" if is_wknd else ("#f9f9f9" if not is_hour else "#ffffff")
 
             if cell is None:
+                # Empty slot — gray it out if this whole day is an away day.
+                cell_bg = AWAY_BG if col_away[col_idx] else bg
                 day_tds += (
                     f"<td style='height:{ROW_H}px;{row_top_border};{col_border};"
-                    f"background:{bg};padding:0'></td>"
+                    f"background:{cell_bg};padding:0'></td>"
+                )
+            elif cell[0] == "AWAY":
+                _, span = cell
+                day_tds += (
+                    f"<td rowspan='{span}' style='{row_top_border};{col_border};"
+                    f"background:{AWAY_BG};text-align:center;vertical-align:middle;"
+                    f"font-family:sans-serif;font-size:12px;color:#777'>Away</td>"
                 )
             else:
                 r, span = cell
@@ -349,6 +404,18 @@ def run() -> int:
     this_title = f"YMCA classes: {this_mon.strftime('%a %-m/%-d')} – {this_fri.strftime('%a %-m/%-d')}"
     next_title = f"YMCA classes: {next_mon.strftime('%a %-m/%-d')} – {next_fri.strftime('%a %-m/%-d')}"
 
+    # Away-dates (private repo) to block out in the calendar. Fail-open -> none.
+    pause_ranges = pauses.load_ranges()
+
+    def _away_for(mon: date) -> frozenset[date]:
+        return frozenset(
+            d for i in range(7)
+            if pauses.covering(pause_ranges, d := mon + timedelta(days=i))
+        )
+
+    this_away = _away_for(this_mon)
+    next_away = _away_for(next_mon)
+
     # Which week(s) to show. Normally derived from the day of week:
     #   Mon -> this week only; Tue–Fri -> this + next (Fri doubles as an
     #   end-of-week recap of the classes just done); Sat/Sun -> next only.
@@ -359,19 +426,20 @@ def run() -> int:
 
     if weeks == "this":
         count = len(this_rows)
-        md    = _markdown(this_rows, this_title, count)
-        html  = _wrap_html(_html(this_rows, this_title, count, this_mon))
+        md    = _markdown(this_rows, this_title, count, sorted(this_away))
+        html  = _wrap_html(_html(this_rows, this_title, count, this_mon, this_away))
         title = this_title
     elif weeks == "both":
         count = len(this_rows) + len(next_rows)
-        md    = _markdown(this_rows, this_title, len(this_rows)) + "\n" + _markdown(next_rows, next_title, len(next_rows))
-        html  = _wrap_html(_html(this_rows, this_title, len(this_rows), this_mon),
-                           _html(next_rows, next_title, len(next_rows), next_mon))
+        md    = (_markdown(this_rows, this_title, len(this_rows), sorted(this_away))
+                 + "\n" + _markdown(next_rows, next_title, len(next_rows), sorted(next_away)))
+        html  = _wrap_html(_html(this_rows, this_title, len(this_rows), this_mon, this_away),
+                           _html(next_rows, next_title, len(next_rows), next_mon, next_away))
         title = f"{this_title} + next week"
     else:  # next week only (classes not yet open for booking)
         count = len(next_rows)
-        md    = _markdown(next_rows, next_title, count)
-        html  = _wrap_html(_html(next_rows, next_title, count, next_mon))
+        md    = _markdown(next_rows, next_title, count, sorted(next_away))
+        html  = _wrap_html(_html(next_rows, next_title, count, next_mon, next_away))
         title = next_title
 
     print(md)

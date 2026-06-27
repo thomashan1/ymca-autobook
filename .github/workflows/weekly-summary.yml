@@ -39,6 +39,7 @@ jobs:
           EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
           SUMMARY_WEEKS: ${{ inputs.weeks }}
           SCHEDULE_CRON: ${{ github.event.schedule }}
         run: python scripts/weekly_summary.py

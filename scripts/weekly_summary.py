@@ -346,7 +346,7 @@ def run() -> int:
     # scheduled run by an hour or more. Manual/local runs have no cron and send.
     #
     # cron day-of-week: 1=Mon … 5=Fri. Intended local hour per slot:
-    _SLOT_LOCAL_HOUR = {1: 0, 3: 15, 5: 0}  # Mon 00:00, Wed 15:00, Fri 00:00 PT
+    _SLOT_LOCAL_HOUR = {1: 0, 3: 0, 5: 0}  # Mon/Wed/Fri all 00:00 PT
     cron = os.environ.get("SCHEDULE_CRON", "").strip()
     if cron:
         parts = cron.split()

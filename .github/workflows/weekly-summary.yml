@@ -7,8 +7,8 @@ on:
     # the current DST offset actually send — robust to GitHub's scheduling lag.
     - cron: "7 7 * * 1"   # Mon 00:07 PT (PDT = UTC-7) — this week; early + off-peak to dodge GitHub's queue delay
     - cron: "7 8 * * 1"   # Mon 00:07 PT (PST = UTC-8)
-    - cron: "0 22 * * 3"  # Wed 15:00 PT (PDT = UTC-7) — midweek update (this + next week)
-    - cron: "0 23 * * 3"  # Wed 15:00 PT (PST = UTC-8)
+    - cron: "7 7 * * 3"   # Wed 00:07 PT (PDT = UTC-7) — midweek update (this + next week)
+    - cron: "7 8 * * 3"   # Wed 00:07 PT (PST = UTC-8)
     - cron: "7 7 * * 5"   # Fri 00:07 PT (PDT = UTC-7) — recap + next week; early + off-peak
     - cron: "7 8 * * 5"   # Fri 00:07 PT (PST = UTC-8)
   workflow_dispatch:

@@ -9,8 +9,8 @@ on:
     - cron: "7 8 * * 1"   # Mon 00:07 PT (PST = UTC-8)
     - cron: "0 22 * * 3"  # Wed 15:00 PT (PDT = UTC-7) — midweek update (this + next week)
     - cron: "0 23 * * 3"  # Wed 15:00 PT (PST = UTC-8)
-    - cron: "0 22 * * 5"  # Fri 15:00 PT (PDT = UTC-7) — preview next week's bookings
-    - cron: "0 23 * * 5"  # Fri 15:00 PT (PST = UTC-8)
+    - cron: "7 7 * * 5"   # Fri 00:07 PT (PDT = UTC-7) — recap + next week; early + off-peak
+    - cron: "7 8 * * 5"   # Fri 00:07 PT (PST = UTC-8)
   workflow_dispatch:
     inputs:
       weeks:

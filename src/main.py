@@ -260,6 +260,8 @@ def main(argv=None) -> int:
     ap.add_argument("--headed", action="store_true")
     ap.add_argument("--book-now", action="store_true", help="skip the wait; book immediately")
     ap.add_argument("--cancel-id", type=int, help="cancel a booking by occurrence id")
+    ap.add_argument("--cancel-class", help="cancel the next booked occurrence of this class key")
+    ap.add_argument("--on", help="with --cancel-class: target this class date (YYYY-MM-DD, local)")
     ap.add_argument("--book-id", type=int, help="book any occurrence by id (for testing)")
     args = ap.parse_args(argv)
 
@@ -288,6 +290,41 @@ def main(argv=None) -> int:
                 resp = fisikal.cancel(context, csrf, args.cancel_id)
                 print(f"cancel {args.cancel_id} -> HTTP {resp.status}: {resp.text()[:200]}")
                 return 0 if resp.ok else 1
+
+            if args.cancel_class:
+                tz = cfg["timezone"]
+                klass = get_class(cfg, args.cancel_class)
+                label = f"{klass['name']} {klass['weekday']} {klass['start']}"
+                now = datetime.now(timezone.utc)
+                occs = fisikal.list_occurrences(
+                    context, csrf, now - timedelta(hours=2),
+                    now + timedelta(days=LIST_WINDOW_DAYS),
+                    location_ids=klass.get("location_ids"),
+                )
+                matches = fisikal.find_matches(
+                    occs, klass["name"], klass["weekday"], klass["start"], tz,
+                    sub_location=klass.get("sub_location"), trainer=klass.get("trainer"),
+                )
+                target = None
+                for o in matches:
+                    occ = datetime.fromisoformat(o["occurs_at"].replace("Z", "+00:00"))
+                    if occ <= now or not o.get("is_joined"):
+                        continue
+                    if args.on and occ.astimezone(ZoneInfo(tz)).date().isoformat() != args.on:
+                        continue
+                    target = o
+                    break
+                if not target:
+                    where = f" on {args.on}" if args.on else ""
+                    print(f"No upcoming booked occurrence to cancel for '{label}'{where}.")
+                    return 0
+                resp = fisikal.cancel(context, csrf, target["id"])
+                when = _fmt(datetime.fromisoformat(target["occurs_at"].replace("Z", "+00:00")), tz)
+                ok = resp.ok
+                detail = f"{label}\ncancelled occ id={target['id']} at {when} -> HTTP {resp.status}"
+                notify(ok, f"Cancel {label}", detail)
+                print(("OK: " if ok else "FAILED: ") + detail)
+                return 0 if ok else 1
 
             if args.book_id:
                 resp = fisikal.join(context, csrf, args.book_id, lock_version=0)

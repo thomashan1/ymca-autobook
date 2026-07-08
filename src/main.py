@@ -24,6 +24,7 @@ import yaml
 from playwright.sync_api import sync_playwright
 
 from . import fisikal
+from . import pauses
 from .login import login
 from .notify import notify
 from .schedule import open_instant, wait_until
@@ -262,6 +263,8 @@ def main(argv=None) -> int:
     ap.add_argument("--cancel-id", type=int, help="cancel a booking by occurrence id")
     ap.add_argument("--cancel-class", help="cancel the next booked occurrence of this class key")
     ap.add_argument("--on", help="with --cancel-class: target this class date (YYYY-MM-DD, local)")
+    ap.add_argument("--cancel-paused", action="store_true",
+                    help="cancel every booked occurrence that now falls in a pause range")
     ap.add_argument("--book-id", type=int, help="book any occurrence by id (for testing)")
     args = ap.parse_args(argv)
 
@@ -325,6 +328,49 @@ def main(argv=None) -> int:
                 notify(ok, f"Cancel {label}", detail)
                 print(("OK: " if ok else "FAILED: ") + detail)
                 return 0 if ok else 1
+
+            if args.cancel_paused:
+                # Reconcile: cancel any upcoming booked occurrence of a configured
+                # class whose date now falls in a pause range (respecting `except`).
+                tz = cfg["timezone"]
+                ranges = pauses.load_ranges()
+                if not ranges:
+                    print("No pause ranges loaded; nothing to cancel.")
+                    return 0
+                print("Pause ranges: " + ", ".join(
+                    f"{r.start}..{r.end}" + (f" except {sorted(r.except_keys)}"
+                                             if r.except_keys else "") for r in ranges))
+                now = datetime.now(timezone.utc)
+                cancelled, failed = [], []
+                for klass in cfg.get("classes", []):
+                    occs = fisikal.list_occurrences(
+                        context, csrf, now - timedelta(hours=2),
+                        now + timedelta(days=LIST_WINDOW_DAYS),
+                        location_ids=klass.get("location_ids"),
+                    )
+                    matches = fisikal.find_matches(
+                        occs, klass["name"], klass["weekday"], klass["start"], tz,
+                        sub_location=klass.get("sub_location"), trainer=klass.get("trainer"),
+                    )
+                    for o in matches:
+                        occ = datetime.fromisoformat(o["occurs_at"].replace("Z", "+00:00"))
+                        if occ <= now or not o.get("is_joined"):
+                            continue
+                        occ_date = occ.astimezone(ZoneInfo(tz)).date()
+                        rng = pauses.covering(ranges, occ_date)
+                        if not rng or klass["key"] in rng.except_keys:
+                            continue
+                        resp = fisikal.cancel(context, csrf, o["id"])
+                        line = f"{klass['key']} {occ_date} occ={o['id']} -> HTTP {resp.status}"
+                        print(("  cancelled " if resp.ok else "  FAILED   ") + line)
+                        (cancelled if resp.ok else failed).append(line)
+                summary = (f"Cancelled {len(cancelled)} paused booking(s)"
+                           + (f", {len(failed)} FAILED" if failed else "") + ".")
+                print(summary)
+                if cancelled or failed:
+                    notify(not failed, "Cancel paused bookings",
+                           summary + "\n" + "\n".join(cancelled + failed))
+                return 0 if not failed else 1
 
             if args.book_id:
                 resp = fisikal.join(context, csrf, args.book_id, lock_version=0)

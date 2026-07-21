@@ -9,7 +9,8 @@ Standing context + preferences for this project. **Read at the start of each ses
 - **No cap on classes per day.** Generally avoid back-to-back high-intensity; at most one HIIT-type class per day.
 - **Don't add classes to the light days (Mon / Tue / Thu) unless asked** — currently left as-is on purpose.
 - Prefer **same-branch** pairings; minimize cross-branch hops when suggesting additions.
-- Branch by day: **Mon / Tue / Thu = Southwest**, **Wed = Northwest**, **Fri = Northwest (9:45 CORE) then Southwest (11:20 Lift & H.I.I.T.)**. IDs: Southwest = 1392, Northwest = 1388.
+- Branch by day: **Mon / Tue / Thu / Fri = Southwest**, **Wed = Northwest**. IDs: Southwest = 1392, Northwest = 1388.
+- **Fri dropped the Northwest CORE hop** — replaced with Southwest TRX for Beginners (10:30–11:15), a tight 5-min gap before Lift & H.I.I.T. (11:20), so Friday is now all-Southwest. First live booking lands 8/14 (pause calendar already covers 7/24, 7/31, 8/7); the already-booked 7/24 CORE occurrence is untouched.
 
 ## Booking model
 - `classes.yml` = recurring classes to auto-book. Booking opens ~7 days ahead, so each class's cron fires ~1 week before and books that future date.

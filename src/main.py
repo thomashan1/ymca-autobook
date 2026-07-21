@@ -74,8 +74,19 @@ _BROWSE_BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
 _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
 
-def run_browse(context, csrf, cfg) -> None:
-    """Print Mon-Fri classes 9:30–15:00 (local), grouped by day, no fee/dance/swim."""
+BROWSE_START_MIN = 8 * 60 + 30   # 8:30
+BROWSE_END_MIN = 15 * 60         # 15:00
+
+
+def collect_schedule(context, csrf, cfg,
+                     start_min: int = BROWSE_START_MIN,
+                     end_min: int = BROWSE_END_MIN) -> list[dict]:
+    """Fetch Mon-Fri occurrences in [start_min, end_min) (local), both branches,
+    no fee/dance/swim/senior/pickleball, deduped. Sorted by day then start time.
+
+    Each row: day (Mon..Fri), start/end ("HH:MM"), start_min (int, for sorting),
+    name, location, joined (bool).
+    """
     zone = ZoneInfo(cfg["timezone"])
     now = datetime.now(timezone.utc)
     occs = fisikal.list_occurrences(
@@ -85,8 +96,8 @@ def run_browse(context, csrf, cfg) -> None:
         location_ids=_BROWSE_BOTH_LOCATIONS,
     )
 
-    by_day: dict[int, list[tuple]] = {d: [] for d in range(5)}
     seen: set = set()
+    rows: list[dict] = []
 
     for o in occs:
         title = (o.get("service_title") or "").strip()
@@ -100,8 +111,8 @@ def run_browse(context, csrf, cfg) -> None:
         dow = occurs.weekday()
         if dow >= 5:
             continue
-        start_min = occurs.hour * 60 + occurs.minute
-        if start_min < 9 * 60 + 30 or start_min >= 15 * 60:
+        occ_start_min = occurs.hour * 60 + occurs.minute
+        if occ_start_min < start_min or occ_start_min >= end_min:
             continue
 
         location = (o.get("location_name") or "").replace("Silicon Valley YMCA - ", "")
@@ -110,21 +121,47 @@ def run_browse(context, csrf, cfg) -> None:
             continue
         seen.add(key)
 
-        joined = "✓" if o.get("is_joined") else ""
-        by_day[dow].append((occurs.hour * 60 + occurs.minute, title, location, joined))
+        # Whole-hour classes report hours=1, minutes=0, so minutes-alone reads 0.
+        duration = (int(o.get("duration_in_hours") or 0) * 60
+                    + int(o.get("duration_in_minutes") or 0)) or 60
+        occ_end_min = occ_start_min + duration
+
+        rows.append({
+            "day": _DAY_NAMES[dow],
+            "start": f"{occ_start_min // 60:02d}:{occ_start_min % 60:02d}",
+            "end": f"{occ_end_min // 60:02d}:{occ_end_min % 60:02d}",
+            "start_min": occ_start_min,
+            "dow": dow,
+            "name": title,
+            "location": location,
+            "joined": bool(o.get("is_joined")),
+        })
+
+    rows.sort(key=lambda r: (r["dow"], r["start_min"]))
+    return rows
+
+
+def run_browse(context, csrf, cfg) -> None:
+    """Print Mon-Fri classes 8:30–15:00 (local), grouped by day, no fee/dance/swim."""
+    rows = collect_schedule(context, csrf, cfg)
+
+    by_day: dict[int, list[dict]] = {d: [] for d in range(5)}
+    for r in rows:
+        by_day[r["dow"]].append(r)
 
     total = 0
     for dow in range(5):
-        rows = sorted(by_day[dow])
-        if not rows:
+        day_rows = by_day[dow]
+        if not day_rows:
             continue
         print(f"\n── {_DAY_NAMES[dow]} ──────────────────────────────────────────────────────────")
-        print(f"  {'TIME':<6}  {'CLASS':<34}  {'WHERE':<26}  JOINED")
-        for mins, title, location, joined in rows:
-            t = f"{mins // 60:02d}:{mins % 60:02d}"
-            print(f"  {t:<6}  {title:<34}  {location:<26}  {joined}")
+        print(f"  {'TIME':<13}  {'CLASS':<34}  {'WHERE':<26}  JOINED")
+        for r in day_rows:
+            t = f"{r['start']}–{r['end']}"
+            joined = "✓" if r["joined"] else ""
+            print(f"  {t:<13}  {r['name']:<34}  {r['location']:<26}  {joined}")
             total += 1
-    print(f"\n{total} unique classes (Mon–Fri, 9:30–15:00, no fee/dance/swim).")
+    print(f"\n{total} unique classes (Mon–Fri, 8:30–15:00, no fee/dance/swim).")
 
 
 def run_list(context, csrf, cfg, name_filter: str | None) -> None:

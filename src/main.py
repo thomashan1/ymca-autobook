@@ -218,6 +218,54 @@ def refresh_lock_version(context, csrf, klass, target_id, target_occurs_at) -> i
     return None
 
 
+def find_occurrence(context, csrf, occurrence_id: int, horizon_days: int = 40) -> dict | None:
+    """Locate a specific occurrence by id, searching both branches."""
+    now = datetime.now(timezone.utc)
+    occs = fisikal.list_occurrences(
+        context, csrf, now - timedelta(hours=2), now + timedelta(days=horizon_days),
+        location_ids=_BROWSE_BOTH_LOCATIONS,
+    )
+    for o in occs:
+        if o["id"] == occurrence_id:
+            return o
+    return None
+
+
+def book_by_id(context, csrf, occurrence_id: int) -> tuple[bool, str]:
+    """Book a specific occurrence by id, independent of classes.yml.
+
+    For one-off exceptions — e.g. a configured class is full/unavailable this
+    week and you want to fall back to a specific alternate occurrence instead.
+    Uses the same retry/lock-refresh logic as the scheduled path.
+    """
+    target = find_occurrence(context, csrf, occurrence_id)
+    if not target:
+        return False, f"Occurrence id={occurrence_id} not found in the next 40 days."
+    title = (target.get("service_title") or "?").strip()
+    label = f"{title} at {target['occurs_at']} (id={occurrence_id})"
+
+    lock = target.get("lock_version")
+    last = "no attempt"
+    for attempt in range(1, MAX_RETRY_ATTEMPTS + 1):
+        resp = fisikal.join(context, csrf, occurrence_id, lock)
+        ok, msg, errors = fisikal.parse_join_result(resp)
+        last = f"attempt {attempt}: {msg}"
+        print(f"  {last}")
+        if ok:
+            return True, f"{label}\n{last}"
+        types = {e.get("type") for e in errors}
+        if types & fisikal.TERMINAL_ERROR_TYPES:
+            return False, f"{label}\n{last} (terminal)"
+        if types & fisikal.LOCK_CONFLICT_TYPES:
+            fresh = find_occurrence(context, csrf, occurrence_id)
+            if fresh is not None:
+                lock = fresh.get("lock_version")
+        if attempt < MAX_RETRY_ATTEMPTS:
+            time.sleep(RETRY_SLEEP_SECONDS)
+
+    return False, f"{label}\nGave up after {MAX_RETRY_ATTEMPTS} attempts. Last: {last}"
+
+
 def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
          pause_ranges: list | None = None) -> tuple[bool, str]:
     tz = cfg["timezone"]
@@ -302,7 +350,9 @@ def main(argv=None) -> int:
     ap.add_argument("--on", help="with --cancel-class: target this class date (YYYY-MM-DD, local)")
     ap.add_argument("--cancel-paused", action="store_true",
                     help="cancel every booked occurrence that now falls in a pause range")
-    ap.add_argument("--book-id", type=int, help="book any occurrence by id (for testing)")
+    ap.add_argument("--book-id", type=int,
+                    help="book a specific occurrence by id, independent of classes.yml "
+                         "(one-off exception, e.g. a configured class is full this week)")
     args = ap.parse_args(argv)
 
     cfg = load_config()
@@ -410,9 +460,9 @@ def main(argv=None) -> int:
                 return 0 if not failed else 1
 
             if args.book_id:
-                resp = fisikal.join(context, csrf, args.book_id, lock_version=0)
-                ok, msg, _ = fisikal.parse_join_result(resp)
-                print(f"book-id {args.book_id} -> {msg}")
+                ok, detail = book_by_id(context, csrf, args.book_id)
+                print(detail)
+                notify(ok, f"Book occurrence id={args.book_id}", detail)
                 if ok:
                     print(f"Booked! Cancel with: --cancel-id {args.book_id}")
                 return 0 if ok else 1

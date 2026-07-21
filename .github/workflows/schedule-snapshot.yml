@@ -1,0 +1,27 @@
+name: Schedule snapshot
+
+on:
+  schedule:
+    - cron: "0 13 * * *"  # daily ~6am PT (PDT) / ~5am PT (PST) — keep the snapshot fresh
+  workflow_dispatch: {}
+
+concurrency:
+  group: schedule-snapshot-${{ github.run_id }}
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Update schedule snapshot
+        env:
+          EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
+          EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: python scripts/snapshot_schedule.py

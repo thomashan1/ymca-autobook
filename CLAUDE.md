@@ -3,7 +3,6 @@
 Standing context + preferences for this project. **Read at the start of each session** and honor these without re-asking.
 
 ## Class & schedule preferences
-- **Age 50.** Factor this into intensity/volume/recovery opinions (e.g. the Monday HIIT-stacking note below matters more at this age than it would for a younger adult).
 - **Dislikes Restorative Yoga** — never recommend or auto-book it.
 - **Likes Monday Les Mills CORE, Vinyasa Yoga, and Lift & H.I.I.T.** — keep booking all three.
 - **Trial early-morning classes (kids' school starts 8/13, freeing up earlier mornings):** Mon 8:45 BODYCOMBAT, Tue 9:00 BODYPUMP, Thu 9:00 BODYPUMP — all Southwest. Thu is fine starting right on 8/13 (school-start day); Mon/Tue naturally start a bit later (8/17/8/18) since the pause calendar already covers the Mondays/Tuesdays before that. Check in after a few weeks on whether to keep them.

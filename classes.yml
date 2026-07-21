@@ -43,6 +43,12 @@ classes:
     start: "11:20"
     location_ids: [1392]
 
+  - key: bodypump-tue              # Southwest
+    name: "BODYPUMP"
+    weekday: Tue
+    start: "09:00"
+    location_ids: [1392]
+
   - key: cycle-tue                 # Southwest - room varies (GER / Rec Room)
     name: "Cycle"
     weekday: Tue

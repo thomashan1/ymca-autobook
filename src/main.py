@@ -75,7 +75,7 @@ _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
 
 def run_browse(context, csrf, cfg) -> None:
-    """Print Mon-Fri classes 9:30–15:00 (local), grouped by day, no fee/dance/swim."""
+    """Print Mon-Fri classes 8:30–15:00 (local), grouped by day, no fee/dance/swim."""
     zone = ZoneInfo(cfg["timezone"])
     now = datetime.now(timezone.utc)
     occs = fisikal.list_occurrences(
@@ -101,7 +101,7 @@ def run_browse(context, csrf, cfg) -> None:
         if dow >= 5:
             continue
         start_min = occurs.hour * 60 + occurs.minute
-        if start_min < 9 * 60 + 30 or start_min >= 15 * 60:
+        if start_min < 8 * 60 + 30 or start_min >= 15 * 60:
             continue
 
         location = (o.get("location_name") or "").replace("Silicon Valley YMCA - ", "")
@@ -124,7 +124,7 @@ def run_browse(context, csrf, cfg) -> None:
             t = f"{mins // 60:02d}:{mins % 60:02d}"
             print(f"  {t:<6}  {title:<34}  {location:<26}  {joined}")
             total += 1
-    print(f"\n{total} unique classes (Mon–Fri, 9:30–15:00, no fee/dance/swim).")
+    print(f"\n{total} unique classes (Mon–Fri, 8:30–15:00, no fee/dance/swim).")
 
 
 def run_list(context, csrf, cfg, name_filter: str | None) -> None:

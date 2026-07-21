@@ -19,6 +19,12 @@
 timezone: America/Los_Angeles
 
 classes:
+  - key: bodycombat-mon            # Southwest
+    name: "BODYCOMBAT"
+    weekday: Mon
+    start: "08:45"
+    location_ids: [1392]
+
   - key: core-mon                  # Southwest - Rec Room
     name: "Les Mills CORE"
     weekday: Mon

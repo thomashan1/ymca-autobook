@@ -105,13 +105,17 @@ def run_browse(context, csrf, cfg) -> None:
             continue
 
         location = (o.get("location_name") or "").replace("Silicon Valley YMCA - ", "")
+        # Whole-hour classes report hours=1, minutes=0, so minutes-alone reads 0.
+        duration = (int(o.get("duration_in_hours") or 0) * 60
+                    + int(o.get("duration_in_minutes") or 0)) or 60
         key = (title_l, dow, occurs.hour, occurs.minute, location)
         if key in seen:
             continue
         seen.add(key)
 
         joined = "✓" if o.get("is_joined") else ""
-        by_day[dow].append((occurs.hour * 60 + occurs.minute, title, location, joined))
+        start_min = occurs.hour * 60 + occurs.minute
+        by_day[dow].append((start_min, start_min + duration, title, location, joined))
 
     total = 0
     for dow in range(5):
@@ -119,10 +123,10 @@ def run_browse(context, csrf, cfg) -> None:
         if not rows:
             continue
         print(f"\n── {_DAY_NAMES[dow]} ──────────────────────────────────────────────────────────")
-        print(f"  {'TIME':<6}  {'CLASS':<34}  {'WHERE':<26}  JOINED")
-        for mins, title, location, joined in rows:
-            t = f"{mins // 60:02d}:{mins % 60:02d}"
-            print(f"  {t:<6}  {title:<34}  {location:<26}  {joined}")
+        print(f"  {'TIME':<13}  {'CLASS':<34}  {'WHERE':<26}  JOINED")
+        for start_min, end_min, title, location, joined in rows:
+            t = f"{start_min // 60:02d}:{start_min % 60:02d}–{end_min // 60:02d}:{end_min % 60:02d}"
+            print(f"  {t:<13}  {title:<34}  {location:<26}  {joined}")
             total += 1
     print(f"\n{total} unique classes (Mon–Fri, 8:30–15:00, no fee/dance/swim).")
 

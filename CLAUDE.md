@@ -3,6 +3,7 @@
 Standing context + preferences for this project. **Read at the start of each session** and honor these without re-asking.
 
 ## Class & schedule preferences
+- **Age 50.** Factor this into intensity/volume/recovery opinions (e.g. the Monday HIIT-stacking note below matters more at this age than it would for a younger adult).
 - **Dislikes Restorative Yoga** — never recommend or auto-book it.
 - **Likes Monday Les Mills CORE, Vinyasa Yoga, and Lift & H.I.I.T.** — keep booking all three.
 - **Trial early-morning classes (kids' school starts 8/13, freeing up earlier mornings):** Mon 8:45 BODYCOMBAT, Tue 9:00 BODYPUMP, Thu 9:00 BODYPUMP — all Southwest. Thu is fine starting right on 8/13 (school-start day); Mon/Tue naturally start a bit later (8/17/8/18) since the pause calendar already covers the Mondays/Tuesdays before that. Check in after a few weeks on whether to keep them.
@@ -11,6 +12,29 @@ Standing context + preferences for this project. **Read at the start of each ses
 - Prefer **same-branch** pairings; minimize cross-branch hops when suggesting additions.
 - Branch by day: **Mon / Tue / Thu / Fri = Southwest**, **Wed = Northwest**. IDs: Southwest = 1392, Northwest = 1388.
 - **Fri dropped the Northwest CORE hop** — replaced with Southwest TRX for Beginners (10:30–11:15), a tight 5-min gap before Lift & H.I.I.T. (11:20), so Friday is now all-Southwest. First live booking lands 8/14 (pause calendar already covers 7/24, 7/31, 8/7); the already-booked 7/24 CORE occurrence is untouched.
+
+## Current weekly schedule (snapshot 2026-07-21 — see `classes.yml` for the authoritative source)
+| Day | Time | Class | Branch | Status |
+|---|---|---|---|---|
+| Mon | 8:45–9:45 | BODYCOMBAT | Southwest | trial, first live 8/17 |
+| Mon | 9:45–10:15 | Les Mills CORE | Southwest | recurring |
+| Mon | 10:15–11:15 | Vinyasa Yoga | Southwest | recurring |
+| Mon | 11:20–12:00 | Lift & H.I.I.T. | Southwest | recurring |
+| Tue | 9:00–10:00 | BODYPUMP | Southwest | trial, first live 8/18 |
+| Tue | 10:15–11:15 | Cycle | Southwest | recurring |
+| Wed | 9:30–10:20 | RPM | Northwest | recurring |
+| Wed | 10:30–11:00 | Les Mills CORE | Northwest | recurring |
+| Thu | 9:00–10:00 | BODYPUMP | Southwest | trial, first live 8/13 |
+| Thu | 10:15–11:15 | Cycle Sculpt | Southwest | recurring |
+| Fri | 10:30–11:15 | TRX for Beginners | Southwest | recurring, first live 8/14 |
+| Fri | 11:20–12:00 | Lift & H.I.I.T. | Southwest | recurring |
+
+~12 classes/week, ~9h40m total, 5 days/week, no built-in rest day. **Monday is
+the heaviest day** and currently stacks two HIIT-type classes (BODYCOMBAT +
+Lift & H.I.I.T.) bookending CORE and Vinyasa — this conflicts with the "at
+most one HIIT-type per day" preference above and was flagged as a possible
+future trim, not yet acted on. Update this table whenever `classes.yml`
+changes so it doesn't go stale.
 
 ## Booking model
 - `classes.yml` = recurring classes to auto-book. Booking opens ~7 days ahead, so each class's cron fires ~1 week before and books that future date.

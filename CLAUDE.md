@@ -5,6 +5,7 @@ Standing context + preferences for this project. **Read at the start of each ses
 ## Class & schedule preferences
 - **Dislikes Restorative Yoga** — never recommend or auto-book it.
 - **Likes Monday Les Mills CORE, Vinyasa Yoga, and Lift & H.I.I.T.** — keep booking all three.
+- **Trial early-morning classes (kids' school starts 8/13, freeing up earlier mornings):** Mon 8:45 BODYCOMBAT, Tue 9:00 BODYPUMP, Thu 9:00 BODYPUMP — all Southwest. Thu is fine starting right on 8/13 (school-start day); Mon/Tue naturally start a bit later (8/17/8/18) since the pause calendar already covers the Mondays/Tuesdays before that. Check in after a few weeks on whether to keep them.
 - **No cap on classes per day.** Generally avoid back-to-back high-intensity; at most one HIIT-type class per day.
 - **Don't add classes to the light days (Mon / Tue / Thu) unless asked** — currently left as-is on purpose.
 - Prefer **same-branch** pairings; minimize cross-branch hops when suggesting additions.

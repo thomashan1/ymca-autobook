@@ -1,0 +1,24 @@
+name: Browse classes (throwaway)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: browse-${{ github.run_id }}
+
+jobs:
+  browse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Browse
+        env:
+          EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
+          EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
+        run: python -m src.main --browse

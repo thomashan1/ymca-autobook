@@ -75,7 +75,7 @@ _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
 
 BROWSE_START_MIN = 8 * 60 + 30   # 8:30
-BROWSE_END_MIN = 15 * 60         # 15:00
+BROWSE_END_MIN = 18 * 60         # 18:00
 
 
 def collect_schedule(context, csrf, cfg,

@@ -73,6 +73,10 @@ on:
         description: "Cancel ALL booked classes that now fall in a pause range (set to 'true')."
         required: false
         default: ""
+      book_id:
+        description: "Occurrence id to BOOK directly, independent of classes.yml (one-off exception)."
+        required: false
+        default: ""
 
 concurrency:
   group: book-${{ github.run_id }}
@@ -100,6 +104,8 @@ jobs:
             python -m src.main --cancel-class "${{ github.event.inputs.cancel_class }}" ${{ github.event.inputs.cancel_on && format('--on {0}', github.event.inputs.cancel_on) || '' }}
           elif [ -n "${{ github.event.inputs.cancel_paused }}" ]; then
             python -m src.main --cancel-paused
+          elif [ -n "${{ github.event.inputs.book_id }}" ]; then
+            python -m src.main --book-id "${{ github.event.inputs.book_id }}"
           elif [ -n "${{ github.event.inputs.class_key }}" ]; then
             python -m src.main --class "${{ github.event.inputs.class_key }}"
           else

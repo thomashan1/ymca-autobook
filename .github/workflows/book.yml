@@ -3,6 +3,10 @@ name: Book YMCA classes
 
 on:
   schedule:
+    - cron: "20 17 * * 1"  # core-mon — opens Mon 10:45 PT (PDT, primary, fire -25m)
+    - cron: "20 18 * * 1"  # core-mon — opens Mon 10:45 PT (PST, primary, fire -25m)
+    - cron: "30 17 * * 1"  # core-mon — opens Mon 10:45 PT (PDT, retry 1, fire -15m)
+    - cron: "30 18 * * 1"  # core-mon — opens Mon 10:45 PT (PST, retry 1, fire -15m)
     - cron: "50 17 * * 1"  # vinyasa-yoga-mon — opens Mon 11:15 PT (PDT, primary, fire -25m)
     - cron: "50 18 * * 1"  # vinyasa-yoga-mon — opens Mon 11:15 PT (PST, primary, fire -25m)
     - cron: "0 18 * * 1"  # vinyasa-yoga-mon — opens Mon 11:15 PT (PDT, retry 1, fire -15m)

@@ -4,8 +4,8 @@ Standing context + preferences for this project. **Read at the start of each ses
 
 ## Class & schedule preferences
 - **Dislikes Restorative Yoga** — never recommend or auto-book it.
-- **Likes Monday Vinyasa Yoga and Lift & H.I.I.T.** — keep booking them.
-- **Cap Monday at 2 classes** — don't stack a 3rd. Generally avoid back-to-back high-intensity; at most one HIIT-type class per day.
+- **Likes Monday Les Mills CORE, Vinyasa Yoga, and Lift & H.I.I.T.** — keep booking all three.
+- **No cap on classes per day.** Generally avoid back-to-back high-intensity; at most one HIIT-type class per day.
 - **Don't add classes to the light days (Mon / Tue / Thu) unless asked** — currently left as-is on purpose.
 - Prefer **same-branch** pairings; minimize cross-branch hops when suggesting additions.
 - Branch by day: **Mon / Tue / Thu = Southwest**, **Wed = Northwest**, **Fri = Northwest (9:45 CORE) then Southwest (11:20 Lift & H.I.I.T.)**. IDs: Southwest = 1392, Northwest = 1388.

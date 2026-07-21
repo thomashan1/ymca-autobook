@@ -19,6 +19,12 @@
 timezone: America/Los_Angeles
 
 classes:
+  - key: core-mon                  # Southwest - Rec Room
+    name: "Les Mills CORE"
+    weekday: Mon
+    start: "09:45"
+    location_ids: [1392]
+
   - key: vinyasa-yoga-mon          # usually Southwest - Studio 2
     name: "Vinyasa Yoga"
     weekday: Mon

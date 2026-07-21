@@ -74,6 +74,18 @@ on:
         description: "Occurrence id to CANCEL an existing booking. Takes priority over class_key."
         required: false
         default: ""
+      cancel_class:
+        description: "Class key to CANCEL its next booked occurrence (optionally set cancel_on date)."
+        required: false
+        default: ""
+      cancel_on:
+        description: "With cancel_class: target class date YYYY-MM-DD (blank = next booked)."
+        required: false
+        default: ""
+      cancel_paused:
+        description: "Cancel ALL booked classes that now fall in a pause range (set to 'true')."
+        required: false
+        default: ""
 
 concurrency:
   group: book-${{{{ github.run_id }}}}
@@ -97,6 +109,10 @@ jobs:
         run: |
           if [ -n "${{{{ github.event.inputs.cancel_id }}}}" ]; then
             python -m src.main --cancel-id "${{{{ github.event.inputs.cancel_id }}}}"
+          elif [ -n "${{{{ github.event.inputs.cancel_class }}}}" ]; then
+            python -m src.main --cancel-class "${{{{ github.event.inputs.cancel_class }}}}" ${{{{ github.event.inputs.cancel_on && format('--on {{0}}', github.event.inputs.cancel_on) || '' }}}}
+          elif [ -n "${{{{ github.event.inputs.cancel_paused }}}}" ]; then
+            python -m src.main --cancel-paused
           elif [ -n "${{{{ github.event.inputs.class_key }}}}" ]; then
             python -m src.main --class "${{{{ github.event.inputs.class_key }}}}"
           else

@@ -55,6 +55,12 @@ classes:
     start: "10:30"
     location_ids: [1388]
 
+  - key: bodypump-thu              # Southwest
+    name: "BODYPUMP"
+    weekday: Thu
+    start: "09:00"
+    location_ids: [1392]
+
   - key: cycle-sculpt-thu          # Southwest - Group Exercise Room
     name: "Cycle Sculpt"
     weekday: Thu

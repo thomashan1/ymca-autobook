@@ -436,7 +436,7 @@ def run() -> int:
 
     if notify_email and gmail_app_pw:
         send_email(
-            to=notify_email,
+            login_email=notify_email,
             password=gmail_app_pw,
             subject=f"🏋️ {title}",
             html=html,

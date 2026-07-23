@@ -462,7 +462,7 @@ def main(argv=None) -> int:
             if args.book_id:
                 ok, detail = book_by_id(context, csrf, args.book_id)
                 print(detail)
-                notify(ok, f"Book occurrence id={args.book_id}", detail)
+                notify(ok, f"Book occurrence id={args.book_id}", detail, sms=True)
                 if ok:
                     print(f"Booked! Cancel with: --cancel-id {args.book_id}")
                 return 0 if ok else 1
@@ -473,7 +473,7 @@ def main(argv=None) -> int:
             klass = get_class(cfg, args.klass)
             success, detail = book(context, csrf, cfg, klass, args.dry_run, args.book_now)
             if not args.dry_run:
-                notify(success, f"{klass['name']} {klass['weekday']} {klass['start']}", detail)
+                notify(success, f"{klass['name']} {klass['weekday']} {klass['start']}", detail, sms=True)
             print(("OK: " if success else "FAILED: ") + detail)
             return 0 if success else 1
         finally:

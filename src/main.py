@@ -473,7 +473,11 @@ def main(argv=None) -> int:
             klass = get_class(cfg, args.klass)
             success, detail = book(context, csrf, cfg, klass, args.dry_run, args.book_now)
             if not args.dry_run:
-                notify(success, f"{klass['name']} {klass['weekday']} {klass['start']}", detail, sms=True)
+                # "Nothing to book now" is a no-op (already booked / window not open
+                # yet) that still returns success=True — don't text a false "booked".
+                really_booked = success and not detail.startswith("Nothing to book")
+                notify(success, f"{klass['name']} {klass['weekday']} {klass['start']}", detail,
+                       sms=really_booked)
             print(("OK: " if success else "FAILED: ") + detail)
             return 0 if success else 1
         finally:

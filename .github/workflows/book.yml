@@ -99,7 +99,6 @@ jobs:
           PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          NOTIFY_SMS_EMAIL: ${{ secrets.NOTIFY_SMS_EMAIL }}
         run: |
           if [ -n "${{ github.event.inputs.cancel_id }}" ]; then
             python -m src.main --cancel-id "${{ github.event.inputs.cancel_id }}"

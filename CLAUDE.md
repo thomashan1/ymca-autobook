@@ -48,9 +48,9 @@ changes so it doesn't go stale.
 
 ## Notifications
 - Native **GitHub iOS push, failures-only**. Don't add per-run success pings unless asked.
-- **Text message on successful bookings** (issue #33): `NOTIFY_SMS_EMAIL` secret (optional) — a carrier email-to-SMS gateway address (e.g. `5551234567@vtext.com`), sent via the existing Gmail SMTP creds. Fires for real booking successes only (scheduled auto-booking, manual `--class`, manual `--book-id`) — not cancellations. Fail-open: unset means no SMS, everything else unaffected.
+- **Email alert on failed booking attempts** (issue #33 — originally wanted text messages, but AT&T shut down its free email-to-SMS gateway for good on 2025-06-17 with no free replacement, so this alerts by email instead): subject prefixed with ❌, sent via the existing `NOTIFY_EMAIL`/`GMAIL_APP_PASSWORD` creds. Fires for real booking attempts only (scheduled auto-booking, manual `--class`, manual `--book-id`) that fail — not successes (the summary emails already show those) and not cancellations. Fail-open: unset means no alert, everything else unaffected.
 
 ## Ground rules
 - Always start from latest `main` (`git fetch origin main`). Land changes via **PR** (main is protected). **Never force-push.**
 - **Keep `main` clean** — no temporary/debug workflows or scratch scripts on `main`; use throwaway branches for those.
-- Credentials live only in GitHub Actions secrets (`EGYM_USERNAME`, `EGYM_PASSWORD`, `NOTIFY_EMAIL`, `GMAIL_APP_PASSWORD`, `PRIVATE_REPO_TOKEN`, `NOTIFY_SMS_EMAIL`). Never commit secrets. Personal away-dates stay in the private repo only.
+- Credentials live only in GitHub Actions secrets (`EGYM_USERNAME`, `EGYM_PASSWORD`, `NOTIFY_EMAIL`, `GMAIL_APP_PASSWORD`, `PRIVATE_REPO_TOKEN`). Never commit secrets. Personal away-dates stay in the private repo only.

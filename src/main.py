@@ -462,7 +462,7 @@ def main(argv=None) -> int:
             if args.book_id:
                 ok, detail = book_by_id(context, csrf, args.book_id)
                 print(detail)
-                notify(ok, f"Book occurrence id={args.book_id}", detail, sms=True)
+                notify(ok, f"Book occurrence id={args.book_id}", detail, alert=True)
                 if ok:
                     print(f"Booked! Cancel with: --cancel-id {args.book_id}")
                 return 0 if ok else 1
@@ -474,10 +474,10 @@ def main(argv=None) -> int:
             success, detail = book(context, csrf, cfg, klass, args.dry_run, args.book_now)
             if not args.dry_run:
                 # "Nothing to book now" is a no-op (already booked / window not open
-                # yet, always success=True) — not a real attempt, so no text either way.
+                # yet, always success=True) — not a real attempt, so no alert either way.
                 real_attempt = not detail.startswith("Nothing to book")
                 notify(success, f"{klass['name']} {klass['weekday']} {klass['start']}", detail,
-                       sms=real_attempt)
+                       alert=real_attempt)
             print(("OK: " if success else "FAILED: ") + detail)
             return 0 if success else 1
         finally:

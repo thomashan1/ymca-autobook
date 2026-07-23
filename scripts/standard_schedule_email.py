@@ -201,7 +201,7 @@ def run() -> int:
     gmail_app_pw = os.environ.get("GMAIL_APP_PASSWORD")
     if notify_email and gmail_app_pw:
         send_email(
-            to=notify_email,
+            login_email=notify_email,
             password=gmail_app_pw,
             subject="Standard weekly YMCA schedule",
             html=html,

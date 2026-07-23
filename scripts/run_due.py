@@ -64,7 +64,7 @@ def run() -> int:
                 # Cheap skips (nothing due, or paused) aren't real attempts — no email.
                 if detail.startswith("Nothing to book") or detail.startswith("Paused"):
                     continue
-                notify(ok, label, detail)
+                notify(ok, label, detail, sms=True)
                 booked_any = booked_any or ok
                 failed_any = failed_any or not ok
         finally:

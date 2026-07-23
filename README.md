@@ -95,6 +95,10 @@ python scripts/weekly_summary.py  # preview this week's booked-class digest
    - `EGYM_USERNAME`, `EGYM_PASSWORD` — your egym login
    - `PRIVATE_REPO_TOKEN` *(optional)* — PAT for reading `pauses.yml` from the private repo
    - `NOTIFY_EMAIL`, `GMAIL_APP_PASSWORD` *(optional)* — enables the weekly summary email
+   - `NOTIFY_SMS_EMAIL` *(optional, needs the two above)* — a carrier email-to-SMS gateway
+     address (e.g. `5551234567@vtext.com` for Verizon, `@txt.att.net` for AT&T,
+     `@tmomail.net` for T-Mobile) to text on every successful booking. Free — no SMS API
+     or paid service required, it's just an email sent to your phone's carrier gateway.
 3. The booking workflow runs on the generated cron schedule. You can also trigger it
    manually from the **Actions** tab → *Book YMCA classes* → *Run workflow*:
    - **Class key**: book a specific class immediately (blank = schedule decides)

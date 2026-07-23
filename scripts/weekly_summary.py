@@ -8,11 +8,8 @@ an HTML email via Gmail SMTP, and writes the same table to $GITHUB_STEP_SUMMARY.
 from __future__ import annotations
 
 import os
-import smtplib
 import sys
 from datetime import date, datetime, timedelta, timezone
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright
@@ -23,6 +20,7 @@ from src import fisikal              # noqa: E402
 from src import pauses              # noqa: E402
 from src.login import login         # noqa: E402
 from src.main import load_config    # noqa: E402
+from src.notify_email import send_email  # noqa: E402
 
 _BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
 
@@ -306,19 +304,6 @@ def _wrap_html(*sections: str) -> str:
     divider = "<hr style='border:none;border-top:2px solid #ddd;margin:28px 0'>"
     body = divider.join(sections)
     return f"<!DOCTYPE html><html><body style='margin:20px'>{body}</body></html>"
-
-
-def send_email(to: str, password: str, subject: str, html: str, text: str) -> None:
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = to
-    msg["To"] = to
-    msg.attach(MIMEText(text, "plain"))
-    msg.attach(MIMEText(html, "html"))
-    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-        smtp.starttls()
-        smtp.login(to, password)
-        smtp.send_message(msg)
 
 
 def run() -> int:

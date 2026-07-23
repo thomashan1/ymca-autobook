@@ -44,6 +44,7 @@ changes so it doesn't go stale.
 ## Summary emails
 - **Mon / Wed / Fri ~12:07 AM PT** (early + off-peak to dodge GitHub's cron-queue delay).
 - Mon = this week; Wed & Fri = this + next week. Date format M/D. Away days blocked out in the calendar.
+- **Standard schedule email — Sun ~6pm PT** (`scripts/standard_schedule_email.py`, `.github/workflows/standard-schedule-email.yml`). A separate, simpler email: the recurring `classes.yml` lineup as a generic Mon–Fri calendar grid, not tied to any specific week's dates or live booking status. No live Fisikal login needed (reads `classes.yml` directly); pulls each class's end time from the cached `schedule_snapshot.json` in the private repo for the grid, falling back to a 60-min default if a class isn't found there.
 
 ## Notifications
 - Native **GitHub iOS push, failures-only**. Don't add per-run success pings unless asked.

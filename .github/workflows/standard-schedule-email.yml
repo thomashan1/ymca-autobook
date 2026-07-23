@@ -1,0 +1,26 @@
+name: Standard schedule email
+
+on:
+  schedule:
+    - cron: "0 1 * * 1"  # ~Sun 18:00 PT (approx; single cron, no DST split — low-stakes reminder)
+  workflow_dispatch: {}
+
+concurrency:
+  group: standard-schedule-email-${{ github.run_id }}
+
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Send standard schedule email
+        env:
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: python scripts/standard_schedule_email.py

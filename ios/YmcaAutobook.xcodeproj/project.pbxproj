@@ -26,6 +26,7 @@
 		A0710000000000000000FEF2 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0710000000000000000FEF1 /* AuthStore.swift */; };
 		5E770000000000000000FEF2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E770000000000000000FEF1 /* SettingsView.swift */; };
 		5A140000000000000000FEF2 /* SnapshotRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A140000000000000000FEF1 /* SnapshotRepository.swift */; };
+		B00C0000000000000000FEF2 /* BookingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00C0000000000000000FEF1 /* BookingsRepository.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 		A0710000000000000000FEF1 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
 		5E770000000000000000FEF1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		5A140000000000000000FEF1 /* SnapshotRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotRepository.swift; sourceTree = "<group>"; };
+		B00C0000000000000000FEF1 /* BookingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingsRepository.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -126,6 +128,7 @@
 				44F49099D45042B120861A85 /* KeychainStore.swift */,
 				60E202AAF0738F2235A4BADB /* PausesRepository.swift */,
 				5A140000000000000000FEF1 /* SnapshotRepository.swift */,
+				B00C0000000000000000FEF1 /* BookingsRepository.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -219,6 +222,7 @@
 				FE64799E77614F4CCE9BFB6E /* Pause.swift in Sources */,
 				2CD77DA8959112C6D3A62EFF /* PausesRepository.swift in Sources */,
 				5A140000000000000000FEF2 /* SnapshotRepository.swift in Sources */,
+				B00C0000000000000000FEF2 /* BookingsRepository.swift in Sources */,
 				A0710000000000000000FEF2 /* AuthStore.swift in Sources */,
 				5E770000000000000000FEF2 /* SettingsView.swift in Sources */,
 				4F94197A994835B57E135180 /* RootView.swift in Sources */,

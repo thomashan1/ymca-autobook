@@ -5,6 +5,7 @@ struct RootView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
     @EnvironmentObject var snapshot: SnapshotRepository
+    @EnvironmentObject var bookings: BookingsRepository
 
     var body: some View {
         TabView {
@@ -24,6 +25,7 @@ struct RootView: View {
             await classes.load()
             await pauses.load()
             await snapshot.load()
+            await bookings.load()
         }
         .sheet(isPresented: .constant(!auth.hasToken)) {
             SettingsView(onboarding: true)

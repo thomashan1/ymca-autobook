@@ -9,6 +9,7 @@ struct WeekView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
     @EnvironmentObject var snapshot: SnapshotRepository
+    @EnvironmentObject var bookings: BookingsRepository
 
     private static let daysAhead = 14
     @State private var showZoom = false
@@ -108,6 +109,7 @@ struct WeekView: View {
             ForEach(day.items) { c in
                 ClassRow(gymClass: c,
                          away: pauses.isAway(day.date, classKey: c.key),
+                         booked: bookings.isBooked(name: c.name, on: day.date, start: c.start),
                          endTime: snapshot.endTime(for: c),
                          minutes: snapshot.minutes(for: c))
             }
@@ -145,6 +147,7 @@ enum CalendarHelper {
 private struct TwoWeekGrid: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var bookings: BookingsRepository
 
     var cellFont: CGFloat
     var labelFont: CGFloat
@@ -189,6 +192,7 @@ private struct TwoWeekGrid: View {
             ForEach(items) { c in
                 GridCell(gymClass: c,
                          away: pauses.isAway(date, classKey: c.key),
+                         booked: bookings.isBooked(name: c.name, on: date, start: c.start),
                          past: CalendarHelper.startDate(c.start, on: date).map { $0 < Date() } ?? false,
                          font: cellFont)
             }
@@ -200,23 +204,36 @@ private struct TwoWeekGrid: View {
 private struct GridCell: View {
     let gymClass: GymClass
     let away: Bool
+    let booked: Bool
     let past: Bool
     let font: CGFloat
 
+    private var fill: Color {
+        if away { return Theme.away.opacity(0.12) }
+        return booked ? Theme.booked.opacity(0.18) : Theme.away.opacity(0.10)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(gymClass.start).font(.system(size: font, weight: .bold)).monospacedDigit()
+            HStack(spacing: 2) {
+                Text(gymClass.start).font(.system(size: font, weight: .bold)).monospacedDigit()
+                if booked && !away {
+                    Image(systemName: "checkmark").font(.system(size: font - 1, weight: .heavy))
+                        .foregroundStyle(Theme.booked)
+                }
+            }
             Text(gymClass.name).font(.system(size: font)).lineLimit(3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(5)
-        .background(
-            (away ? Theme.away.opacity(0.12) : Theme.color(for: gymClass.branch).opacity(0.14)),
-            in: RoundedRectangle(cornerRadius: 7)
+        .background(fill, in: RoundedRectangle(cornerRadius: 7))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .strokeBorder(booked && !away ? Theme.booked.opacity(0.5) : .clear, lineWidth: 1)
         )
         .foregroundStyle(away ? Theme.away : .primary)
         .strikethrough(away, color: Theme.away)
-        .opacity(past ? 0.35 : (away ? 0.6 : 1))
+        .opacity(past ? 0.4 : (away ? 0.6 : 1))
     }
 }
 
@@ -257,6 +274,7 @@ private struct CalendarZoomSheet: View {
 private struct ClassRow: View {
     let gymClass: GymClass
     let away: Bool
+    let booked: Bool
     let endTime: String?
     let minutes: Int?
 
@@ -268,11 +286,18 @@ private struct ClassRow: View {
         if let end = endTime { return "\(gymClass.start)–\(end)" }
         return gymClass.start
     }
+    private var icon: String {
+        if away { return "moon.zzz.fill" }
+        return booked ? "checkmark.circle.fill" : "circle"
+    }
+    private var iconColor: Color {
+        if away { return Theme.away }
+        return booked ? Theme.booked : Theme.away
+    }
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: away ? "moon.zzz.fill" : "checkmark.circle.fill")
-                .foregroundStyle(away ? Theme.away : Theme.booked)
+            Image(systemName: icon).foregroundStyle(iconColor)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body.weight(.medium))
@@ -282,6 +307,8 @@ private struct ClassRow: View {
                     BranchChip(branch: gymClass.branch)
                     if gymClass.isTrial { badge("Trial", Theme.queued) }
                     if away { badge("Skipped", Theme.away) }
+                    else if booked { badge("Booked", Theme.booked) }
+                    else { badge("Not booked", Theme.away) }
                 }
             }
             Spacer()

@@ -49,14 +49,60 @@ struct GitHubClient {
     }
 
     /// Commit new contents for a file. `sha` is the previous blob sha.
-    func writeFile(repo: String, path: String, text: String, message: String, sha: String) async throws {
+    /// Pass `branch` to commit somewhere other than the default branch.
+    func writeFile(repo: String, path: String, text: String, message: String,
+                   sha: String, branch: String? = nil) async throws {
         let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/contents/\(path)")
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "message": message,
             "content": Data(text.utf8).base64EncodedString(),
             "sha": sha,
         ]
+        if let branch { body["branch"] = branch }
         _ = try await send(url, method: "PUT", json: body)
+    }
+
+    // MARK: Branches & pull requests (for editing protected main via PR)
+
+    private struct Ref: Decodable { let object: Obj; struct Obj: Decodable { let sha: String } }
+
+    /// Current head commit sha of a branch.
+    func headSha(repo: String = Config.publicRepo, branch: String = "main") async throws -> String {
+        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/git/ref/heads/\(branch)")
+        let ref: Ref = try await get(url)
+        return ref.object.sha
+    }
+
+    /// Create a new branch at `fromSha`.
+    func createBranch(_ name: String, fromSha: String, repo: String = Config.publicRepo) async throws {
+        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/git/refs")
+        _ = try await send(url, method: "POST", json: ["ref": "refs/heads/\(name)", "sha": fromSha])
+    }
+
+    struct PullRequest: Decodable { let number: Int; let html_url: String; let node_id: String }
+
+    func createPR(title: String, head: String, base: String = "main",
+                  body: String, repo: String = Config.publicRepo) async throws -> PullRequest {
+        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/pulls")
+        let data = try await send(url, method: "POST",
+                                  json: ["title": title, "head": head, "base": base, "body": body])
+        guard let pr = try? JSONDecoder().decode(PullRequest.self, from: data) else { throw GitHubError.decode }
+        return pr
+    }
+
+    /// Merge a PR immediately (works when no required checks block it).
+    func mergePR(number: Int, repo: String = Config.publicRepo) async throws {
+        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/pulls/\(number)/merge")
+        _ = try await send(url, method: "PUT", json: ["merge_method": "squash"])
+    }
+
+    /// Best-effort: enable auto-merge so the PR lands once checks pass.
+    /// Requires auto-merge to be enabled in the repo settings.
+    func enableAutoMerge(prNodeId: String) async throws {
+        let url = baseURL.appending(path: "/graphql")
+        let mutation = "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:SQUASH}){clientMutationId}}"
+        _ = try await send(url, method: "POST",
+                           json: ["query": mutation, "variables": ["id": prNodeId]])
     }
 
     // MARK: Actions API

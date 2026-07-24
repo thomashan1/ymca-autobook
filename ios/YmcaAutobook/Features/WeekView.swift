@@ -51,15 +51,10 @@ struct WeekView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 10, bottom: 8, trailing: 10))
                 }
 
-                let thisWeek = days.filter { weekIndex(of: $0.date) == 0 }
-                let nextWeek = days.filter { weekIndex(of: $0.date) >= 1 }
-                if !thisWeek.isEmpty {
-                    weekDivider("This week")
-                    ForEach(thisWeek) { daySection($0) }
-                }
-                if !nextWeek.isEmpty {
-                    weekDivider("Next week")
-                    ForEach(nextWeek) { daySection($0) }
+                let groups = Dictionary(grouping: days) { weekIndex(of: $0.date) }
+                ForEach(groups.keys.sorted(), id: \.self) { wi in
+                    weekDivider(weekLabel(wi))
+                    ForEach(groups[wi] ?? []) { daySection($0) }
                 }
                 if days.isEmpty {
                     Text("No upcoming classes in the next two weeks.")
@@ -83,6 +78,19 @@ struct WeekView: View {
         guard let thisMon = cal.dateInterval(of: .weekOfYear, for: Date())?.start else { return 0 }
         let days = cal.dateComponents([.day], from: thisMon, to: cal.startOfDay(for: date)).day ?? 0
         return max(0, days / 7)
+    }
+
+    private func weekLabel(_ wi: Int) -> String {
+        switch wi {
+        case 0: return "This week"
+        case 1: return "Next week"
+        default:
+            if let thisMon = cal.dateInterval(of: .weekOfYear, for: Date())?.start,
+               let mon = cal.date(byAdding: .day, value: wi * 7, to: thisMon) {
+                return "Week of " + mon.formatted(.dateTime.month().day())
+            }
+            return "Later"
+        }
     }
 
     private func weekDivider(_ title: String) -> some View {

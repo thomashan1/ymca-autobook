@@ -10,6 +10,13 @@ struct AwayView: View {
         NavigationStack {
             List {
                 Section {
+                    VStack(spacing: 16) {
+                        MonthGrid(monthOffset: 0) { pauses.isPaused($0) }
+                        MonthGrid(monthOffset: 1) { pauses.isPaused($0) }
+                    }
+                    .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
+                }
+                Section {
                     if pauses.pauses.isEmpty {
                         Text("No away dates set.").foregroundStyle(.secondary)
                     }
@@ -28,6 +35,70 @@ struct AwayView: View {
             }
             .refreshable { await pauses.load() }
             .sheet(isPresented: $showAdd) { AddPauseSheet() }
+        }
+    }
+}
+
+/// A compact month calendar with away days filled in; `monthOffset` 0 = current
+/// month, 1 = next month.
+private struct MonthGrid: View {
+    let monthOffset: Int
+    let isAway: (Date) -> Bool
+
+    private var cal: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = Config.timeZone
+        c.firstWeekday = 2 // Monday
+        return c
+    }
+
+    private var monthStart: Date {
+        let base = cal.date(byAdding: .month, value: monthOffset, to: Date()) ?? Date()
+        return cal.date(from: cal.dateComponents([.year, .month], from: base)) ?? base
+    }
+
+    /// Leading blanks (Mon-based) + each day of the month.
+    private var cells: [Date?] {
+        guard let range = cal.range(of: .day, in: .month, for: monthStart) else { return [] }
+        let firstWeekday = cal.component(.weekday, from: monthStart) // 1=Sun..7=Sat
+        let lead = (firstWeekday + 5) % 7 // Mon->0 … Sun->6
+        var out: [Date?] = Array(repeating: nil, count: lead)
+        for d in range {
+            out.append(cal.date(byAdding: .day, value: d - 1, to: monthStart))
+        }
+        return out
+    }
+
+    private let cols = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(monthStart.formatted(.dateTime.month(.wide).year()))
+                .font(.subheadline.weight(.bold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            LazyVGrid(columns: cols, spacing: 4) {
+                ForEach(["M", "T", "W", "T", "F", "S", "S"], id: \.self) { d in
+                    Text(d).font(.caption2.weight(.bold)).foregroundStyle(.secondary)
+                }
+                ForEach(Array(cells.enumerated()), id: \.offset) { _, date in
+                    if let date {
+                        let away = isAway(date)
+                        let today = cal.isDateInToday(date)
+                        Text("\(cal.component(.day, from: date))")
+                            .font(.caption.weight(away ? .bold : .regular))
+                            .frame(maxWidth: .infinity, minHeight: 30)
+                            .background(away ? Theme.weekDivider : .clear,
+                                        in: RoundedRectangle(cornerRadius: 7))
+                            .foregroundStyle(away ? .white : .primary)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 7)
+                                    .strokeBorder(today ? Theme.accent : .clear, lineWidth: 2)
+                            )
+                    } else {
+                        Color.clear.frame(minHeight: 30)
+                    }
+                }
+            }
         }
     }
 }

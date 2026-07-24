@@ -47,6 +47,12 @@ final class PausesRepository: ObservableObject {
         pauses.contains { $0.contains(day) && !$0.except.contains(classKey) }
     }
 
+    /// True if the day falls in any pause (ignoring per-class `except`) — for the
+    /// Away calendar's day highlighting.
+    func isPaused(_ day: Date) -> Bool {
+        pauses.contains { $0.contains(day) }
+    }
+
     // MARK: Minimal YAML for pauses: [{start:, end:, except: [...]}]
 
     static func parse(_ yaml: String) -> [Pause] {

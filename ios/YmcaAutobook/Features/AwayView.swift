@@ -5,6 +5,8 @@ import SwiftUI
 struct AwayView: View {
     @EnvironmentObject var pauses: PausesRepository
     @State private var showAdd = false
+    @State private var busy = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -20,21 +22,49 @@ struct AwayView: View {
                     if pauses.pauses.isEmpty {
                         Text("No away dates set.").foregroundStyle(.secondary)
                     }
-                    ForEach(pauses.pauses) { PauseRow(pause: $0) }
+                    ForEach(pauses.pauses) { pause in
+                        PauseRow(pause: pause)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { remove(pause) } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                    }
                 } header: {
                     Text("Upcoming pauses")
                 } footer: {
-                    Text("Synced to ymca-private/pauses.yml")
+                    Text("Synced to ymca-private/pauses.yml — swipe to delete.")
                 }
             }
             .navigationTitle("Away Dates")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showAdd = true } label: { Image(systemName: "plus") }
+                        .disabled(busy)
                 }
             }
+            .overlay { if busy { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
             .refreshable { await pauses.load() }
-            .sheet(isPresented: $showAdd) { AddPauseSheet() }
+            .sheet(isPresented: $showAdd) { AddPauseSheet(onSave: add) }
+            .alert("Away dates", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+                Button("OK") { errorMessage = nil }
+            } message: { Text(errorMessage ?? "") }
+        }
+    }
+
+    private func add(start: Date, end: Date, note: String?) {
+        busy = true
+        Task {
+            if let err = await pauses.add(start: start, end: end, note: note) { errorMessage = err }
+            busy = false
+        }
+    }
+
+    private func remove(_ pause: Pause) {
+        busy = true
+        Task {
+            if let err = await pauses.delete(pause) { errorMessage = err }
+            busy = false
         }
     }
 }
@@ -125,23 +155,34 @@ private struct PauseRow: View {
     }
 }
 
-/// Placeholder add-range editor; commits to pauses.yml via PausesRepository
-/// in a follow-up.
+/// Add-range editor. Commits to pauses.yml via the `onSave` callback.
 private struct AddPauseSheet: View {
+    let onSave: (_ start: Date, _ end: Date, _ note: String?) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var start = Date()
     @State private var end = Date()
+    @State private var note = ""
+
+    private var validRange: Bool { end >= Calendar.current.startOfDay(for: start) }
 
     var body: some View {
         NavigationStack {
             Form {
                 DatePicker("Start", selection: $start, displayedComponents: .date)
-                DatePicker("End", selection: $end, displayedComponents: .date)
-            }
+                DatePicker("End", selection: $end, in: start..., displayedComponents: .date)
+                TextField("Note (optional)", text: $note)
+            } // Form
             .navigationTitle("Add pause")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave(start, end, note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : note)
+                        dismiss()
+                    }
+                    .disabled(!validRange)
+                }
             }
         }
     }

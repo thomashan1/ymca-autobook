@@ -53,6 +53,48 @@ final class PausesRepository: ObservableObject {
         pauses.contains { $0.contains(day) }
     }
 
+    // MARK: Write-back (pauses.yml is in the private repo — direct commit, no PR)
+
+    func add(start: Date, end: Date, except: [String] = [], note: String? = nil) async -> String? {
+        var next = pauses
+        next.append(Pause(start: start, end: end, except: except, note: note))
+        return await write(next, message: "Add pause \(Self.df.string(from: start))–\(Self.df.string(from: end)) via iOS app")
+    }
+
+    func delete(_ pause: Pause) async -> String? {
+        let next = pauses.filter { $0.id != pause.id }
+        return await write(next, message: "Remove pause \(Self.df.string(from: pause.start))–\(Self.df.string(from: pause.end)) via iOS app")
+    }
+
+    /// Commit the given set to pauses.yml. Returns nil on success, else a message.
+    private func write(_ next: [Pause], message: String) async -> String? {
+        let sorted = next.sorted { $0.start < $1.start }
+        if SampleMode.active { pauses = sorted; return nil }
+        guard let sha else { return "pauses.yml hasn't loaded yet — pull to refresh and retry." }
+        do {
+            try await client.writeFile(repo: Config.privateRepo, path: Config.pausesPath,
+                                       text: Self.serialize(sorted), message: message, sha: sha)
+            await load()   // refresh parsed list + new blob sha
+            return nil
+        } catch {
+            return String(describing: error)
+        }
+    }
+
+    /// Emit pauses.yml in the flow style the Python engine + parser read, keeping
+    /// each entry's `except` list and inline `# note`.
+    static func serialize(_ pauses: [Pause]) -> String {
+        var lines = ["pauses:"]
+        for p in pauses.sorted(by: { $0.start < $1.start }) {
+            var inner = "start: \(df.string(from: p.start)), end: \(df.string(from: p.end))"
+            if !p.except.isEmpty { inner += ", except: [\(p.except.joined(separator: ", "))]" }
+            var line = "  - {\(inner)}"
+            if let note = p.note, !note.isEmpty { line += "  # \(note)" }
+            lines.append(line)
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
     // MARK: Minimal YAML for pauses: [{start:, end:, except: [...]}]
 
     static func parse(_ yaml: String) -> [Pause] {

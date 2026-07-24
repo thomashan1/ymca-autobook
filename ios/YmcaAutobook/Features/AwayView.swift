@@ -87,19 +87,19 @@ private struct MonthGrid: View {
         return cal.date(from: cal.dateComponents([.year, .month], from: base)) ?? base
     }
 
-    /// Leading blanks (Mon-based) + each day of the month.
+    /// Weekdays only (Mon–Fri): leading blanks to the first weekday's column,
+    /// then each Mon–Fri day of the month (weekend days omitted).
     private var cells: [Date?] {
         guard let range = cal.range(of: .day, in: .month, for: monthStart) else { return [] }
-        let firstWeekday = cal.component(.weekday, from: monthStart) // 1=Sun..7=Sat
-        let lead = (firstWeekday + 5) % 7 // Mon->0 … Sun->6
-        var out: [Date?] = Array(repeating: nil, count: lead)
-        for d in range {
-            out.append(cal.date(byAdding: .day, value: d - 1, to: monthStart))
-        }
-        return out
+        let weekdays = range
+            .compactMap { cal.date(byAdding: .day, value: $0 - 1, to: monthStart) }
+            .filter { (2...6).contains(cal.component(.weekday, from: $0)) } // Mon(2)…Fri(6)
+        guard let first = weekdays.first else { return [] }
+        let lead = (cal.component(.weekday, from: first) + 5) % 7 // Mon->0 … Fri->4
+        return Array(repeating: nil, count: lead) + weekdays.map(Optional.init)
     }
 
-    private let cols = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+    private let cols = Array(repeating: GridItem(.flexible(), spacing: 4), count: 5)
 
     var body: some View {
         VStack(spacing: 6) {
@@ -107,29 +107,37 @@ private struct MonthGrid: View {
                 .font(.subheadline.weight(.bold))
                 .frame(maxWidth: .infinity, alignment: .leading)
             LazyVGrid(columns: cols, spacing: 4) {
-                ForEach(["M", "T", "W", "T", "F", "S", "S"], id: \.self) { d in
+                ForEach(Array(["M", "T", "W", "T", "F"].enumerated()), id: \.offset) { _, d in
                     Text(d).font(.caption2.weight(.bold)).foregroundStyle(.secondary)
                 }
                 ForEach(Array(cells.enumerated()), id: \.offset) { _, date in
                     if let date {
-                        let away = isAway(date)
-                        let today = cal.isDateInToday(date)
-                        Text("\(cal.component(.day, from: date))")
-                            .font(.caption.weight(away ? .bold : .regular))
-                            .frame(maxWidth: .infinity, minHeight: 30)
-                            .background(away ? Theme.weekDivider : .clear,
-                                        in: RoundedRectangle(cornerRadius: 7))
-                            .foregroundStyle(away ? .white : .primary)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 7)
-                                    .strokeBorder(today ? Theme.accent : .clear, lineWidth: 2)
-                            )
+                        dayCell(date)
                     } else {
-                        Color.clear.frame(minHeight: 30)
+                        Color.clear.frame(minHeight: 34)
                     }
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func dayCell(_ date: Date) -> some View {
+        let away = isAway(date)
+        let today = cal.isDateInToday(date)
+        ZStack {
+            RoundedRectangle(cornerRadius: 7)
+                .fill(away ? Theme.away.opacity(0.45) : Color.clear)
+            Text("\(cal.component(.day, from: date))")
+                .font(.caption.weight(away ? .bold : .regular))
+                .strikethrough(away, color: .white)
+                .foregroundStyle(away ? .white : .primary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 34)
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .strokeBorder(today ? Theme.accent : .clear, lineWidth: 2)
+        )
     }
 }
 

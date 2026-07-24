@@ -52,7 +52,7 @@ enum SampleData {
     ]
 
     static let awayNotes: [(offsetFromThisMon: Int, days: Int, note: String, except: [String])] = [
-        (11, 3, "Away Mon–Wed", []),
-        (4, 1, "12pm ceremony; keep morning class", ["cycle-sculpt-thu"]),
+        (7, 3, "Away Mon–Wed", []),
+        (10, 1, "Half day — keep morning class", ["cycle-sculpt-thu"]),
     ]
 }

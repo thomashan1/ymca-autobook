@@ -8,6 +8,26 @@ struct GitHubClient {
 
     enum GitHubError: Error { case notAuthenticated, http(Int, String), decode }
 
+    // MARK: Auth
+
+    /// Verify the stored token by hitting an endpoint that only needs a valid
+    /// credential. Returns nil on success, or a human-readable reason.
+    func validateToken() async -> String? {
+        let url = baseURL.appending(path: "/user")
+        do {
+            _ = try await send(url, method: "GET", json: nil)
+            return nil
+        } catch GitHubError.notAuthenticated {
+            return "No token stored."
+        } catch GitHubError.http(let code, _) where code == 401 {
+            return "GitHub rejected this token (401 Bad credentials). Paste the full token (it starts with github_pat_ and is long) and make sure it hasn't expired."
+        } catch GitHubError.http(let code, _) {
+            return "GitHub returned \(code). Check the token's repository access and permissions."
+        } catch {
+            return "Couldn't reach GitHub: \(error.localizedDescription)"
+        }
+    }
+
     // MARK: Contents API
 
     struct FileContents: Decodable {

@@ -9,9 +9,11 @@ struct ClassesView: View {
 
     private let weekdays: [Weekday] = [.mon, .tue, .wed, .thu, .fri]
 
+    @EnvironmentObject var bookings: BookingsRepository
     @State private var deleteTarget: GymClass?
     @State private var deleting = false
     @State private var resultMessage: String?
+    @State private var detail: ClassDetail?
 
     private func items(on day: Weekday) -> [GymClass] {
         classes.classes.filter { $0.weekday == day }.sorted { $0.start < $1.start }
@@ -21,9 +23,10 @@ struct ClassesView: View {
         NavigationStack {
             List {
                 Section {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "info.circle.fill").foregroundStyle(Theme.accent)
-                        Text("Swipe a class left to remove it from the auto-book schedule. It's deleted from classes.yml via a pull request that merges automatically.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Edits here change classes.yml", systemImage: "doc.text.fill")
+                            .font(.footnote.weight(.semibold)).foregroundStyle(Theme.accent)
+                        Text("This is your recurring auto-book schedule, stored in **classes.yml** in the public repo **thomashan1/ymca-autobook**. Swiping a class to remove it opens a pull request against that file (main is protected) which merges automatically. Away dates live separately in **pauses.yml** (private repo) — edit those on the Away tab.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
@@ -32,16 +35,21 @@ struct ClassesView: View {
                     if !dayItems.isEmpty {
                         Section(day.fullName) {
                             ForEach(dayItems) { c in
-                                ClassInfoRow(gymClass: c,
-                                             endTime: snapshot.endTime(for: c),
-                                             minutes: snapshot.minutes(for: c))
-                                    .swipeActions(edge: .trailing) {
-                                        Button(role: .destructive) {
-                                            deleteTarget = c
-                                        } label: {
-                                            Label("Remove", systemImage: "trash")
-                                        }
+                                Button {
+                                    detail = classDetail(c)
+                                } label: {
+                                    ClassInfoRow(gymClass: c,
+                                                 endTime: snapshot.endTime(for: c),
+                                                 minutes: snapshot.minutes(for: c))
+                                }
+                                .buttonStyle(.plain)
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        deleteTarget = c
+                                    } label: {
+                                        Label("Remove", systemImage: "trash")
                                     }
+                                }
                             }
                         }
                     }
@@ -67,7 +75,16 @@ struct ClassesView: View {
             } message: {
                 Text(resultMessage ?? "")
             }
+            .sheet(item: $detail) { ClassDetailSheet(detail: $0) }
         }
+    }
+
+    private func classDetail(_ c: GymClass) -> ClassDetail {
+        let time = snapshot.endTime(for: c).map { "\(c.start)–\($0)" } ?? c.start
+        return ClassDetail(
+            name: c.name, whenLabel: "Every \(c.weekday.fullName)", time: time,
+            branch: c.branch, booked: false, room: nil, instructor: nil,
+            isTrial: c.isTrial, showStatus: false)
     }
 
     private func remove(_ c: GymClass) {

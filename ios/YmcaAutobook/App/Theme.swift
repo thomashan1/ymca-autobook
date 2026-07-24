@@ -10,6 +10,7 @@ enum Theme {
     static let booked = Color.green
     static let queued = Color.orange
     static let away = Color.secondary
+    static let weekDivider = Color(red: 0.13, green: 0.45, blue: 0.82)  // blue week separators
 
     static func color(for branch: Branch) -> Color {
         branch == .southwest ? southwest : northwest

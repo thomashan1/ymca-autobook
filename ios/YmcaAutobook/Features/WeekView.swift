@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// Forward-looking schedule. A two-week calendar grid sits on top (tap to open a
-/// zoomable full-screen view); below it, a dated agenda grouped into This week /
-/// Next week with prominent dividers. Past classes are hidden from the agenda
-/// and dimmed in the grid; pause days are marked skipped. End times come from
-/// the snapshot.
+/// Forward-looking schedule merging the recurring classes.yml plan with real
+/// bookings (bookings.json) — so actual reservations always appear, even
+/// one-offs not in classes.yml. A two-week calendar grid (tap to zoom) sits on
+/// top; below, a dated agenda grouped by week with blue dividers. Tap any class
+/// for a detail popup. Past classes are hidden from the agenda, dimmed in the
+/// grid; pause days marked skipped.
 struct WeekView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
@@ -13,12 +14,13 @@ struct WeekView: View {
 
     private static let daysAhead = 14
     @State private var showZoom = false
+    @State private var detail: ClassDetail?
 
     private var cal: Calendar { CalendarHelper.pacific }
 
     private struct Day: Identifiable {
         let date: Date
-        let items: [GymClass]
+        let items: [Occurrence]
         var id: TimeInterval { date.timeIntervalSince1970 }
     }
 
@@ -29,10 +31,9 @@ struct WeekView: View {
         for offset in 0..<Self.daysAhead {
             guard let date = cal.date(byAdding: .day, value: offset, to: today),
                   let wd = CalendarHelper.weekday(of: date) else { continue }
-            let items = classes.classes
-                .filter { $0.weekday == wd }
+            let items = Occurrence.build(date: date, weekday: wd,
+                                         classes: classes, bookings: bookings, snapshot: snapshot)
                 .filter { CalendarHelper.startDate($0.start, on: date).map { $0 >= now } ?? true }
-                .sorted { $0.start < $1.start }
             if !items.isEmpty { out.append(Day(date: date, items: items)) }
         }
         return out
@@ -46,7 +47,7 @@ struct WeekView: View {
                         .contentShape(Rectangle())
                         .onTapGesture { showZoom = true }
                         .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 6, trailing: 10))
-                    Text("Tap the calendar to zoom")
+                    Text("Tap the calendar to zoom · tap a class for details")
                         .font(.caption2).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .listRowInsets(EdgeInsets(top: 0, leading: 10, bottom: 8, trailing: 10))
@@ -65,11 +66,11 @@ struct WeekView: View {
             .navigationTitle("This & Next Week")
             .navigationBarTitleDisplayMode(.inline)
             .refreshable {
-                await classes.load()
-                await pauses.load()
-                await snapshot.load()
+                await classes.load(); await pauses.load()
+                await snapshot.load(); await bookings.load()
             }
             .fullScreenCover(isPresented: $showZoom) { CalendarZoomSheet() }
+            .sheet(item: $detail) { ClassDetailSheet(detail: $0) }
         }
     }
 
@@ -98,20 +99,22 @@ struct WeekView: View {
         Section {
             Text(title.uppercased())
                 .font(.subheadline.weight(.heavy))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(Theme.weekDivider)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .listRowBackground(Theme.accent.opacity(0.14))
+                .listRowBackground(Theme.weekDivider.opacity(0.14))
         }
     }
 
     private func daySection(_ day: Day) -> some View {
         Section {
-            ForEach(day.items) { c in
-                ClassRow(gymClass: c,
-                         away: pauses.isAway(day.date, classKey: c.key),
-                         booked: bookings.isBooked(name: c.name, on: day.date, start: c.start),
-                         endTime: snapshot.endTime(for: c),
-                         minutes: snapshot.minutes(for: c))
+            ForEach(day.items) { occ in
+                let away = occ.classKey.map { pauses.isAway(day.date, classKey: $0) } ?? false
+                Button {
+                    detail = occ.detail(on: day.date)
+                } label: {
+                    OccurrenceRow(occ: occ, away: away)
+                }
+                .buttonStyle(.plain)
             }
         } header: {
             Text(day.date.formatted(.dateTime.weekday(.wide).month().day()))
@@ -142,11 +145,65 @@ enum CalendarHelper {
     }
 }
 
-// MARK: - Two-week calendar grid (reused inline + zoomed)
+// MARK: - A class occurrence on a date (recurring plan ∪ real booking)
+
+struct Occurrence: Identifiable {
+    let name: String
+    let start: String
+    let end: String?
+    let branch: Branch
+    let classKey: String?     // classes.yml key; nil when this is a booking-only occurrence
+    let booked: Bool
+    let room: String?
+    let instructor: String?
+    let isTrial: Bool
+
+    var id: String { name + "|" + start }
+
+    /// Merge the recurring schedule for `weekday` with real bookings on `date`.
+    @MainActor
+    static func build(date: Date, weekday: Weekday,
+                      classes: ClassesRepository,
+                      bookings: BookingsRepository,
+                      snapshot: SnapshotRepository) -> [Occurrence] {
+        var map: [String: Occurrence] = [:]
+        for c in classes.classes where c.weekday == weekday {
+            map["\(c.name)|\(c.start)"] = Occurrence(
+                name: c.name, start: c.start, end: snapshot.endTime(for: c),
+                branch: c.branch, classKey: c.key, booked: false,
+                room: nil, instructor: nil, isTrial: c.isTrial)
+        }
+        for b in bookings.bookings(on: date) {
+            let k = "\(b.name)|\(b.start)"
+            if let ex = map[k] {
+                map[k] = Occurrence(name: ex.name, start: ex.start, end: b.end ?? ex.end,
+                                    branch: ex.branch, classKey: ex.classKey, booked: true,
+                                    room: b.room, instructor: b.instructor, isTrial: ex.isTrial)
+            } else {
+                map[k] = Occurrence(name: b.name, start: b.start, end: b.end,
+                                    branch: b.branch, classKey: nil, booked: true,
+                                    room: b.room, instructor: b.instructor, isTrial: false)
+            }
+        }
+        return map.values.sorted { $0.start < $1.start }
+    }
+
+    func detail(on date: Date) -> ClassDetail {
+        let time = end.map { "\(start)–\($0)" } ?? start
+        return ClassDetail(
+            name: name,
+            whenLabel: date.formatted(.dateTime.weekday(.wide).month().day()),
+            time: time, branch: branch, booked: booked,
+            room: room, instructor: instructor, isTrial: isTrial)
+    }
+}
+
+// MARK: - Two-week calendar grid
 
 private struct TwoWeekGrid: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
 
     var cellFont: CGFloat
@@ -163,7 +220,7 @@ private struct TwoWeekGrid: View {
     var body: some View {
         VStack(spacing: 12) {
             if weeks.indices.contains(0) { weekRow(weeks[0], title: "This week") }
-            Rectangle().fill(Theme.accent.opacity(0.5)).frame(height: 2)
+            Rectangle().fill(Theme.weekDivider.opacity(0.6)).frame(height: 2)
             if weeks.indices.contains(1) { weekRow(weeks[1], title: "Next week") }
         }
     }
@@ -171,7 +228,7 @@ private struct TwoWeekGrid: View {
     private func weekRow(_ week: [Date], title: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title.uppercased())
-                .font(.system(size: labelFont - 1, weight: .heavy)).foregroundStyle(Theme.accent)
+                .font(.system(size: labelFont - 1, weight: .heavy)).foregroundStyle(Theme.weekDivider)
             HStack(alignment: .top, spacing: 5) {
                 ForEach(week, id: \.self) { date in dayColumn(date) }
             }
@@ -179,8 +236,8 @@ private struct TwoWeekGrid: View {
     }
 
     private func dayColumn(_ date: Date) -> some View {
-        let items = CalendarHelper.weekday(of: date).map { w in
-            classes.classes.filter { $0.weekday == w }.sorted { $0.start < $1.start }
+        let occs = CalendarHelper.weekday(of: date).map {
+            Occurrence.build(date: date, weekday: $0, classes: classes, bookings: bookings, snapshot: snapshot)
         } ?? []
         return VStack(spacing: 4) {
             VStack(spacing: 1) {
@@ -189,11 +246,10 @@ private struct TwoWeekGrid: View {
                 Text(date.formatted(.dateTime.month(.defaultDigits).day()))
                     .font(.system(size: labelFont - 2)).foregroundStyle(.secondary)
             }
-            ForEach(items) { c in
-                GridCell(gymClass: c,
-                         away: pauses.isAway(date, classKey: c.key),
-                         booked: bookings.isBooked(name: c.name, on: date, start: c.start),
-                         past: CalendarHelper.startDate(c.start, on: date).map { $0 < Date() } ?? false,
+            ForEach(occs) { occ in
+                let away = occ.classKey.map { pauses.isAway(date, classKey: $0) } ?? false
+                GridCell(occ: occ, away: away,
+                         past: CalendarHelper.startDate(occ.start, on: date).map { $0 < Date() } ?? false,
                          font: cellFont)
             }
         }
@@ -202,34 +258,33 @@ private struct TwoWeekGrid: View {
 }
 
 private struct GridCell: View {
-    let gymClass: GymClass
+    let occ: Occurrence
     let away: Bool
-    let booked: Bool
     let past: Bool
     let font: CGFloat
 
     private var fill: Color {
         if away { return Theme.away.opacity(0.12) }
-        return booked ? Theme.booked.opacity(0.18) : Theme.away.opacity(0.10)
+        return occ.booked ? Theme.booked.opacity(0.18) : Theme.away.opacity(0.10)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 2) {
-                Text(gymClass.start).font(.system(size: font, weight: .bold)).monospacedDigit()
-                if booked && !away {
+                Text(occ.start).font(.system(size: font, weight: .bold)).monospacedDigit()
+                if occ.booked && !away {
                     Image(systemName: "checkmark").font(.system(size: font - 1, weight: .heavy))
                         .foregroundStyle(Theme.booked)
                 }
             }
-            Text(gymClass.name).font(.system(size: font)).lineLimit(3)
+            Text(occ.name).font(.system(size: font)).lineLimit(3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(5)
         .background(fill, in: RoundedRectangle(cornerRadius: 7))
         .overlay(
             RoundedRectangle(cornerRadius: 7)
-                .strokeBorder(booked && !away ? Theme.booked.opacity(0.5) : .clear, lineWidth: 1)
+                .strokeBorder(occ.booked && !away ? Theme.booked.opacity(0.5) : .clear, lineWidth: 1)
         )
         .foregroundStyle(away ? Theme.away : .primary)
         .strikethrough(away, color: Theme.away)
@@ -250,12 +305,8 @@ private struct CalendarZoomSheet: View {
                     .frame(minWidth: UIScreen.main.bounds.width - 24)
                     .padding()
                     .scaleEffect(scale, anchor: .topLeading)
-                    .frame(width: (UIScreen.main.bounds.width - 24) * scale,
-                           alignment: .topLeading)
-                    .gesture(
-                        MagnificationGesture()
-                            .onChanged { scale = min(4, max(1, $0)) }
-                    )
+                    .frame(width: (UIScreen.main.bounds.width - 24) * scale, alignment: .topLeading)
+                    .gesture(MagnificationGesture().onChanged { scale = min(4, max(1, $0)) })
             }
             .navigationTitle("Calendar")
             .navigationBarTitleDisplayMode(.inline)
@@ -271,49 +322,39 @@ private struct CalendarZoomSheet: View {
 
 // MARK: - Agenda row
 
-private struct ClassRow: View {
-    let gymClass: GymClass
+private struct OccurrenceRow: View {
+    let occ: Occurrence
     let away: Bool
-    let booked: Bool
-    let endTime: String?
-    let minutes: Int?
 
-    private var title: String {
-        if let m = minutes { return "\(gymClass.name) (\(m)m)" }
-        return gymClass.name
-    }
-    private var timeRange: String {
-        if let end = endTime { return "\(gymClass.start)–\(end)" }
-        return gymClass.start
-    }
+    private var timeRange: String { occ.end.map { "\(occ.start)–\($0)" } ?? occ.start }
     private var icon: String {
         if away { return "moon.zzz.fill" }
-        return booked ? "checkmark.circle.fill" : "circle"
+        return occ.booked ? "checkmark.circle.fill" : "circle"
     }
     private var iconColor: Color {
         if away { return Theme.away }
-        return booked ? Theme.booked : Theme.away
+        return occ.booked ? Theme.booked : Theme.away
     }
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon).foregroundStyle(iconColor)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.body.weight(.medium))
-                    .strikethrough(away, color: Theme.away)
+                Text(occ.name).font(.body.weight(.medium)).strikethrough(away, color: Theme.away)
                 HStack(spacing: 6) {
                     Text(timeRange).font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                    BranchChip(branch: gymClass.branch)
-                    if gymClass.isTrial { badge("Trial", Theme.queued) }
+                    BranchChip(branch: occ.branch)
+                    if occ.isTrial { badge("Trial", Theme.queued) }
                     if away { badge("Skipped", Theme.away) }
-                    else if booked { badge("Booked", Theme.booked) }
+                    else if occ.booked { badge("Booked", Theme.booked) }
                     else { badge("Not booked", Theme.away) }
                 }
             }
             Spacer()
+            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
         }
         .opacity(away ? 0.6 : 1)
+        .contentShape(Rectangle())
     }
 
     private func badge(_ text: String, _ color: Color) -> some View {

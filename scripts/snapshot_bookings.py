@@ -51,6 +51,8 @@ def _booking_rows(occs: list[dict], tz: ZoneInfo) -> list[dict]:
             "end":         end.strftime("%H:%M"),
             "name":        (o.get("service_title") or "").strip(),
             "location_id": o.get("location_id"),
+            "room":        (o.get("sub_location_name") or "").strip() or None,
+            "instructor":  (o.get("trainer_name") or "").strip() or None,
         })
     rows.sort(key=lambda r: (r["date"], r["start"], r["name"]))
     return rows
@@ -68,9 +70,12 @@ def run() -> int:
     if not token:
         raise SystemExit("PRIVATE_REPO_TOKEN required to write the snapshot.")
 
+    # Start at the beginning of the current week so classes already taken this
+    # week are captured (not just future ones), through two weeks ahead.
     now_local = datetime.now(tz)
-    win_start = now_local - timedelta(hours=1)
-    win_end = now_local + timedelta(days=WINDOW_DAYS)
+    this_mon = now_local.date() - timedelta(days=now_local.weekday())
+    win_start = datetime(this_mon.year, this_mon.month, this_mon.day, tzinfo=tz)
+    win_end = win_start + timedelta(days=WINDOW_DAYS + 7)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)

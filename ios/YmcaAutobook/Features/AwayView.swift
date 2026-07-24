@@ -37,9 +37,12 @@ private struct PauseRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(range).font(.body.weight(.medium))
+            if let note = pause.note {
+                Text(note).font(.caption).foregroundStyle(.secondary)
+            }
             if !pause.except.isEmpty {
-                Text("except \(pause.except.joined(separator: ", "))")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text("Still booking: \(pause.except.joined(separator: ", "))")
+                    .font(.caption2).foregroundStyle(Theme.booked)
             }
         }
     }

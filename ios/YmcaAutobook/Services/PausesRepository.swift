@@ -40,7 +40,15 @@ final class PausesRepository: ObservableObject {
     static func parse(_ yaml: String) -> [Pause] {
         var result: [Pause] = []
         for raw in yaml.components(separatedBy: .newlines) {
-            let line = raw.trimmingCharacters(in: .whitespaces)
+            // Split off any inline "# comment" (pauses.yml annotates entries) and keep it as a note.
+            var line = raw
+            var note: String?
+            if let hash = line.firstIndex(of: "#") {
+                let comment = line[line.index(after: hash)...].trimmingCharacters(in: .whitespaces)
+                if !comment.isEmpty { note = comment }
+                line = String(line[..<hash])
+            }
+            line = line.trimmingCharacters(in: .whitespaces)
             guard line.hasPrefix("- {") else { continue }
             let inner = line.dropFirst(2).trimmingCharacters(in: CharacterSet(charactersIn: "{} "))
             var start: Date?, end: Date?, except: [String] = []
@@ -61,7 +69,9 @@ final class PausesRepository: ObservableObject {
                 default: break
                 }
             }
-            if let s = start, let e = end { result.append(Pause(start: s, end: e, except: except)) }
+            if let s = start, let e = end {
+                result.append(Pause(start: s, end: e, except: except, note: note))
+            }
         }
         return result
     }

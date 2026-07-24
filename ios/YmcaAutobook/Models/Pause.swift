@@ -6,6 +6,8 @@ struct Pause: Identifiable, Codable, Hashable {
     var start: Date
     var end: Date
     var except: [String] = []
+    /// The inline "# comment" from pauses.yml, if any.
+    var note: String? = nil
 
     var id: String {
         let f = ISO8601DateFormatter()

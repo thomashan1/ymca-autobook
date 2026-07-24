@@ -32,7 +32,8 @@ No always-on backend is needed for v1.
 v1 stores a **fine-grained GitHub PAT** in the Keychain (`KeychainStore`) with:
 
 - `contents: read/write` on `thomashan1/ymca-autobook` and `thomashan1/ymca-private`
-- `actions: read` (run history) and `workflows: write` (dispatch)
+- `pull requests: read/write` (deleting a class opens an auto-merging PR)
+- `actions: read/write` (run history + dispatch) and `workflows: write`
 
 > ⚠️ A PAT baked into a TestFlight build gives every tester write access to your
 > repos. Before distributing beyond yourself, move writes behind a small

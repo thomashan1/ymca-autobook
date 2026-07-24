@@ -98,7 +98,7 @@ struct SettingsView: View {
             step(2, "Tap “Generate new token”. Name it (e.g. “YMCA Autobook app”) and set an expiration.")
             step(3, "Resource owner: \(Config.owner).")
             step(4, "Repository access → Only select repositories → choose both \(Config.publicRepo) and \(Config.privateRepo).")
-            step(5, "Permissions → Repository permissions, set: Contents = Read and write, Actions = Read and write, Workflows = Read and write.")
+            step(5, "Permissions → Repository permissions, set: Contents = Read and write, Pull requests = Read and write, Actions = Read and write, Workflows = Read and write.")
             step(6, "Generate the token, copy it, and paste it into the field above.")
         } header: {
             Text("How to create a token")

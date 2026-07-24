@@ -97,7 +97,11 @@ struct ClassesView: View {
             case .prOpened(let n, _):
                 resultMessage = "Opened PR #\(n) to remove \(c.name). It'll merge automatically once checks pass."
             case .failed(let why):
-                resultMessage = "Couldn't remove \(c.name): \(why)"
+                if why.contains("403") || why.lowercased().contains("not accessible") {
+                    resultMessage = "Couldn't remove \(c.name): your token can't open a pull request. In your GitHub token settings, add Pull requests = Read and write (see Settings → How to create a token), then try again."
+                } else {
+                    resultMessage = "Couldn't remove \(c.name): \(why)"
+                }
             }
             deleting = false
         }

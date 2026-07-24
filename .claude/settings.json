@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild *)",
+      "Bash(xcrun simctl *)",
+      "Bash(xcrun devicectl *)",
+      "Bash(xcrun xcresulttool *)",
+      "Bash(git fetch *)"
+    ]
+  }
+}

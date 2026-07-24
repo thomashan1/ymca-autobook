@@ -22,6 +22,16 @@ final class SnapshotRepository: ObservableObject {
     init(client: GitHubClient = GitHubClient()) { self.client = client }
 
     func load() async {
+        if SampleMode.active {
+            index = [:]
+            for (k, end) in SampleData.ends {
+                let parts = k.split(separator: "|")
+                guard parts.count == 3 else { continue }
+                index[k] = Row(day: String(parts[1]), start: String(parts[2]), end: end, name: String(parts[0]))
+            }
+            error = nil
+            return
+        }
         do {
             let (text, _) = try await client.readFile(repo: Config.privateRepo,
                                                       path: "schedule_snapshot.json")

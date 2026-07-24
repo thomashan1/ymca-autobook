@@ -10,6 +10,27 @@ directly from the API (`restrict_to_book_in_advance_time_in_hours`) and is not h
 This bot logs in, waits for that exact moment, and books next week's class for you —
 running unattended on GitHub Actions.
 
+## 📱 iOS app
+
+A SwiftUI companion app (in [`ios/`](ios/)) is a control panel over the same
+GitHub state — it does **not** book classes itself (Actions stays the engine),
+it reads and steers it through the GitHub API. See [`ios/README.md`](ios/README.md).
+
+| This & Next Week | My Classes | Scheduled Jobs | Away Dates |
+|:---:|:---:|:---:|:---:|
+| <img src="ios/screenshots/week.png" width="200"> | <img src="ios/screenshots/classes.png" width="200"> | <img src="ios/screenshots/jobs.png" width="200"> | <img src="ios/screenshots/away.png" width="200"> |
+
+- **Week** — a two-week calendar grid + dated agenda, merging the recurring
+  schedule with your **real bookings** (green ✓ = actually booked); tap a class
+  for room/instructor. Pause days are struck through.
+- **Classes** — your recurring lineup by weekday; swipe to remove a class (opens
+  an auto-merging PR against `classes.yml`).
+- **Jobs** — live countdowns to each class's 167h booking-open, with a **Book
+  now** swipe; pause-skipped jobs are flagged.
+- **Away** — the `pauses.yml` away-dates with their notes.
+
+_Screenshots use sample data._
+
 ## How it works
 1. **Login** (`src/login.py`) — headless Playwright completes the egym SSO flow and reads
    the Fisikal CSRF token. Session cookies are reused for all API calls.

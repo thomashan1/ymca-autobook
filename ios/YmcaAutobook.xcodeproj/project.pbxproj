@@ -28,6 +28,7 @@
 		5A140000000000000000FEF2 /* SnapshotRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A140000000000000000FEF1 /* SnapshotRepository.swift */; };
 		B00C0000000000000000FEF2 /* BookingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00C0000000000000000FEF1 /* BookingsRepository.swift */; };
 		DE7A0000000000000000FEF2 /* ClassDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE7A0000000000000000FEF1 /* ClassDetailSheet.swift */; };
+		5A3D0000000000000000FEF2 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3D0000000000000000FEF1 /* SampleData.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +54,7 @@
 		5E770000000000000000FEF1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		5A140000000000000000FEF1 /* SnapshotRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotRepository.swift; sourceTree = "<group>"; };
 		B00C0000000000000000FEF1 /* BookingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingsRepository.swift; sourceTree = "<group>"; };
+		5A3D0000000000000000FEF1 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -96,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				0975410C18A36046F0E0CDB5 /* Config.swift */,
+				5A3D0000000000000000FEF1 /* SampleData.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -218,6 +221,7 @@
 				AEDE050E0481FBD2815B736F /* ClassesRepository.swift in Sources */,
 				075E377C339335C1F549FAE6 /* ClassesView.swift in Sources */,
 				66FE0F4D5D07D5BC4B0A8E60 /* Config.swift in Sources */,
+				5A3D0000000000000000FEF2 /* SampleData.swift in Sources */,
 				6FF15C49983581B43F4D54DD /* GitHubClient.swift in Sources */,
 				F6B9EAE237C7F7C5027F83FC /* GymClass.swift in Sources */,
 				C17ABD0A40C05910F418FEA9 /* JobsView.swift in Sources */,

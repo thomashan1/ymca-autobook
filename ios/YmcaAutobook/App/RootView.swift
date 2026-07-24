@@ -7,18 +7,21 @@ struct RootView: View {
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
 
+    // Initial tab, overridable via launch arg `-screenshotTab N` (for screenshots).
+    @State private var tab = UserDefaults.standard.integer(forKey: "screenshotTab")
+
     var body: some View {
-        TabView {
+        TabView(selection: $tab) {
             WeekView()
-                .tabItem { Label("Week", systemImage: "calendar") }
+                .tabItem { Label("Week", systemImage: "calendar") }.tag(0)
             ClassesView()
-                .tabItem { Label("Classes", systemImage: "list.bullet") }
+                .tabItem { Label("Classes", systemImage: "list.bullet") }.tag(1)
             JobsView()
-                .tabItem { Label("Jobs", systemImage: "clock") }
+                .tabItem { Label("Jobs", systemImage: "clock") }.tag(2)
             AwayView()
-                .tabItem { Label("Away", systemImage: "mappin.and.ellipse") }
+                .tabItem { Label("Away", systemImage: "mappin.and.ellipse") }.tag(3)
             SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tabItem { Label("Settings", systemImage: "gearshape") }.tag(4)
         }
         .task(id: auth.hasToken) {
             guard auth.hasToken else { return }

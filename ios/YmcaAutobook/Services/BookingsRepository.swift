@@ -42,6 +42,22 @@ final class BookingsRepository: ObservableObject {
     }()
 
     func load() async {
+        if SampleMode.active {
+            var cal = Calendar(identifier: .gregorian)
+            cal.timeZone = Config.timeZone; cal.firstWeekday = 2
+            let mon = cal.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+            var map: [String: [Booking]] = [:]
+            for (offset, list) in SampleData.weekBookings {
+                guard let d = cal.date(byAdding: .day, value: offset, to: mon) else { continue }
+                let ds = Self.iso.string(from: d)
+                map[ds] = list.map {
+                    Booking(date: ds, start: $0.0, end: $0.1, name: $0.2,
+                            location_id: $0.3, room: $0.4, instructor: $0.5)
+                }
+            }
+            byDate = map; updatedAt = "sample"; loaded = true; error = nil
+            return
+        }
         do {
             let (text, _) = try await client.readFile(repo: Config.privateRepo, path: "bookings.json")
             let snap = try JSONDecoder().decode(Snapshot.self, from: Data(text.utf8))

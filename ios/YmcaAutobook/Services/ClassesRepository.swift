@@ -17,6 +17,10 @@ final class ClassesRepository: ObservableObject {
     init(client: GitHubClient = GitHubClient()) { self.client = client }
 
     func load() async {
+        if SampleMode.active {
+            classes = SampleData.classes.sorted { ($0.weekday, $0.start) < ($1.weekday, $1.start) }
+            return
+        }
         isLoading = true; error = nil
         defer { isLoading = false }
         do {

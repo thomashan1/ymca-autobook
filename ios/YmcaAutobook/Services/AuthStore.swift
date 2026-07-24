@@ -6,7 +6,7 @@ import SwiftUI
 final class AuthStore: ObservableObject {
     @Published private(set) var hasToken: Bool
 
-    init() { hasToken = KeychainStore.token() != nil }
+    init() { hasToken = KeychainStore.token() != nil || SampleMode.active }
 
     func save(token: String) {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)

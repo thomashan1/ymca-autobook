@@ -20,6 +20,18 @@ final class PausesRepository: ObservableObject {
     }()
 
     func load() async {
+        if SampleMode.active {
+            var cal = Calendar(identifier: .gregorian)
+            cal.timeZone = Config.timeZone; cal.firstWeekday = 2
+            let mon = cal.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+            pauses = SampleData.awayNotes.compactMap { n in
+                guard let s = cal.date(byAdding: .day, value: n.offsetFromThisMon, to: mon) else { return nil }
+                let e = cal.date(byAdding: .day, value: n.days - 1, to: s) ?? s
+                return Pause(start: s, end: e, except: n.except, note: n.note)
+            }
+            error = nil
+            return
+        }
         isLoading = true; error = nil
         defer { isLoading = false }
         do {

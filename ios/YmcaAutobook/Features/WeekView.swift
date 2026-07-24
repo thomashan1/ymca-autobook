@@ -6,75 +6,56 @@ import SwiftUI
 struct WeekView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
-    @State private var mode: Mode = .agenda
-
-    enum Mode: String, CaseIterable { case agenda = "Agenda", calendar = "Calendar" }
 
     private let weekdays: [Weekday] = [.mon, .tue, .wed, .thu, .fri]
 
     var body: some View {
         NavigationStack {
-            Group {
-                switch mode {
-                case .agenda: agenda
-                case .calendar: calendar
+            List {
+                Section {
+                    calendarGrid
+                        .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10))
+                }
+                ForEach(weekdays, id: \.self) { day in
+                    let dayItems = items(on: day)
+                    if !dayItems.isEmpty {
+                        Section {
+                            ForEach(dayItems) { c in ClassRow(gymClass: c, away: isAway(c, day)) }
+                        } header: {
+                            Text(Self.longHeader(for: day))
+                        }
+                    }
                 }
             }
             .navigationTitle("This Week")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Picker("View", selection: $mode) {
-                        ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 200)
-                }
+            .refreshable {
+                await classes.load()
+                await pauses.load()
             }
         }
     }
-
-    // MARK: Agenda
 
     private func items(on day: Weekday) -> [GymClass] {
         classes.classes.filter { $0.weekday == day }.sorted { $0.start < $1.start }
     }
 
-    private var agenda: some View {
-        List {
+    // MARK: Calendar grid (email-style), dated — sits atop the agenda
+
+    private var calendarGrid: some View {
+        HStack(alignment: .top, spacing: 6) {
             ForEach(weekdays, id: \.self) { day in
-                let dayItems = items(on: day)
-                if !dayItems.isEmpty {
-                    Section {
-                        ForEach(dayItems) { c in ClassRow(gymClass: c, away: isAway(c, day)) }
-                    } header: {
-                        Text(Self.longHeader(for: day))
+                VStack(spacing: 5) {
+                    VStack(spacing: 1) {
+                        Text(day.rawValue).font(.caption.weight(.bold))
+                        Text(Self.shortDate(for: day))
+                            .font(.system(size: 10)).foregroundStyle(.secondary)
+                    }
+                    ForEach(items(on: day)) { c in
+                        CalendarCell(gymClass: c, away: isAway(c, day))
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .top)
             }
-        }
-    }
-
-    // MARK: Calendar grid (email-style), dated
-
-    private var calendar: some View {
-        ScrollView {
-            HStack(alignment: .top, spacing: 6) {
-                ForEach(weekdays, id: \.self) { day in
-                    VStack(spacing: 5) {
-                        VStack(spacing: 1) {
-                            Text(day.rawValue).font(.caption.weight(.bold))
-                            Text(Self.shortDate(for: day))
-                                .font(.system(size: 10)).foregroundStyle(.secondary)
-                        }
-                        ForEach(items(on: day)) { c in
-                            CalendarCell(gymClass: c, away: isAway(c, day))
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .top)
-                }
-            }
-            .padding(10)
         }
     }
 

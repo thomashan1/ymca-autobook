@@ -4,6 +4,7 @@ struct RootView: View {
     @EnvironmentObject var auth: AuthStore
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var snapshot: SnapshotRepository
 
     var body: some View {
         TabView {
@@ -22,6 +23,7 @@ struct RootView: View {
             guard auth.hasToken else { return }
             await classes.load()
             await pauses.load()
+            await snapshot.load()
         }
         .sheet(isPresented: .constant(!auth.hasToken)) {
             SettingsView(onboarding: true)

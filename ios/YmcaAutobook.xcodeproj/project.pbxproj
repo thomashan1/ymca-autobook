@@ -25,6 +25,7 @@
 		FE64799E77614F4CCE9BFB6E /* Pause.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507C91C32844C2CD6CF1BC71 /* Pause.swift */; };
 		A0710000000000000000FEF2 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0710000000000000000FEF1 /* AuthStore.swift */; };
 		5E770000000000000000FEF2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E770000000000000000FEF1 /* SettingsView.swift */; };
+		5A140000000000000000FEF2 /* SnapshotRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A140000000000000000FEF1 /* SnapshotRepository.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,7 @@
 		E84BC5DC28E6909F6E747D03 /* YmcaAutobookApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YmcaAutobookApp.swift; sourceTree = "<group>"; };
 		A0710000000000000000FEF1 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
 		5E770000000000000000FEF1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		5A140000000000000000FEF1 /* SnapshotRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotRepository.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -123,6 +125,7 @@
 				4103662AB1A49043869B0F98 /* GitHubClient.swift */,
 				44F49099D45042B120861A85 /* KeychainStore.swift */,
 				60E202AAF0738F2235A4BADB /* PausesRepository.swift */,
+				5A140000000000000000FEF1 /* SnapshotRepository.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -215,6 +218,7 @@
 				485E52EADF5F74731E242C87 /* KeychainStore.swift in Sources */,
 				FE64799E77614F4CCE9BFB6E /* Pause.swift in Sources */,
 				2CD77DA8959112C6D3A62EFF /* PausesRepository.swift in Sources */,
+				5A140000000000000000FEF2 /* SnapshotRepository.swift in Sources */,
 				A0710000000000000000FEF2 /* AuthStore.swift in Sources */,
 				5E770000000000000000FEF2 /* SettingsView.swift in Sources */,
 				4F94197A994835B57E135180 /* RootView.swift in Sources */,

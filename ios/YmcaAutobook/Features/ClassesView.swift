@@ -5,6 +5,7 @@ import SwiftUI
 /// trigger the cron regen — wired to `ClassesRepository` in a follow-up.
 struct ClassesView: View {
     @EnvironmentObject var classes: ClassesRepository
+    @EnvironmentObject var snapshot: SnapshotRepository
 
     private let weekdays: [Weekday] = [.mon, .tue, .wed, .thu, .fri]
 
@@ -26,7 +27,11 @@ struct ClassesView: View {
                     let dayItems = items(on: day)
                     if !dayItems.isEmpty {
                         Section(day.fullName) {
-                            ForEach(dayItems) { EnabledRow(gymClass: $0) }
+                            ForEach(dayItems) { c in
+                                EnabledRow(gymClass: c,
+                                           endTime: snapshot.endTime(for: c),
+                                           minutes: snapshot.minutes(for: c))
+                            }
                         }
                     }
                 }
@@ -40,13 +45,24 @@ struct ClassesView: View {
 
 private struct EnabledRow: View {
     let gymClass: GymClass
+    let endTime: String?
+    let minutes: Int?
     @State private var enabled = true
+
+    private var title: String {
+        if let m = minutes { return "\(gymClass.name) (\(m)m)" }
+        return gymClass.name
+    }
+    private var timeRange: String {
+        if let end = endTime { return "\(gymClass.start)–\(end)" }
+        return gymClass.start
+    }
 
     var body: some View {
         Toggle(isOn: $enabled) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(gymClass.name).font(.body.weight(.medium))
+                    Text(title).font(.body.weight(.medium))
                     if gymClass.isTrial {
                         Text("Trial").font(.caption2.weight(.bold))
                             .padding(.horizontal, 6).padding(.vertical, 1)
@@ -55,7 +71,7 @@ private struct EnabledRow: View {
                     }
                 }
                 HStack(spacing: 6) {
-                    Text(gymClass.start).font(.caption).foregroundStyle(.secondary)
+                    Text(timeRange).font(.caption).foregroundStyle(.secondary).monospacedDigit()
                     BranchChip(branch: gymClass.branch)
                 }
             }

@@ -1,0 +1,27 @@
+name: Bookings snapshot
+
+on:
+  schedule:
+    - cron: "30 */6 * * *"  # every 6h, offset to dodge the top-of-hour cron queue
+  workflow_dispatch: {}
+
+concurrency:
+  group: bookings-snapshot-${{ github.run_id }}
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Update bookings snapshot
+        env:
+          EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
+          EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: python scripts/snapshot_bookings.py

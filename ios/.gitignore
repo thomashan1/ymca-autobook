@@ -1,0 +1,6 @@
+# Xcode / SwiftPM — the .xcodeproj IS committed; only per-user state is ignored.
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store

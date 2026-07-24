@@ -6,6 +6,7 @@ import Combine
 /// class immediately via a book.yml workflow_dispatch (issue #47).
 struct JobsView: View {
     @EnvironmentObject var classes: ClassesRepository
+    @EnvironmentObject var pauses: PausesRepository
     @State private var now = Date()
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -25,8 +26,10 @@ struct JobsView: View {
         }
     }
 
-    private func jobs(on day: Weekday) -> [BookingJob] {
-        jobs.filter { $0.weekday == day }.sorted { $0.opensAt < $1.opensAt }
+    /// All jobs ordered by the soonest booking-open — the next class you can
+    /// book is first.
+    private var sortedJobs: [BookingJob] {
+        jobs.sorted { $0.opensAt < $1.opensAt }
     }
 
     var body: some View {
@@ -39,22 +42,18 @@ struct JobsView: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
-                ForEach(weekdays, id: \.self) { day in
-                    let dayJobs = jobs(on: day)
-                    if !dayJobs.isEmpty {
-                        Section(day.fullName) {
-                            ForEach(dayJobs) { job in
-                                JobRow(job: job, now: now)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                        Button {
-                                            bookTarget = job
-                                        } label: {
-                                            Label("Book now", systemImage: "bolt.fill")
-                                        }
-                                        .tint(Theme.accent)
-                                    }
+                Section("Next to book") {
+                    ForEach(sortedJobs) { job in
+                        JobRow(job: job, now: now,
+                               paused: pauses.isAway(job.classDate, classKey: job.classKey))
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button {
+                                    bookTarget = job
+                                } label: {
+                                    Label("Book now", systemImage: "bolt.fill")
+                                }
+                                .tint(Theme.accent)
                             }
-                        }
                     }
                 }
             }
@@ -119,18 +118,30 @@ struct JobsView: View {
 private struct JobRow: View {
     let job: BookingJob
     let now: Date
+    var paused: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(job.className).font(.body.weight(.medium))
+                    .strikethrough(paused, color: Theme.away)
                 Spacer()
-                Text(countdownText).font(.subheadline.weight(.bold)).monospacedDigit()
-                    .foregroundStyle(Theme.accent)
+                if paused {
+                    Text("Away · skipped").font(.caption2.weight(.bold))
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Theme.away.opacity(0.18), in: Capsule())
+                        .foregroundStyle(Theme.away)
+                } else {
+                    Text(countdownText).font(.subheadline.weight(.bold)).monospacedDigit()
+                        .foregroundStyle(Theme.accent)
+                }
             }
-            Text("Books \(job.classDate.formatted(.dateTime.weekday().month().day())) · opens \(job.opensAt.formatted(date: .abbreviated, time: .shortened))")
+            Text(paused
+                 ? "In a pause on \(job.classDate.formatted(.dateTime.weekday().month().day())) — the bot won't book it. Swipe to book anyway."
+                 : "Books \(job.classDate.formatted(.dateTime.weekday().month().day())) · opens \(job.opensAt.formatted(date: .abbreviated, time: .shortened))")
                 .font(.caption).foregroundStyle(.secondary)
         }
+        .opacity(paused ? 0.65 : 1)
     }
 
     private var countdownText: String {

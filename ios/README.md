@@ -7,7 +7,7 @@ state through the GitHub REST API:
 
 | Screen   | Reads / writes |
 |----------|----------------|
-| **Week**    | This week's booked classes (Actions run history + `classes.yml`) |
+| **Week**    | Two-week calendar + agenda merging `classes.yml` with real bookings (`bookings.json`); durations from `schedule_snapshot.json` |
 | **Classes** | `classes.yml` — regulars vs. trials; a toggle edits the file |
 | **Jobs**    | Scheduled bookings + live 167h countdowns; recent run feed (Actions API) |
 | **Away**    | `pauses.yml` in the private repo — add/remove away dates |

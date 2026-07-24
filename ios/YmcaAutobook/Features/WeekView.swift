@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// This week's booked classes. Two modes: an Agenda list (the mockup) and a
-/// Calendar grid that mirrors the summary email `weekly_summary.py` sends.
+/// This week's booked classes. Two modes: an Agenda list and a Calendar grid
+/// that mirrors the summary email `weekly_summary.py` sends. Both are dated to
+/// the current Mon–Fri week.
 struct WeekView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
@@ -20,6 +21,7 @@ struct WeekView: View {
                 }
             }
             .navigationTitle("This Week")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Picker("View", selection: $mode) {
@@ -34,58 +36,75 @@ struct WeekView: View {
 
     // MARK: Agenda
 
+    private func items(on day: Weekday) -> [GymClass] {
+        classes.classes.filter { $0.weekday == day }.sorted { $0.start < $1.start }
+    }
+
     private var agenda: some View {
         List {
             ForEach(weekdays, id: \.self) { day in
-                let items = classes.classes.filter { $0.weekday == day }
-                if !items.isEmpty {
-                    Section(day.rawValue) {
-                        ForEach(items) { c in ClassRow(gymClass: c, away: isAway(c, day)) }
+                let dayItems = items(on: day)
+                if !dayItems.isEmpty {
+                    Section {
+                        ForEach(dayItems) { c in ClassRow(gymClass: c, away: isAway(c, day)) }
+                    } header: {
+                        Text(Self.longHeader(for: day))
                     }
                 }
             }
         }
     }
 
-    // MARK: Calendar grid (email-style)
+    // MARK: Calendar grid (email-style), dated
 
     private var calendar: some View {
-        GeometryReader { geo in
-            let colW = geo.size.width / 5
-            ScrollView {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 5), spacing: 4) {
-                    ForEach(weekdays, id: \.self) { day in
-                        Text(day.rawValue)
-                            .font(.caption.weight(.bold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                    }
-                    ForEach(weekdays, id: \.self) { day in
-                        VStack(spacing: 4) {
-                            ForEach(classes.classes.filter { $0.weekday == day }) { c in
-                                CalendarCell(gymClass: c, away: isAway(c, day))
-                            }
+        ScrollView {
+            HStack(alignment: .top, spacing: 6) {
+                ForEach(weekdays, id: \.self) { day in
+                    VStack(spacing: 5) {
+                        VStack(spacing: 1) {
+                            Text(day.rawValue).font(.caption.weight(.bold))
+                            Text(Self.shortDate(for: day))
+                                .font(.system(size: 10)).foregroundStyle(.secondary)
                         }
-                        .frame(width: colW - 4, alignment: .top)
+                        ForEach(items(on: day)) { c in
+                            CalendarCell(gymClass: c, away: isAway(c, day))
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .top)
                 }
-                .padding(8)
             }
+            .padding(10)
         }
     }
 
+    // MARK: Dates
+
     private func isAway(_ c: GymClass, _ day: Weekday) -> Bool {
-        // Resolve the concrete date for `day` in the current week before checking.
         guard let date = Self.date(of: day) else { return false }
         return pauses.isAway(date, classKey: c.key)
     }
 
+    /// The concrete date for `weekday` in the current Mon–Fri week.
     static func date(of weekday: Weekday) -> Date? {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = Config.timeZone
-        let today = Date()
-        let monday = cal.dateInterval(of: .weekOfYear, for: today)?.start
+        cal.firstWeekday = 2 // Monday, so the week interval starts on Monday
+        let monday = cal.dateInterval(of: .weekOfYear, for: Date())?.start
         return monday.flatMap { cal.date(byAdding: .day, value: weekday.order, to: $0) }
+    }
+
+    static func longHeader(for day: Weekday) -> String {
+        let s = shortDate(for: day)
+        return s.isEmpty ? day.fullName : "\(day.fullName) · \(s)"
+    }
+
+    static func shortDate(for day: Weekday) -> String {
+        guard let d = date(of: day) else { return "" }
+        let f = DateFormatter()
+        f.timeZone = Config.timeZone
+        f.dateFormat = "M/d"
+        return f.string(from: d)
     }
 }
 

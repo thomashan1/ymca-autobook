@@ -1,22 +1,33 @@
 import SwiftUI
 
-/// Regulars vs. trials. A toggle here is intended to commit an edit to
-/// `classes.yml` (add/remove the entry) + trigger the cron regen — wired to
-/// `ClassesRepository.setEnabled` in a follow-up.
+/// The recurring lineup, grouped by weekday (like the Week view). A toggle here
+/// is intended to commit an edit to `classes.yml` (add/remove the entry) +
+/// trigger the cron regen — wired to `ClassesRepository` in a follow-up.
 struct ClassesView: View {
     @EnvironmentObject var classes: ClassesRepository
+
+    private let weekdays: [Weekday] = [.mon, .tue, .wed, .thu, .fri]
+
+    private func items(on day: Weekday) -> [GymClass] {
+        classes.classes.filter { $0.weekday == day }.sorted { $0.start < $1.start }
+    }
 
     var body: some View {
         NavigationStack {
             List {
-                if !classes.regulars.isEmpty {
-                    Section("Regulars · \(classes.regulars.count)") {
-                        ForEach(classes.regulars) { EnabledRow(gymClass: $0) }
+                Section {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "info.circle.fill").foregroundStyle(Theme.accent)
+                        Text("A switch turns a class's weekly auto-booking on or off — off keeps it listed here but tells the bot to stop booking it. **Preview: changes aren't saved to the schedule yet.**")
+                            .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
-                if !classes.trials.isEmpty {
-                    Section("Trials · \(classes.trials.count)") {
-                        ForEach(classes.trials) { EnabledRow(gymClass: $0) }
+                ForEach(weekdays, id: \.self) { day in
+                    let dayItems = items(on: day)
+                    if !dayItems.isEmpty {
+                        Section(day.fullName) {
+                            ForEach(dayItems) { EnabledRow(gymClass: $0) }
+                        }
                     }
                 }
             }
@@ -34,10 +45,17 @@ private struct EnabledRow: View {
     var body: some View {
         Toggle(isOn: $enabled) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(gymClass.name).font(.body.weight(.medium))
                 HStack(spacing: 6) {
-                    Text("\(gymClass.weekday.rawValue) · \(gymClass.start)")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(gymClass.name).font(.body.weight(.medium))
+                    if gymClass.isTrial {
+                        Text("Trial").font(.caption2.weight(.bold))
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(Theme.queued.opacity(0.18), in: Capsule())
+                            .foregroundStyle(Theme.queued)
+                    }
+                }
+                HStack(spacing: 6) {
+                    Text(gymClass.start).font(.caption).foregroundStyle(.secondary)
                     BranchChip(branch: gymClass.branch)
                 }
             }

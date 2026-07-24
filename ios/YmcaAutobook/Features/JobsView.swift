@@ -1,12 +1,15 @@
 import SwiftUI
 import Combine
 
-/// Scheduled bookings with live 167h countdowns + a recent run feed from the
-/// Actions API. "Book now" fires a one-off `workflow_dispatch` on book.yml.
+/// Scheduled bookings grouped by weekday (like the Classes view), each with a
+/// live 167h countdown to when booking opens. Countdowns derived from each
+/// class's weekday/start; "Book now" (issue #47) will dispatch book.yml.
 struct JobsView: View {
     @EnvironmentObject var classes: ClassesRepository
     @State private var now = Date()
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    private let weekdays: [Weekday] = [.mon, .tue, .wed, .thu, .fri]
 
     /// Derive the next open instant for each class from its weekday/start.
     private var jobs: [BookingJob] {
@@ -15,14 +18,22 @@ struct JobsView: View {
             return BookingJob(classKey: c.key, className: c.name, weekday: c.weekday,
                               classDate: opens.classDate, opensAt: opens.opensAt, state: .queued)
         }
-        .sorted { $0.opensAt < $1.opensAt }
+    }
+
+    private func jobs(on day: Weekday) -> [BookingJob] {
+        jobs.filter { $0.weekday == day }.sorted { $0.opensAt < $1.opensAt }
     }
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Next up · opens 167h before start") {
-                    ForEach(jobs) { JobRow(job: $0, now: now) }
+                ForEach(weekdays, id: \.self) { day in
+                    let dayJobs = jobs(on: day)
+                    if !dayJobs.isEmpty {
+                        Section(day.fullName) {
+                            ForEach(dayJobs) { JobRow(job: $0, now: now) }
+                        }
+                    }
                 }
             }
             .navigationTitle("Scheduled Jobs")
@@ -36,10 +47,9 @@ struct JobsView: View {
         cal.timeZone = Config.timeZone
         let parts = c.start.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2 else { return nil }
-        // Next occurrence of this weekday at the class time.
-        let targetWeekday = c.weekday.order + 2 // Calendar: Sun=1..Sat=7; Mon=2
+        // Next occurrence of this weekday at the class time. Calendar weekday: Sun=1..Sat=7.
         var comps = DateComponents()
-        comps.weekday = ((targetWeekday - 1) % 7) + 1
+        comps.weekday = (c.weekday.order + 1) % 7 + 1
         comps.hour = parts[0]; comps.minute = parts[1]
         guard let classDate = cal.nextDate(after: Date(), matching: comps,
                                            matchingPolicy: .nextTime) else { return nil }
@@ -55,7 +65,7 @@ private struct JobRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("\(job.className) · \(job.weekday.rawValue)").font(.body.weight(.medium))
+                Text(job.className).font(.body.weight(.medium))
                 Spacer()
                 Text(countdownText).font(.subheadline.weight(.bold)).monospacedDigit()
                     .foregroundStyle(Theme.accent)

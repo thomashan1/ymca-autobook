@@ -14,6 +14,18 @@ enum Weekday: String, Codable, CaseIterable, Comparable {
 
     var order: Int { Weekday.allCases.firstIndex(of: self)! }
     static func < (l: Weekday, r: Weekday) -> Bool { l.order < r.order }
+
+    var fullName: String {
+        switch self {
+        case .mon: return "Monday"
+        case .tue: return "Tuesday"
+        case .wed: return "Wednesday"
+        case .thu: return "Thursday"
+        case .fri: return "Friday"
+        case .sat: return "Saturday"
+        case .sun: return "Sunday"
+        }
+    }
 }
 
 /// One recurring class from `classes.yml`. A class is a "trial" when it carries

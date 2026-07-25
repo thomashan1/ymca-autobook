@@ -55,7 +55,11 @@ enum LabFireLog {
 
     /// The unattended path end to end: wake → wait for the exact instant →
     /// authenticated call, re-authenticating silently if the session lapsed.
-    static func run(waitSeconds: Int) async {
+    /// - Parameter allowWebViewReAuth: false when invoked from a background
+    ///   automation. Re-auth drives a `WKWebView`, which needs a window; there
+    ///   isn't one in a background launch, so attempting it stalls until the
+    ///   watchdog and overruns the runtime the automation gets.
+    static func run(waitSeconds: Int, allowWebViewReAuth: Bool = true) async {
         let locked = await deviceIsLocked()
         var entry = Entry(firedAt: Date(), waitSeconds: waitSeconds, completedAt: nil,
                           lockedAtFire: locked, sleepSurvived: false, httpStatusOK: false,
@@ -81,13 +85,20 @@ enum LabFireLog {
         // Session lapsed — the silent re-login proven in Spike C, now exercised
         // in the unattended path where it actually has to work.
         if case .expired = outcome {
-            entry.reAuthed = true
-            if let refreshed = await silentReAuth() {
-                session = refreshed
-                GymCredentialStore.saveSession(refreshed)
-                outcome = await YmcaSessionClient.validate(session)
+            if allowWebViewReAuth {
+                entry.reAuthed = true
+                if let refreshed = await silentReAuth() {
+                    session = refreshed
+                    GymCredentialStore.saveSession(refreshed)
+                    outcome = await YmcaSessionClient.validate(session)
+                } else {
+                    entry.detail = "session expired and silent re-login failed"
+                }
             } else {
-                entry.detail = "session expired and silent re-login failed"
+                // A real finding, not a bug: unattended re-auth can't use a
+                // WebView. If sessions turn out to lapse often, the on-device
+                // design needs a windowless login path.
+                entry.detail = "session expired — re-auth needs a window (skipped in background)"
             }
         }
 

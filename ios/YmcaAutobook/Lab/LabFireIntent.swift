@@ -19,19 +19,18 @@ struct LabFireIntent: AppIntent {
     @Parameter(title: "Wait seconds before checking", default: 60)
     var waitSeconds: Int
 
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        await LabFireLog.run(waitSeconds: waitSeconds)
-
-        let last = LabFireLog.load().first
-        let verdict: String
-        if let last {
-            verdict = last.fullySucceeded
-                ? "Completed\(last.lockedAtFire ? " while locked" : "")."
-                : "Incomplete: \(last.detail)"
-        } else {
-            verdict = "No result recorded."
-        }
-        return .result(dialog: IntentDialog(stringLiteral: verdict))
+    /// Never throws. A thrown error surfaces in Shortcuts as a generic failure
+    /// and — worse for a diagnostic — leaves no record of what happened, which
+    /// is exactly the case we most need to inspect.
+    ///
+    /// No `ProvidesDialog`: an automation launches this in the background with
+    /// no window, and asking to present something there is itself a failure mode.
+    func perform() async throws -> some IntentResult {
+        // Background launch: no window exists, so the WebView-based re-auth
+        // cannot run here. It would stall until its watchdog and overrun the
+        // runtime an automation gets.
+        await LabFireLog.run(waitSeconds: waitSeconds, allowWebViewReAuth: false)
+        return .result()
     }
 }
 

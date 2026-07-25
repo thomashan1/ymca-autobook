@@ -78,45 +78,53 @@ struct LabView: View {
             }
             .disabled(username.isEmpty || password.isEmpty)
         } header: {
-            Text("Credentials")
+            Text("1 · Credentials")
         } footer: {
-            Text("Stored only in this device's Keychain — never synced to iCloud, never in a backup, never sent anywhere but egym's own login page. Needed so the app can re-login unattended when the session expires.")
+            Text("This is the primary path. Saving your login lets the app sign itself in unattended — the only way a 9:45am booking works with the phone locked and nobody to type anything.\n\nStored only in this device's Keychain: never synced to iCloud, never in a backup, never sent anywhere but egym's own login page.")
         }
     }
 
     private var actionsSection: some View {
-        Section {
-            Button {
-                runInteractiveLogin()
-            } label: {
-                Label("Sign in (you type it)", systemImage: "person.badge.key")
+        Group {
+            Section {
+                Button {
+                    runScriptedLogin()
+                } label: {
+                    Label("Silent sign-in", systemImage: "bolt.badge.clock")
+                }
+                .disabled(!GymCredentialStore.hasCredentials)
+
+                Button {
+                    testCookie()
+                } label: {
+                    Label("Test stored session", systemImage: "stethoscope")
+                }
+                .disabled(session == nil)
+            } header: {
+                Text("2 · The real path")
+            } footer: {
+                Text("Silent sign-in is exactly what runs unattended: no UI, no typing — the saved credentials are submitted to egym's form and the session is harvested. If this works, an expired cookie stops mattering.\n\nTest stored session replays the cookie over a plain URLSession, which is also how we measure how long a session survives.")
             }
 
-            Button {
-                runScriptedLogin()
-            } label: {
-                Label("Silent re-login (unattended path)", systemImage: "bolt.badge.clock")
-            }
-            .disabled(!GymCredentialStore.hasCredentials)
+            Section {
+                Button {
+                    runInteractiveLogin()
+                } label: {
+                    Label("Manual sign-in (type on egym's page)", systemImage: "person.badge.key")
+                }
 
-            Button {
-                testCookie()
-            } label: {
-                Label("Test stored cookie", systemImage: "stethoscope")
+                Button(role: .destructive) {
+                    GymCredentialStore.clearAll()
+                    session = nil; username = ""; password = ""
+                    results.insert("Cleared credentials + session.", at: 0)
+                } label: {
+                    Label("Clear everything", systemImage: "trash")
+                }
+            } header: {
+                Text("3 · Fallback")
+            } footer: {
+                Text("Only needed when silent sign-in can't work — an MFA/CAPTCHA step, or egym changing their form so the injection breaks. It's also the control test: it proves cookie harvesting works independently of the scripted path.\n\nEverything on this screen is read-only — occurrences GETs only. Nothing here books or cancels a class.")
             }
-            .disabled(session == nil)
-
-            Button(role: .destructive) {
-                GymCredentialStore.clearAll()
-                session = nil; username = ""; password = ""
-                results.insert("Cleared credentials + session.", at: 0)
-            } label: {
-                Label("Clear everything", systemImage: "trash")
-            }
-        } header: {
-            Text("Spikes")
-        } footer: {
-            Text("Read-only: every check is an occurrences GET. Nothing here books or cancels a class.")
         }
     }
 

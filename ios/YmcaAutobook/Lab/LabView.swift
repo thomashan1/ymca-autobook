@@ -122,11 +122,12 @@ struct LabView: View {
                     .autocorrectionDisabled()
                     .keyboardType(.emailAddress)
                 SecureField("Password", text: $password)
-                Button("Save to Keychain") {
+                Button("Save & sign in") {
                     GymCredentialStore.saveCredentials(username: username, password: password)
                     password = ""              // don't keep plaintext in view state
                     editingCredentials = false
                     results.insert("✅ Saved for \(username). The password is in the Keychain, not shown again.", at: 0)
+                    runScriptedLogin()         // no dead end — prove it works right away
                 }
                 .disabled(username.isEmpty || password.isEmpty)
                 if GymCredentialStore.hasCredentials {
@@ -160,9 +161,9 @@ struct LabView: View {
                 }
                 .disabled(session == nil)
             } header: {
-                Text("2 · Run the test — required")
+                Text("2 · Test — runs automatically")
             } footer: {
-                Text("**Silent sign-in** is the whole experiment: it signs in with no typing, exactly as it would with the phone locked. **Test stored session** checks whether the saved session still works — re-run it over the next few days to see how long one lasts.")
+                Text("Saving credentials signs you in straight away, so you don't need to tap anything here first. These just re-run it: **Silent sign-in** repeats the unattended sign-in, and **Test stored session** checks whether the saved session still works — worth re-running over the next few days to see how long one lasts.")
             }
 
             Section {

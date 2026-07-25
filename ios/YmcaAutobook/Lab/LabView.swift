@@ -65,8 +65,41 @@ struct LabView: View {
         }
     }
 
+    /// Deliberately loud: the user is being asked to hand over a real password,
+    /// so the guarantees should be impossible to miss rather than footer text.
+    private var privacyCallout: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text("🔒").font(.title3)
+                Text("Stored ONLY on this device")
+                    .font(.subheadline.weight(.heavy))
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                neverRow("NEVER sent to us or any server we run")
+                neverRow("NEVER synced to iCloud or another device")
+                neverRow("NEVER included in a backup")
+            }
+            Text("The only place it is ever sent is egym's own login page — the same page you'd type it into yourself.")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 6)
+        .listRowBackground(Theme.booked.opacity(0.10))
+    }
+
+    private func neverRow(_ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("🚫").font(.caption)
+            Text(text)
+                .font(.footnote.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private var credentialsSection: some View {
         Section {
+            privacyCallout
+
             if GymCredentialStore.hasCredentials && !editingCredentials {
                 // Saved state — otherwise clearing the password field on save
                 // just looks like the save failed.
@@ -104,9 +137,9 @@ struct LabView: View {
                 }
             }
         } header: {
-            Text("1 · Credentials")
+            Text("1 · Credentials — required")
         } footer: {
-            Text("This is the primary path. Booking opens at a fixed moment each week — usually while your phone is locked in your pocket and nobody is around to type anything. Saving your login is what lets the app sign itself in at that moment.\n\nStored only in this device's Keychain: never synced to iCloud, never included in a backup, and never sent anywhere except egym's own login page. The password is intentionally not displayed after saving.")
+            Text("This is the primary path. Booking opens at a fixed moment each week — usually while your phone is locked in your pocket and nobody is around to type anything. Saving your login is what lets the app sign itself in at that moment.\n\nKept in the device Keychain (AfterFirstUnlock, ThisDeviceOnly) and intentionally not displayed again after saving.")
         }
     }
 
@@ -127,9 +160,9 @@ struct LabView: View {
                 }
                 .disabled(session == nil)
             } header: {
-                Text("2 · The real path")
+                Text("2 · Run the test — required")
             } footer: {
-                Text("Silent sign-in is exactly what would run unattended: no UI, no typing — the saved credentials are submitted to egym's form and the session is harvested. If this works, an expired session stops being a problem, because the app can always get a fresh one on its own.\n\nTest stored session replays the saved cookie over a plain URLSession. That's the same request a booking would make, and repeating it over days is how we measure how long a session lasts.")
+                Text("**Silent sign-in** is the whole experiment: it signs in with no typing, exactly as it would with the phone locked. **Test stored session** checks whether the saved session still works — re-run it over the next few days to see how long one lasts.")
             }
 
             Section {
@@ -147,9 +180,9 @@ struct LabView: View {
                     Label("Clear everything", systemImage: "trash")
                 }
             } header: {
-                Text("3 · Fallback")
+                Text("3 · Fallback — optional")
             } footer: {
-                Text("Only needed when silent sign-in can't work — an MFA/CAPTCHA step, or egym changing their form so the injection breaks. It's also the control test: it proves cookie harvesting works independently of the scripted path.\n\nEverything on this screen is read-only — occurrences GETs only. Nothing here books or cancels a class.")
+                Text("Skip this unless step 2 fails. Signing in by hand is the backup if egym adds a CAPTCHA or changes their form.\n\nNothing on this screen books or cancels a class.")
             }
         }
     }

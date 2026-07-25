@@ -16,7 +16,10 @@ struct LabFireIntent: AppIntent {
     static var description = IntentDescription("Lab spike: waits a set number of seconds, then makes an authenticated check, to measure whether iOS lets the app run unattended while locked. Books nothing.")
     static var openAppWhenRun: Bool = false
 
-    @Parameter(title: "Wait seconds before checking", default: 60)
+    /// Measured on device: 0/10/20s complete, 30s and 60s fail — and 30s fails
+    /// unlocked too, so it's a hard runtime budget for a Shortcuts-invoked
+    /// action, not a lock-state or power effect. Default sits well inside it.
+    @Parameter(title: "Wait seconds before checking", default: 5)
     var waitSeconds: Int
 
     /// Never throws. A thrown error surfaces in Shortcuts as a generic failure

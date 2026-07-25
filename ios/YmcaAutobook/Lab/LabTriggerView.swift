@@ -46,7 +46,7 @@ struct LabTriggerView: View {
             step(2, "Choose Time of Day, pick a time a few minutes out, set it to Daily.")
             step(3, "Turn OFF “Ask Before Running”. This is the critical setting — with it on, the automation waits for a tap and proves nothing.")
             step(4, "Add action → search “Run YMCA session check” → add it.")
-            step(5, "Leave Wait seconds at 60 so it has to hold runtime, not just fire.")
+            step(5, "Leave Wait seconds at 5. Measured budget: 0–20s completes, 30s and 60s fail (30s fails unlocked too, so it's a hard runtime limit, not a lock-state effect).")
             step(6, "Lock the phone and leave it. Come back after the scheduled time and pull to refresh here.")
         } header: {
             Text("Set up the automation")
@@ -63,9 +63,9 @@ struct LabTriggerView: View {
                 Label("Run now (no wait)", systemImage: "play.circle")
             }
             Button {
-                runNow(wait: 60)
+                runNow(wait: 20)
             } label: {
-                Label("Run now (60s wait)", systemImage: "clock.arrow.circlepath")
+                Label("Run now (20s wait — near the limit)", systemImage: "clock.arrow.circlepath")
             }
             Button(role: .destructive) {
                 LabFireLog.clear(); fires = []

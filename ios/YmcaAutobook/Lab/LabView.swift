@@ -62,6 +62,13 @@ struct LabView: View {
             }
             LabeledContent("Credentials",
                            value: GymCredentialStore.hasCredentials ? "in Keychain" : "not saved")
+            if session != nil {
+                Button {
+                    testCookie()
+                } label: {
+                    Label("Check session again", systemImage: "stethoscope")
+                }
+            }
         }
     }
 
@@ -148,46 +155,22 @@ struct LabView: View {
     }
 
     private var actionsSection: some View {
-        Group {
-            Section {
-                Button {
-                    runScriptedLogin()
-                } label: {
-                    Label("Silent sign-in", systemImage: "bolt.badge.clock")
-                }
-                .disabled(!GymCredentialStore.hasCredentials)
-
-                Button {
-                    testCookie()
-                } label: {
-                    Label("Test stored session", systemImage: "stethoscope")
-                }
-                .disabled(session == nil)
-            } header: {
-                Text("Re-run (optional)")
-            } footer: {
-                Text("Sign-in already happened when you saved your credentials. Use these only to repeat it — **Test stored session** is worth tapping again over the next few days to see how long a session lasts.")
+        Section {
+            Button {
+                runInteractiveLogin()
+            } label: {
+                Label("Sign in manually instead", systemImage: "person.badge.key")
             }
 
-            Section {
-                Button {
-                    runInteractiveLogin()
-                } label: {
-                    Label("Manual sign-in (type on egym's page)", systemImage: "person.badge.key")
-                }
-
-                Button(role: .destructive) {
-                    GymCredentialStore.clearAll()
-                    session = nil; username = ""; password = ""
-                    results.insert("Cleared credentials + session.", at: 0)
-                } label: {
-                    Label("Clear everything", systemImage: "trash")
-                }
-            } header: {
-                Text("Fallback (optional)")
-            } footer: {
-                Text("Only if signing in above fails — a CAPTCHA, or egym changing their form. Signing in by hand still gets you a session.\n\nNothing on this screen books or cancels a class.")
+            Button(role: .destructive) {
+                GymCredentialStore.clearAll()
+                session = nil; username = ""; password = ""
+                results.insert("Cleared credentials + session.", at: 0)
+            } label: {
+                Label("Clear everything", systemImage: "trash")
             }
+        } footer: {
+            Text("Sign in manually only if the automatic sign-in fails — a CAPTCHA, or egym changing their form. Clear everything removes the saved password and session from the Keychain.\n\nNothing on this screen books or cancels a class.")
         }
     }
 

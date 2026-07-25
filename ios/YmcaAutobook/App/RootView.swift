@@ -22,10 +22,6 @@ struct RootView: View {
                 .tabItem { Label("Away", systemImage: "mappin.and.ellipse") }.tag(3)
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }.tag(4)
-            // LAB — P0 spike surface for #59. Additive and self-contained; the
-            // shipped tabs above are untouched and Actions remains the engine.
-            LabView()
-                .tabItem { Label("Lab", systemImage: "flask") }.tag(5)
         }
         .task(id: auth.hasToken) {
             guard auth.hasToken else { return }

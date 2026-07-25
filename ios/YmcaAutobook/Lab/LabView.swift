@@ -16,8 +16,12 @@ struct LabView: View {
     @State private var session: StoredSession? = GymCredentialStore.session
     @State private var showWebLogin = false
     @State private var busy = false
-    @State private var results: [String] = []
     @State private var editingCredentials = false
+
+    /// Persisted, because this is measured across days: view state would wipe
+    /// the log on every relaunch while the session itself survives in the
+    /// Keychain, leaving a stored session with no record of where it came from.
+    @State private var results: [String] = LabResultLog.load()
 
     var body: some View {
         NavigationStack {
@@ -136,7 +140,7 @@ struct LabView: View {
                     GymCredentialStore.saveCredentials(username: username, password: password)
                     password = ""              // don't keep plaintext in view state
                     editingCredentials = false
-                    results.insert("✅ Saved for \(username). The password is in the Keychain, not shown again.", at: 0)
+                    record("✅ Saved for \(username). The password is in the Keychain, not shown again.")
                     runScriptedLogin()         // no dead end — prove it works right away
                 }
                 .disabled(username.isEmpty || password.isEmpty)
@@ -165,7 +169,7 @@ struct LabView: View {
             Button(role: .destructive) {
                 GymCredentialStore.clearAll()
                 session = nil; username = ""; password = ""
-                results.insert("Cleared credentials + session.", at: 0)
+                record("Cleared credentials + session.")
             } label: {
                 Label("Clear everything", systemImage: "trash")
             }
@@ -175,10 +179,19 @@ struct LabView: View {
     }
 
     private var resultsSection: some View {
-        Section("Results") {
+        Section {
             ForEach(Array(results.enumerated()), id: \.offset) { _, r in
                 Text(r).font(.callout.monospaced())
             }
+        } header: {
+            HStack {
+                Text("Results")
+                Spacer()
+                Button("Clear") { results = []; LabResultLog.save([]) }
+                    .font(.caption)
+            }
+        } footer: {
+            Text("Kept across relaunches — each entry is stamped with the session's age, so re-checking over several days shows how long a session lasts.")
         }
     }
 
@@ -192,6 +205,11 @@ struct LabView: View {
 
     // MARK: Actions
 
+    /// Single write path for results so every line is timestamped and persisted.
+    private func record(_ line: String) {
+        results = LabResultLog.append(line, to: results)
+    }
+
     private func runInteractiveLogin() {
         showWebLogin = true
         Task {
@@ -200,11 +218,11 @@ struct LabView: View {
                 GymCredentialStore.saveSession(s)
                 session = s
                 showWebLogin = false
-                results.insert("✅ Interactive login OK — \(s.cookies.count) cookies, csrf captured.", at: 0)
+                record("✅ Interactive login OK — \(s.cookies.count) cookies, csrf captured.")
                 await verify(s, label: "post-login")
             } catch {
                 showWebLogin = false
-                results.insert("❌ Interactive login failed: \(error.localizedDescription)", at: 0)
+                record("❌ Interactive login failed: \(error.localizedDescription)")
             }
         }
     }
@@ -220,11 +238,11 @@ struct LabView: View {
                 GymCredentialStore.saveSession(s)
                 session = s
                 let secs = Date().timeIntervalSince(t0)
-                results.insert(String(format: "✅ SILENT re-login OK in %.1fs — %d cookies. Unattended path viable.",
-                                      secs, s.cookies.count), at: 0)
+                record(String(format: "✅ SILENT re-login OK in %.1fs — %d cookies. Unattended path viable.",
+                                      secs, s.cookies.count))
                 await verify(s, label: "post-silent-login")
             } catch {
-                results.insert("❌ Silent re-login failed: \(error.localizedDescription)", at: 0)
+                record("❌ Silent re-login failed: \(error.localizedDescription)")
             }
             busy = false
         }
@@ -242,13 +260,13 @@ struct LabView: View {
     private func verify(_ s: StoredSession, label: String) async {
         switch await YmcaSessionClient.validate(s) {
         case .ok(let n, let ms):
-            results.insert(String(format: "✅ %@: session ALIVE at %.1fh — %d occurrences in %dms",
-                                  label, s.ageHours, n, ms), at: 0)
+            record(String(format: "✅ %@: session ALIVE at %.1fh — %d occurrences in %dms",
+                                  label, s.ageHours, n, ms))
         case .expired(let status):
-            results.insert(String(format: "⚠️ %@: session EXPIRED at %.1fh (HTTP %d) — silent re-login needed",
-                                  label, s.ageHours, status), at: 0)
+            record(String(format: "⚠️ %@: session EXPIRED at %.1fh (HTTP %d) — silent re-login needed",
+                                  label, s.ageHours, status))
         case .failed(let why):
-            results.insert("❌ \(label): \(why)", at: 0)
+            record("❌ \(label): \(why)")
         }
     }
 }

@@ -34,6 +34,7 @@
 		FAB300000000000000000A2 /* YmcaSessionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB300000000000000000A1 /* YmcaSessionClient.swift */; };
 		FAB400000000000000000A2 /* LabLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB400000000000000000A1 /* LabLogin.swift */; };
 		FAB500000000000000000A2 /* LabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB500000000000000000A1 /* LabView.swift */; };
+		FAB600000000000000000A2 /* LabResultLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB600000000000000000A1 /* LabResultLog.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,6 +66,7 @@
 		FAB300000000000000000A1 /* YmcaSessionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YmcaSessionClient.swift; sourceTree = "<group>"; };
 		FAB400000000000000000A1 /* LabLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabLogin.swift; sourceTree = "<group>"; };
 		FAB500000000000000000A1 /* LabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabView.swift; sourceTree = "<group>"; };
+		FAB600000000000000000A1 /* LabResultLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabResultLog.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -170,6 +172,7 @@
 				FAB300000000000000000A1 /* YmcaSessionClient.swift */,
 				FAB400000000000000000A1 /* LabLogin.swift */,
 				FAB500000000000000000A1 /* LabView.swift */,
+				FAB600000000000000000A1 /* LabResultLog.swift */,
 			);
 			path = Lab;
 			sourceTree = "<group>";
@@ -264,6 +267,7 @@
 				FAB300000000000000000A2 /* YmcaSessionClient.swift in Sources */,
 				FAB400000000000000000A2 /* LabLogin.swift in Sources */,
 				FAB500000000000000000A2 /* LabView.swift in Sources */,
+				FAB600000000000000000A2 /* LabResultLog.swift in Sources */,
 				DE12A282481D58D9D5EF4B1A /* YmcaAutobookApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

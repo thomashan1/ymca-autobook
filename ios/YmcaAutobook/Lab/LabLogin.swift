@@ -53,7 +53,7 @@ final class LabLoginController: NSObject, ObservableObject {
         log.append("[\(t.string(from: Date()))] \(s)")
     }
 
-    /// Build (or reuse) the web view. For `.scripted` it is never shown.
+    /// Build (or reuse) the web view.
     func makeWebView() -> WKWebView {
         if let webView { return webView }
         let cfg = WKWebViewConfiguration()
@@ -62,6 +62,24 @@ final class LabLoginController: NSObject, ObservableObject {
         wv.navigationDelegate = self
         webView = wv
         return wv
+    }
+
+    /// A `WKWebView` that isn't in the view hierarchy gets throttled — navigation
+    /// and JS may never run at all. In scripted mode nothing presents it, so
+    /// attach it to the window behind everything and keep it invisible.
+    private func attachOffscreenIfNeeded(_ wv: WKWebView) {
+        guard wv.superview == nil else { return }
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+        guard let window = scene?.windows.first(where: { $0.isKeyWindow }) ?? scene?.windows.first else {
+            note("⚠️ no window to attach to — scripted login may stall")
+            return
+        }
+        wv.alpha = 0.01                      // not `isHidden`: hidden views can be skipped entirely
+        wv.isUserInteractionEnabled = false
+        window.insertSubview(wv, at: 0)
+        note("attached web view offscreen")
     }
 
     func start(mode: Mode, timeout: TimeInterval = 90) async throws -> StoredSession {
@@ -77,10 +95,22 @@ final class LabLoginController: NSObject, ObservableObject {
         }
 
         let wv = makeWebView()
+        if case .scripted = mode { attachOffscreenIfNeeded(wv) }
         wv.load(URLRequest(url: LabConfig.loginURL))
         note("Loading \(LabConfig.loginURL.host ?? "")…")
 
         startPolling()
+
+        // Independent watchdog. The poll-based deadline check is skipped once
+        // `finished` is set, so a harvest that never completes would otherwise
+        // hang forever with no feedback.
+        let limit = timeout
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
+            guard let self, self.continuation != nil else { return }
+            self.note("watchdog: giving up after \(Int(limit))s")
+            self.finish(.failure(LoginError.timedOut(self.webView?.url?.absoluteString ?? "unknown")))
+        }
 
         return try await withCheckedThrowingContinuation { cont in
             self.continuation = cont
@@ -202,6 +232,7 @@ final class LabLoginController: NSObject, ObservableObject {
         finished = true
         pollTimer?.invalidate(); pollTimer = nil
         isRunning = false
+        if webView?.alpha ?? 1 < 1 { webView?.removeFromSuperview() }   // drop the offscreen attach
         let c = continuation
         continuation = nil
         switch result {

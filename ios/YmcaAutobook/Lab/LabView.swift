@@ -34,7 +34,25 @@ struct LabView: View {
             }
             .navigationTitle("Lab · Session")
             .navigationBarTitleDisplayMode(.inline)
-            .overlay { if busy { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
+            .overlay {
+                if busy {
+                    // Show live progress: a bare spinner on a step that can take
+                    // ~30s reads as a hang.
+                    VStack(spacing: 10) {
+                        ProgressView()
+                        Text("Signing in…").font(.subheadline.weight(.semibold))
+                        Text(login.log.last ?? "starting")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 260)
+                        Button("Cancel") { login.cancel() }
+                            .font(.caption)
+                    }
+                    .padding(20)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                }
+            }
             .sheet(isPresented: $showWebLogin) {
                 NavigationStack {
                     LabLoginWebView(controller: login)

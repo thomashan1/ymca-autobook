@@ -6,8 +6,33 @@ import SwiftUI
 /// it run at the scheduled minute, while the phone was locked, and still finish
 /// the network call." The history below records exactly that per fire.
 struct LabTriggerView: View {
+    @EnvironmentObject var classes: ClassesRepository
     @State private var fires: [LabFireLog.Entry] = LabFireLog.load()
     @State private var busy = false
+
+    /// Booking opens 167h before a class — one week minus one hour, so it lands
+    /// on the same weekday one hour *later* in the day than the class starts.
+    private var openTimes: [(label: String, minutes: Int)] {
+        classes.classes.compactMap { c in
+            let p = c.start.split(separator: ":").compactMap { Int($0) }
+            guard p.count == 2 else { return nil }
+            let mins = p[0] * 60 + p[1] + 60
+            return ("\(c.weekday.rawValue) \(String(format: "%02d:%02d", mins / 60, mins % 60))  \(c.name)", mins)
+        }
+        .sorted { $0.minutes < $1.minutes }
+    }
+
+    /// Sweep on the hour, from the hour of the earliest open through the hour
+    /// after the latest — every class is then picked up within the hour.
+    private var suggestedSweeps: [String] {
+        guard let first = openTimes.first?.minutes, let last = openTimes.last?.minutes else { return [] }
+        let startHour = first / 60
+        let endHour = (last % 60 == 0) ? last / 60 : last / 60 + 1
+        return (startHour...endHour).map { h in
+            let display = h > 12 ? h - 12 : h
+            return String(format: "%d:00 %@", display, h >= 12 ? "PM" : "AM")
+        }
+    }
 
     private var lockedSuccesses: Int {
         fires.filter { $0.fullySucceeded && $0.lockedAtFire }.count
@@ -16,6 +41,7 @@ struct LabTriggerView: View {
     var body: some View {
         List {
             verdictSection
+            if !suggestedSweeps.isEmpty { scheduleSection }
             setupSection
             manualSection
             if !fires.isEmpty { historySection }
@@ -37,6 +63,28 @@ struct LabTriggerView: View {
                 Label("No locked run has completed yet", systemImage: "exclamationmark.triangle")
                     .foregroundStyle(Theme.queued)
             }
+        }
+    }
+
+    /// Computed from the real classes.yml rather than hardcoded, so it stays
+    /// right when the schedule changes.
+    private var scheduleSection: some View {
+        Section {
+            ForEach(suggestedSweeps, id: \.self) { t in
+                HStack {
+                    Image(systemName: "clock").foregroundStyle(Theme.accent)
+                    Text(t).font(.body.weight(.semibold)).monospacedDigit()
+                    Spacer()
+                    Text("Mon–Fri").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Link(destination: URL(string: "shortcuts://")!) {
+                Label("Open Shortcuts", systemImage: "arrow.up.forward.app")
+            }
+        } header: {
+            Text("Create \(suggestedSweeps.count) automations at these times")
+        } footer: {
+            Text("Each run books everything whose window has opened — it's a sweep, not one alarm per class, so these times don't change when you add or remove a class.\n\nYour booking windows open at:\n" + openTimes.map(\.label).joined(separator: "\n") + "\n\niOS gives apps no way to create automations, so these have to be added by hand — once.")
         }
     }
 

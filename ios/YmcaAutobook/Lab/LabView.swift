@@ -17,6 +17,7 @@ struct LabView: View {
     @State private var showWebLogin = false
     @State private var busy = false
     @State private var results: [String] = []
+    @State private var editingCredentials = false
 
     var body: some View {
         NavigationStack {
@@ -66,21 +67,46 @@ struct LabView: View {
 
     private var credentialsSection: some View {
         Section {
-            TextField("YMCA / egym email", text: $username)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.emailAddress)
-            SecureField("Password", text: $password)
-            Button("Save to Keychain") {
-                GymCredentialStore.saveCredentials(username: username, password: password)
-                password = ""
-                results.insert("Credentials saved (AfterFirstUnlockThisDeviceOnly).", at: 0)
+            if GymCredentialStore.hasCredentials && !editingCredentials {
+                // Saved state — otherwise clearing the password field on save
+                // just looks like the save failed.
+                HStack {
+                    Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.booked)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(GymCredentialStore.username ?? "—").font(.body.weight(.medium))
+                        Text("Password saved in Keychain")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Button("Update credentials") {
+                    username = GymCredentialStore.username ?? ""
+                    password = ""
+                    editingCredentials = true
+                }
+            } else {
+                TextField("YMCA / egym email", text: $username)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.emailAddress)
+                SecureField("Password", text: $password)
+                Button("Save to Keychain") {
+                    GymCredentialStore.saveCredentials(username: username, password: password)
+                    password = ""              // don't keep plaintext in view state
+                    editingCredentials = false
+                    results.insert("✅ Saved for \(username). The password is in the Keychain, not shown again.", at: 0)
+                }
+                .disabled(username.isEmpty || password.isEmpty)
+                if GymCredentialStore.hasCredentials {
+                    Button("Cancel", role: .cancel) {
+                        password = ""
+                        editingCredentials = false
+                    }
+                }
             }
-            .disabled(username.isEmpty || password.isEmpty)
         } header: {
             Text("1 · Credentials")
         } footer: {
-            Text("This is the primary path. Saving your login lets the app sign itself in unattended — the only way a 9:45am booking works with the phone locked and nobody to type anything.\n\nStored only in this device's Keychain: never synced to iCloud, never in a backup, never sent anywhere but egym's own login page.")
+            Text("This is the primary path. Booking opens at a fixed moment each week — usually while your phone is locked in your pocket and nobody is around to type anything. Saving your login is what lets the app sign itself in at that moment.\n\nStored only in this device's Keychain: never synced to iCloud, never included in a backup, and never sent anywhere except egym's own login page. The password is intentionally not displayed after saving.")
         }
     }
 
@@ -103,7 +129,7 @@ struct LabView: View {
             } header: {
                 Text("2 · The real path")
             } footer: {
-                Text("Silent sign-in is exactly what runs unattended: no UI, no typing — the saved credentials are submitted to egym's form and the session is harvested. If this works, an expired cookie stops mattering.\n\nTest stored session replays the cookie over a plain URLSession, which is also how we measure how long a session survives.")
+                Text("Silent sign-in is exactly what would run unattended: no UI, no typing — the saved credentials are submitted to egym's form and the session is harvested. If this works, an expired session stops being a problem, because the app can always get a fresh one on its own.\n\nTest stored session replays the saved cookie over a plain URLSession. That's the same request a booking would make, and repeating it over days is how we measure how long a session lasts.")
             }
 
             Section {

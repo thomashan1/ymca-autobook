@@ -141,7 +141,7 @@ struct LabView: View {
                 }
             }
         } header: {
-            Text("1 · Credentials — required")
+            Text("Sign in")
         } footer: {
             Text("This is the primary path. Booking opens at a fixed moment each week — usually while your phone is locked in your pocket and nobody is around to type anything. Saving your login is what lets the app sign itself in at that moment.\n\nKept in the device Keychain (AfterFirstUnlock, ThisDeviceOnly) and intentionally not displayed again after saving.")
         }
@@ -164,9 +164,9 @@ struct LabView: View {
                 }
                 .disabled(session == nil)
             } header: {
-                Text("2 · Test — runs automatically")
+                Text("Re-run (optional)")
             } footer: {
-                Text("Saving credentials signs you in straight away, so you don't need to tap anything here first. These just re-run it: **Silent sign-in** repeats the unattended sign-in, and **Test stored session** checks whether the saved session still works — worth re-running over the next few days to see how long one lasts.")
+                Text("Sign-in already happened when you saved your credentials. Use these only to repeat it — **Test stored session** is worth tapping again over the next few days to see how long a session lasts.")
             }
 
             Section {
@@ -184,9 +184,9 @@ struct LabView: View {
                     Label("Clear everything", systemImage: "trash")
                 }
             } header: {
-                Text("3 · Fallback — optional")
+                Text("Fallback (optional)")
             } footer: {
-                Text("Skip this unless step 2 fails. Signing in by hand is the backup if egym adds a CAPTCHA or changes their form.\n\nNothing on this screen books or cancels a class.")
+                Text("Only if signing in above fails — a CAPTCHA, or egym changing their form. Signing in by hand still gets you a session.\n\nNothing on this screen books or cancels a class.")
             }
         }
     }

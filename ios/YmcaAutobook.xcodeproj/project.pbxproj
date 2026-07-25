@@ -29,6 +29,11 @@
 		B00C0000000000000000FEF2 /* BookingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00C0000000000000000FEF1 /* BookingsRepository.swift */; };
 		DE7A0000000000000000FEF2 /* ClassDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE7A0000000000000000FEF1 /* ClassDetailSheet.swift */; };
 		5A3D0000000000000000FEF2 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3D0000000000000000FEF1 /* SampleData.swift */; };
+		FAB100000000000000000A2 /* LabConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB100000000000000000A1 /* LabConfig.swift */; };
+		FAB200000000000000000A2 /* GymCredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB200000000000000000A1 /* GymCredentialStore.swift */; };
+		FAB300000000000000000A2 /* YmcaSessionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB300000000000000000A1 /* YmcaSessionClient.swift */; };
+		FAB400000000000000000A2 /* LabLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB400000000000000000A1 /* LabLogin.swift */; };
+		FAB500000000000000000A2 /* LabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB500000000000000000A1 /* LabView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +60,11 @@
 		5A140000000000000000FEF1 /* SnapshotRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotRepository.swift; sourceTree = "<group>"; };
 		B00C0000000000000000FEF1 /* BookingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingsRepository.swift; sourceTree = "<group>"; };
 		5A3D0000000000000000FEF1 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
+		FAB100000000000000000A1 /* LabConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabConfig.swift; sourceTree = "<group>"; };
+		FAB200000000000000000A1 /* GymCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GymCredentialStore.swift; sourceTree = "<group>"; };
+		FAB300000000000000000A1 /* YmcaSessionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YmcaSessionClient.swift; sourceTree = "<group>"; };
+		FAB400000000000000000A1 /* LabLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabLogin.swift; sourceTree = "<group>"; };
+		FAB500000000000000000A1 /* LabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -116,6 +126,7 @@
 			children = (
 				2C661A46D80BD4074BC23B28 /* App */,
 				D0471E65CA87C21F11FAFFB7 /* Features */,
+				FABG0000000000000000000 /* Lab */,
 				0AE2E5226FC72EBE64B737B4 /* Models */,
 				85D01CAEDFD502D908375EAA /* Resources */,
 				A21EDFE20E0C98EC4976C247 /* Services */,
@@ -149,6 +160,18 @@
 				6E42BC4CE3F934ADC5BDDBA0 /* WeekView.swift */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		FABG0000000000000000000 /* Lab */ = {
+			isa = PBXGroup;
+			children = (
+				FAB100000000000000000A1 /* LabConfig.swift */,
+				FAB200000000000000000A1 /* GymCredentialStore.swift */,
+				FAB300000000000000000A1 /* YmcaSessionClient.swift */,
+				FAB400000000000000000A1 /* LabLogin.swift */,
+				FAB500000000000000000A1 /* LabView.swift */,
+			);
+			path = Lab;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -236,6 +259,11 @@
 				4F94197A994835B57E135180 /* RootView.swift in Sources */,
 				6645B4046F55D9CE125418CF /* Theme.swift in Sources */,
 				8042B764E95A023DEA355611 /* WeekView.swift in Sources */,
+				FAB100000000000000000A2 /* LabConfig.swift in Sources */,
+				FAB200000000000000000A2 /* GymCredentialStore.swift in Sources */,
+				FAB300000000000000000A2 /* YmcaSessionClient.swift in Sources */,
+				FAB400000000000000000A2 /* LabLogin.swift in Sources */,
+				FAB500000000000000000A2 /* LabView.swift in Sources */,
 				DE12A282481D58D9D5EF4B1A /* YmcaAutobookApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

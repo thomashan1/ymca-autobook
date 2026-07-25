@@ -247,8 +247,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				INFOPLIST_KEY_CFBundleDisplayName = "YMCA Auto Book";
-				PRODUCT_NAME = "YMCA Auto Book";
+				INFOPLIST_KEY_CFBundleDisplayName = "YMCA Booker";
+				PRODUCT_NAME = "YMCA Booker";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GYW462KLR5;
@@ -270,8 +270,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				INFOPLIST_KEY_CFBundleDisplayName = "YMCA Auto Book";
-				PRODUCT_NAME = "YMCA Auto Book";
+				INFOPLIST_KEY_CFBundleDisplayName = "YMCA Booker";
+				PRODUCT_NAME = "YMCA Booker";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GYW462KLR5;

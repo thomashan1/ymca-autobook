@@ -26,6 +26,7 @@ struct SettingsView: View {
                     connectionSection
                     diagnosticsSection
                 }
+                whySection
                 howToSection
             }
             .navigationTitle(onboarding ? "Connect" : "Settings")
@@ -92,6 +93,28 @@ struct SettingsView: View {
         }
     }
 
+    /// Sits above the steps because "should I even be doing this?" comes before
+    /// "how". Most of the time the answer is no — the token outlives app
+    /// reinstalls, so a fresh one is the exception, not routine maintenance.
+    private var whySection: some View {
+        Section {
+            reason("key.fill", "What it's for",
+                   "GitHub Actions does the actual booking. This app just reads and edits your plan on GitHub — classes, away dates — and can kick off a booking run. The token is how GitHub knows those requests are yours.")
+            reason("calendar.badge.exclamationmark", "When it expires",
+                   "Fine-grained tokens always have an expiry date, and GitHub emails you shortly before. Once it lapses the app stops loading data and you'll need a new one.")
+            reason("exclamationmark.triangle", "If it leaks or you revoke it",
+                   "Revoke it on github.com and make another. It only reaches these two repos, so nothing else of yours is exposed.")
+            reason("lock.rotation", "If a permission is missing",
+                   "An action that used to work starts failing — deleting a class needs Pull requests: Read and write, for instance. Fix it by editing the token's permissions on github.com; that doesn't require a new token.")
+            reason("iphone", "On a new phone",
+                   "Tokens live in this device's Keychain and aren't shared between devices, so a second phone needs its own.")
+        } header: {
+            Text("Why you need a token")
+        } footer: {
+            Text("You usually won't need to repeat this. The token survives deleting and reinstalling the app — it's only gone if you sign out here, revoke it, or let it expire.")
+        }
+    }
+
     private var howToSection: some View {
         Section {
             step(1, "On github.com, open Settings → Developer settings → Personal access tokens → Fine-grained tokens.")
@@ -107,14 +130,30 @@ struct SettingsView: View {
         }
     }
 
+    /// Numbered step. Deliberately *not* the accent red — these are ordinary
+    /// instructions, and a row of red badges reads as a list of errors.
     private func step(_ n: Int, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text("\(n)")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.weekDivider)
                 .frame(width: 20, height: 20)
-                .background(Theme.accent, in: Circle())
+                .background(Theme.weekDivider.opacity(0.15), in: Circle())
             Text(text).font(.callout)
+        }
+    }
+
+    private func reason(_ icon: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .foregroundStyle(Theme.weekDivider)
+                .frame(width: 20)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.callout.weight(.medium))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

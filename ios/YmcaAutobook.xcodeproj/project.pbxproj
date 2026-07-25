@@ -35,6 +35,9 @@
 		FAB400000000000000000A2 /* LabLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB400000000000000000A1 /* LabLogin.swift */; };
 		FAB500000000000000000A2 /* LabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB500000000000000000A1 /* LabView.swift */; };
 		FAB600000000000000000A2 /* LabResultLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB600000000000000000A1 /* LabResultLog.swift */; };
+		FAB700000000000000000A2 /* LabFireLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB700000000000000000A1 /* LabFireLog.swift */; };
+		FAB800000000000000000A2 /* LabFireIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB800000000000000000A1 /* LabFireIntent.swift */; };
+		FAB900000000000000000A2 /* LabTriggerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB900000000000000000A1 /* LabTriggerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -67,6 +70,9 @@
 		FAB400000000000000000A1 /* LabLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabLogin.swift; sourceTree = "<group>"; };
 		FAB500000000000000000A1 /* LabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabView.swift; sourceTree = "<group>"; };
 		FAB600000000000000000A1 /* LabResultLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabResultLog.swift; sourceTree = "<group>"; };
+		FAB700000000000000000A1 /* LabFireLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabFireLog.swift; sourceTree = "<group>"; };
+		FAB800000000000000000A1 /* LabFireIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabFireIntent.swift; sourceTree = "<group>"; };
+		FAB900000000000000000A1 /* LabTriggerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabTriggerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -173,6 +179,9 @@
 				FAB400000000000000000A1 /* LabLogin.swift */,
 				FAB500000000000000000A1 /* LabView.swift */,
 				FAB600000000000000000A1 /* LabResultLog.swift */,
+				FAB700000000000000000A1 /* LabFireLog.swift */,
+				FAB800000000000000000A1 /* LabFireIntent.swift */,
+				FAB900000000000000000A1 /* LabTriggerView.swift */,
 			);
 			path = Lab;
 			sourceTree = "<group>";
@@ -268,6 +277,9 @@
 				FAB400000000000000000A2 /* LabLogin.swift in Sources */,
 				FAB500000000000000000A2 /* LabView.swift in Sources */,
 				FAB600000000000000000A2 /* LabResultLog.swift in Sources */,
+				FAB700000000000000000A2 /* LabFireLog.swift in Sources */,
+				FAB800000000000000000A2 /* LabFireIntent.swift in Sources */,
+				FAB900000000000000000A2 /* LabTriggerView.swift in Sources */,
 				DE12A282481D58D9D5EF4B1A /* YmcaAutobookApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

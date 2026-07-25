@@ -27,6 +27,7 @@ struct LabView: View {
         NavigationStack {
             List {
                 statusSection
+                if session != nil { triggerLinkSection }
                 credentialsSection
                 actionsSection
                 if !results.isEmpty { resultsSection }
@@ -91,6 +92,20 @@ struct LabView: View {
                     Label("Check session again", systemImage: "stethoscope")
                 }
             }
+        }
+    }
+
+    /// Spike A only makes sense once there's a session to exercise, so it stays
+    /// hidden until sign-in has succeeded.
+    private var triggerLinkSection: some View {
+        Section {
+            NavigationLink {
+                LabTriggerView()
+            } label: {
+                Label("Unattended trigger test", systemImage: "bolt.badge.clock")
+            }
+        } footer: {
+            Text("Next spike: can iOS wake the app at an exact moment while locked and let it finish the call? That's the remaining gate for running this on-device.")
         }
     }
 

@@ -12,8 +12,6 @@ state through the GitHub REST API:
 | **Jobs**    | Scheduled bookings + live 167h countdowns; recent run feed (Actions API) |
 | **Away**    | `pauses.yml` in the private repo — add/remove away dates |
 
-See the interactive concept mockup for the intended look.
-
 ## Why the app is a client, not the engine
 
 iOS cannot reliably wake a backgrounded app at a precise instant, and booking

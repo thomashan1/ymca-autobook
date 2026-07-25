@@ -13,6 +13,7 @@
 		4F94197A994835B57E135180 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52A5D049F6E3E283632C34DE /* RootView.swift */; };
 		6645B4046F55D9CE125418CF /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B093C6955BC127CFF87E05B6 /* Theme.swift */; };
 		66FE0F4D5D07D5BC4B0A8E60 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0975410C18A36046F0E0CDB5 /* Config.swift */; };
+		FAC100000000000000000A2 /* LegacyCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC100000000000000000A1 /* LegacyCleanup.swift */; };
 		6FF15C49983581B43F4D54DD /* GitHubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4103662AB1A49043869B0F98 /* GitHubClient.swift */; };
 		8042B764E95A023DEA355611 /* WeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E42BC4CE3F934ADC5BDDBA0 /* WeekView.swift */; };
 		AEDE050E0481FBD2815B736F /* ClassesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3601D07AE2FA1B1E0558AE78 /* ClassesRepository.swift */; };
@@ -29,15 +30,11 @@
 		B00C0000000000000000FEF2 /* BookingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00C0000000000000000FEF1 /* BookingsRepository.swift */; };
 		DE7A0000000000000000FEF2 /* ClassDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE7A0000000000000000FEF1 /* ClassDetailSheet.swift */; };
 		5A3D0000000000000000FEF2 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3D0000000000000000FEF1 /* SampleData.swift */; };
-		FAB100000000000000000A2 /* LabConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB100000000000000000A1 /* LabConfig.swift */; };
-		FAB200000000000000000A2 /* GymCredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB200000000000000000A1 /* GymCredentialStore.swift */; };
-		FAB300000000000000000A2 /* YmcaSessionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB300000000000000000A1 /* YmcaSessionClient.swift */; };
-		FAB400000000000000000A2 /* LabLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB400000000000000000A1 /* LabLogin.swift */; };
-		FAB500000000000000000A2 /* LabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB500000000000000000A1 /* LabView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0975410C18A36046F0E0CDB5 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		FAC100000000000000000A1 /* LegacyCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyCleanup.swift; sourceTree = "<group>"; };
 		1283377295DE4115EEE110FF /* JobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobsView.swift; sourceTree = "<group>"; };
 		DE7A0000000000000000FEF1 /* ClassDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassDetailSheet.swift; sourceTree = "<group>"; };
 		17EAF3BCB3CE279BF3A649BC /* AwayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AwayView.swift; sourceTree = "<group>"; };
@@ -60,11 +57,6 @@
 		5A140000000000000000FEF1 /* SnapshotRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotRepository.swift; sourceTree = "<group>"; };
 		B00C0000000000000000FEF1 /* BookingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingsRepository.swift; sourceTree = "<group>"; };
 		5A3D0000000000000000FEF1 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
-		FAB100000000000000000A1 /* LabConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabConfig.swift; sourceTree = "<group>"; };
-		FAB200000000000000000A1 /* GymCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GymCredentialStore.swift; sourceTree = "<group>"; };
-		FAB300000000000000000A1 /* YmcaSessionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YmcaSessionClient.swift; sourceTree = "<group>"; };
-		FAB400000000000000000A1 /* LabLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabLogin.swift; sourceTree = "<group>"; };
-		FAB500000000000000000A1 /* LabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -108,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				0975410C18A36046F0E0CDB5 /* Config.swift */,
+				FAC100000000000000000A1 /* LegacyCleanup.swift */,
 				5A3D0000000000000000FEF1 /* SampleData.swift */,
 			);
 			path = Support;
@@ -126,7 +119,6 @@
 			children = (
 				2C661A46D80BD4074BC23B28 /* App */,
 				D0471E65CA87C21F11FAFFB7 /* Features */,
-				FABG0000000000000000000 /* Lab */,
 				0AE2E5226FC72EBE64B737B4 /* Models */,
 				85D01CAEDFD502D908375EAA /* Resources */,
 				A21EDFE20E0C98EC4976C247 /* Services */,
@@ -160,18 +152,6 @@
 				6E42BC4CE3F934ADC5BDDBA0 /* WeekView.swift */,
 			);
 			path = Features;
-			sourceTree = "<group>";
-		};
-		FABG0000000000000000000 /* Lab */ = {
-			isa = PBXGroup;
-			children = (
-				FAB100000000000000000A1 /* LabConfig.swift */,
-				FAB200000000000000000A1 /* GymCredentialStore.swift */,
-				FAB300000000000000000A1 /* YmcaSessionClient.swift */,
-				FAB400000000000000000A1 /* LabLogin.swift */,
-				FAB500000000000000000A1 /* LabView.swift */,
-			);
-			path = Lab;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -244,6 +224,7 @@
 				AEDE050E0481FBD2815B736F /* ClassesRepository.swift in Sources */,
 				075E377C339335C1F549FAE6 /* ClassesView.swift in Sources */,
 				66FE0F4D5D07D5BC4B0A8E60 /* Config.swift in Sources */,
+				FAC100000000000000000A2 /* LegacyCleanup.swift in Sources */,
 				5A3D0000000000000000FEF2 /* SampleData.swift in Sources */,
 				6FF15C49983581B43F4D54DD /* GitHubClient.swift in Sources */,
 				F6B9EAE237C7F7C5027F83FC /* GymClass.swift in Sources */,
@@ -259,11 +240,6 @@
 				4F94197A994835B57E135180 /* RootView.swift in Sources */,
 				6645B4046F55D9CE125418CF /* Theme.swift in Sources */,
 				8042B764E95A023DEA355611 /* WeekView.swift in Sources */,
-				FAB100000000000000000A2 /* LabConfig.swift in Sources */,
-				FAB200000000000000000A2 /* GymCredentialStore.swift in Sources */,
-				FAB300000000000000000A2 /* YmcaSessionClient.swift in Sources */,
-				FAB400000000000000000A2 /* LabLogin.swift in Sources */,
-				FAB500000000000000000A2 /* LabView.swift in Sources */,
 				DE12A282481D58D9D5EF4B1A /* YmcaAutobookApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

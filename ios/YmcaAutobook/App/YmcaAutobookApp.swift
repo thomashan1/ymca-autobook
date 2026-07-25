@@ -8,6 +8,10 @@ struct YmcaAutobookApp: App {
     @StateObject private var snapshot = SnapshotRepository()
     @StateObject private var bookings = BookingsRepository()
 
+    init() {
+        LegacyCleanup.purgeGymCredentialsIfNeeded()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

@@ -16,11 +16,12 @@ struct LabFireIntent: AppIntent {
     static var description = IntentDescription("Lab spike: waits a set number of seconds, then makes an authenticated check, to measure whether iOS lets the app run unattended while locked. Books nothing.")
     static var openAppWhenRun: Bool = false
 
-    /// Measured on device: 0/10/20s complete, 30s and 60s fail — and 30s fails
-    /// unlocked too, so it's a hard runtime budget for a Shortcuts-invoked
-    /// action, not a lock-state or power effect. Default sits well inside it.
-    @Parameter(title: "Wait seconds before checking", default: 5)
-    var waitSeconds: Int
+    // No parameters by design. The wait existed only to measure how long iOS
+    // lets a Shortcuts-invoked action run (answer: 20s completes, 30s is
+    // killed). With a sweep design — each run books whatever has opened —
+    // there is nothing to wait for, so the action checks immediately and keeps
+    // its runtime as short as possible. The Lab's manual buttons still exercise
+    // waits when we want to re-measure.
 
     /// Never throws. A thrown error surfaces in Shortcuts as a generic failure
     /// and — worse for a diagnostic — leaves no record of what happened, which
@@ -32,7 +33,7 @@ struct LabFireIntent: AppIntent {
         // Background launch: no window exists, so the WebView-based re-auth
         // cannot run here. It would stall until its watchdog and overrun the
         // runtime an automation gets.
-        await LabFireLog.run(waitSeconds: waitSeconds, allowWebViewReAuth: false)
+        await LabFireLog.run(waitSeconds: 0, allowWebViewReAuth: false)
         return .result()
     }
 }

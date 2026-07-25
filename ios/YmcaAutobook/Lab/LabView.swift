@@ -82,6 +82,9 @@ struct LabView: View {
             Text("The only place it is ever sent is egym's own login page — the same page you'd type it into yourself.")
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Text("To remove it, use Clear everything below. Deleting the app is not a reliable way to erase it — Keychain items have been observed surviving a reinstall.")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 6)
         .listRowBackground(Theme.booked.opacity(0.10))

@@ -13,7 +13,6 @@
 		4F94197A994835B57E135180 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52A5D049F6E3E283632C34DE /* RootView.swift */; };
 		6645B4046F55D9CE125418CF /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B093C6955BC127CFF87E05B6 /* Theme.swift */; };
 		66FE0F4D5D07D5BC4B0A8E60 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0975410C18A36046F0E0CDB5 /* Config.swift */; };
-		FAC100000000000000000A2 /* LegacyCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC100000000000000000A1 /* LegacyCleanup.swift */; };
 		6FF15C49983581B43F4D54DD /* GitHubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4103662AB1A49043869B0F98 /* GitHubClient.swift */; };
 		8042B764E95A023DEA355611 /* WeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E42BC4CE3F934ADC5BDDBA0 /* WeekView.swift */; };
 		AEDE050E0481FBD2815B736F /* ClassesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3601D07AE2FA1B1E0558AE78 /* ClassesRepository.swift */; };
@@ -34,7 +33,6 @@
 
 /* Begin PBXFileReference section */
 		0975410C18A36046F0E0CDB5 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
-		FAC100000000000000000A1 /* LegacyCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyCleanup.swift; sourceTree = "<group>"; };
 		1283377295DE4115EEE110FF /* JobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobsView.swift; sourceTree = "<group>"; };
 		DE7A0000000000000000FEF1 /* ClassDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassDetailSheet.swift; sourceTree = "<group>"; };
 		17EAF3BCB3CE279BF3A649BC /* AwayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AwayView.swift; sourceTree = "<group>"; };
@@ -100,7 +98,6 @@
 			isa = PBXGroup;
 			children = (
 				0975410C18A36046F0E0CDB5 /* Config.swift */,
-				FAC100000000000000000A1 /* LegacyCleanup.swift */,
 				5A3D0000000000000000FEF1 /* SampleData.swift */,
 			);
 			path = Support;
@@ -224,7 +221,6 @@
 				AEDE050E0481FBD2815B736F /* ClassesRepository.swift in Sources */,
 				075E377C339335C1F549FAE6 /* ClassesView.swift in Sources */,
 				66FE0F4D5D07D5BC4B0A8E60 /* Config.swift in Sources */,
-				FAC100000000000000000A2 /* LegacyCleanup.swift in Sources */,
 				5A3D0000000000000000FEF2 /* SampleData.swift in Sources */,
 				6FF15C49983581B43F4D54DD /* GitHubClient.swift in Sources */,
 				F6B9EAE237C7F7C5027F83FC /* GymClass.swift in Sources */,

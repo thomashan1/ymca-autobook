@@ -32,7 +32,11 @@ from src.login import login          # noqa: E402
 from src.main import load_config     # noqa: E402
 
 _BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
-LEDGER_PATH = os.environ.get("BOOKINGS_PATH", "bookings.json")
+# Deliberately NOT bookings.json: that name belongs to snapshot_bookings.py,
+# which rewrites it every 6h as a flat list for the iOS app. Both scripts used
+# to default here, so the snapshot silently clobbered the ledger's dict and this
+# job died on `.items()` every 12h from 2026-07-24.
+LEDGER_PATH = os.environ.get("LEDGER_PATH", "ledger.json")
 HORIZON_DAYS = 30  # how far ahead to query (booking opens ~7d out, so ample)
 
 
@@ -71,6 +75,15 @@ def run() -> int:
     text, sha = private_store.get_file(token, LEDGER_PATH)
     ledger = json.loads(text) if text else {}
     book = ledger.setdefault("bookings", {})
+
+    # Guard the shape rather than trusting it. If another writer ever takes over
+    # this path again, say so plainly instead of dying on `.items()` — and stop
+    # rather than overwrite, since the file would be someone else's data.
+    if not isinstance(book, dict):
+        print(f"✖ {LEDGER_PATH} holds a {type(book).__name__}, not the ledger's "
+              f"id-keyed object — refusing to overwrite. Another script is "
+              f"probably writing to this path.", file=sys.stderr)
+        return 1
 
     current_ids = set()
     added = 0

@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,7 +27,11 @@ _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 _DOW = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4}
 SNAPSHOT_PATH = os.environ.get("SCHEDULE_SNAPSHOT_PATH", "schedule_snapshot.json")
 GREEN, DGREEN = "#2d6a4f", "#1b4332"
-SLOT, ROW_H = 30, 28  # minutes per grid row / px per row
+# 5-minute rows, not 30. Class times don't land on half-hour boundaries — Fri
+# TRX ends 11:15 and Lift & H.I.I.T. starts 11:20 — and on a 30-minute grid both
+# floor into the same slot, so the second class emitted a <td> the first one's
+# rowspan already covered. That extra cell shoved Friday out past the table.
+SLOT, ROW_H = 5, 5  # minutes per grid row / px per row
 
 
 def _duration_lookup(token: str | None) -> dict[tuple, int]:
@@ -106,10 +112,22 @@ def _html(rows: list[dict]) -> str:
         for r in by_day[dow]:
             start_s = (r["start_min"] - grid_start) // SLOT
             span = max(1, (r["duration"] + SLOT - 1) // SLOT)
-            if 0 <= start_s < total_slots:
-                grid[dow][start_s] = (r, span)
-                for s in range(start_s + 1, min(start_s + span, total_slots)):
-                    grid[dow][s] = "skip"
+            if not (0 <= start_s < total_slots):
+                continue
+            # Never write over an earlier class's rowspan: an extra <td> in a row
+            # breaks the whole table's column alignment. Clip instead, and say so.
+            span = min(span, total_slots - start_s)
+            for s in range(start_s, start_s + span):
+                if grid[dow][s] is not None:
+                    print(f"[grid] {r['name']} ({_DAY_NAMES[dow]} {r['start']}) overlaps "
+                          f"the previous class; clipping to {(s - start_s) * SLOT} min.")
+                    span = s - start_s
+                    break
+            if span <= 0:
+                continue
+            grid[dow][start_s] = (r, span)
+            for s in range(start_s + 1, start_s + span):
+                grid[dow][s] = "skip"
 
     day_ths = "".join(
         f"<th style='padding:7px 3px;text-align:center;background:{GREEN};color:#fff;"
@@ -129,7 +147,14 @@ def _html(rows: list[dict]) -> str:
         h = minutes // 60
         ampm = "am" if h < 12 else "pm"
         label = f"{h % 12 or 12}:00 {ampm}" if is_hour else ""
-        row_top_border = "border-top:1px solid #ccc" if is_hour else "border-top:1px dashed #eee"
+        # Rules only on the hour and half-hour — at 5-minute rows, a line per row
+        # would be a solid block of grey.
+        if is_hour:
+            row_top_border = "border-top:1px solid #ccc"
+        elif minutes % 30 == 0:
+            row_top_border = "border-top:1px dashed #eee"
+        else:
+            row_top_border = ""
         time_td = (
             f"<td style='background:#f0f0f0;{row_top_border};border-right:1px solid #ccc;"
             f"padding:0 4px;height:{ROW_H}px;vertical-align:top;"
@@ -183,7 +208,34 @@ def _html(rows: list[dict]) -> str:
     )
 
 
+def _wrong_dst_twin() -> bool:
+    """True if this run is the off-DST half of the cron pair (see the workflow).
+
+    Same approach as weekly_summary.py: both crons fire, and we key off WHICH
+    cron triggered rather than the wall clock, so a delayed run still resolves
+    correctly. Manual dispatches carry no cron and always send.
+    """
+    cron = os.environ.get("SCHEDULE_CRON", "").strip()
+    if not cron:
+        return False
+    try:
+        cron_hour = int(cron.split()[1])
+    except (IndexError, ValueError):
+        return False
+    now_local = datetime.now(ZoneInfo("America/Los_Angeles"))
+    correct_utc_hour = now_local.replace(
+        hour=17, minute=52, second=0, microsecond=0
+    ).astimezone(timezone.utc).hour
+    if cron_hour != correct_utc_hour:
+        print(f"[skip] cron '{cron}' is the off-DST pair for 17:52 PT "
+              f"(correct UTC hour today is {correct_utc_hour:02d}); skipping duplicate.")
+        return True
+    return False
+
+
 def run() -> int:
+    if _wrong_dst_twin():
+        return 0
     cfg = load_config()
     durations = _duration_lookup(os.environ.get("PRIVATE_REPO_TOKEN"))
     rows = _rows(cfg, durations)

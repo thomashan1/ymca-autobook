@@ -7,6 +7,8 @@ struct SettingsView: View {
     @EnvironmentObject var auth: AuthStore
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var snapshot: SnapshotRepository
+    @EnvironmentObject var bookings: BookingsRepository
 
     /// When shown as the first-run sheet this is true; false when it's the tab.
     var onboarding: Bool = false
@@ -14,6 +16,8 @@ struct SettingsView: View {
 
     @State private var token = ""
     @State private var reloading = false
+    @State private var refreshing = false
+    @State private var refreshNote: String?
     @State private var authError: String?
     @State private var connecting = false
 
@@ -72,6 +76,23 @@ struct SettingsView: View {
                 }
             }
             .disabled(reloading)
+            Button {
+                refreshBookingsNow()
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Refresh bookings from YMCA")
+                        Text("Re-reads what's actually booked, instead of waiting for the 6-hourly job.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if refreshing { Spacer(); ProgressView() }
+                }
+            }
+            .disabled(refreshing)
+            if let refreshNote {
+                Text(refreshNote).font(.caption).foregroundStyle(.secondary)
+            }
             Button("Sign out", role: .destructive) {
                 auth.signOut()
                 classes.classes = []
@@ -179,12 +200,48 @@ struct SettingsView: View {
         }
     }
 
+    /// Reloads everything the app shows. It used to fetch only classes and
+    /// pauses, so "Reload data" left the Week view's real bookings untouched —
+    /// exactly the thing you'd hit the button to update.
     private func reload() {
         reloading = true
         Task {
             await classes.load()
             await pauses.load()
+            await snapshot.load()
+            await bookings.load()
             reloading = false
+        }
+    }
+
+    /// bookings.json is republished by a workflow every 6h, so a booking made
+    /// just now isn't in it yet and no amount of pulling to refresh will help.
+    /// This asks that workflow to run, waits for it, then reloads.
+    private func refreshBookingsNow() {
+        refreshing = true
+        refreshNote = "Asking GitHub to re-read your bookings…"
+        Task {
+            do {
+                try await GitHubClient().dispatchBookingsSnapshot()
+            } catch {
+                refreshNote = "Couldn't start it: \(error.localizedDescription)"
+                refreshing = false
+                return
+            }
+            // The run takes ~1 min (login + Playwright). Poll the file rather
+            // than guessing: stop as soon as its timestamp moves.
+            let before = bookings.updatedAt
+            for _ in 0..<20 {
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                await bookings.load()
+                if bookings.updatedAt != before {
+                    refreshNote = "Up to date."
+                    refreshing = false
+                    return
+                }
+            }
+            refreshNote = "Still running — pull down on Week in a moment."
+            refreshing = false
         }
     }
 }

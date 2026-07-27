@@ -17,6 +17,10 @@ enum Config {
     /// Workflow dispatched for a one-off "Book now".
     static let bookWorkflow = "book.yml"
 
+    /// Republishes bookings.json. It runs every 6h on its own, so the app is
+    /// otherwise up to 6h stale after a booking — this lets it be asked directly.
+    static let bookingsSnapshotWorkflow = "bookings-snapshot.yml"
+
     static let timeZone = TimeZone(identifier: "America/Los_Angeles")!
 
     /// Booking opens this many hours before a class starts

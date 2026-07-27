@@ -31,7 +31,14 @@ GREEN, DGREEN = "#2d6a4f", "#1b4332"
 # TRX ends 11:15 and Lift & H.I.I.T. starts 11:20 — and on a 30-minute grid both
 # floor into the same slot, so the second class emitted a <td> the first one's
 # rowspan already covered. That extra cell shoved Friday out past the table.
-SLOT, ROW_H = 5, 5  # minutes per grid row / px per row
+SLOT = 5            # minutes per grid row
+# 8px per 5-minute row = 1.6px/minute. This is a correctness constraint, not
+# taste: table rows stretch to fit content, so if a class block's text needs
+# more height than its true duration buys, the browser inflates those rows and
+# every later block drifts off the hour lines. The shortest class is 30 min
+# (6 rows), and three lines of text need ~43px — so rows must be >=7.2px.
+ROW_H = 8
+SLOTS_PER_HOUR = 60 // SLOT
 
 
 def _duration_lookup(token: str | None) -> dict[tuple, int]:
@@ -155,12 +162,19 @@ def _html(rows: list[dict]) -> str:
             row_top_border = "border-top:1px dashed #eee"
         else:
             row_top_border = ""
-        time_td = (
-            f"<td style='background:#f0f0f0;{row_top_border};border-right:1px solid #ccc;"
-            f"padding:0 4px;height:{ROW_H}px;vertical-align:top;"
-            f"font-family:sans-serif;font-size:10px;color:#888;text-align:right;"
-            f"white-space:nowrap'>{label}</td>"
-        )
+        # One time cell per hour, spanning the hour's rows — not one per row. A
+        # 10px label inside a 8px row would force that row taller and shove the
+        # rest of the grid out of alignment with the clock.
+        if is_hour:
+            span_h = min(SLOTS_PER_HOUR, total_slots - slot_idx)
+            time_td = (
+                f"<td rowspan='{span_h}' style='background:#f0f0f0;{row_top_border};"
+                f"border-right:1px solid #ccc;padding:0 4px;vertical-align:top;"
+                f"font-family:sans-serif;font-size:10px;color:#888;text-align:right;"
+                f"white-space:nowrap'>{label}</td>"
+            )
+        else:
+            time_td = ""
         day_tds = ""
         for dow in range(5):
             cell = grid[dow][slot_idx]

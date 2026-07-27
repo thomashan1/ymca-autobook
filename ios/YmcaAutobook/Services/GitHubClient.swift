@@ -115,6 +115,14 @@ struct GitHubClient {
         _ = try await send(url, method: "POST", json: body)
     }
 
+    /// Ask the bookings snapshot to run now instead of waiting for its 6h cron.
+    /// Books nothing — it only re-reads Fisikal and republishes bookings.json.
+    func dispatchBookingsSnapshot(ref: String = "main") async throws {
+        let url = baseURL.appending(
+            path: "/repos/\(Config.owner)/\(Config.publicRepo)/actions/workflows/\(Config.bookingsSnapshotWorkflow)/dispatches")
+        _ = try await send(url, method: "POST", json: ["ref": ref])
+    }
+
     struct RunList: Decodable { let workflow_runs: [Run] }
     struct Run: Decodable {
         let id: Int

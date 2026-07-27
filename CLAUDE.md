@@ -5,10 +5,15 @@ Standing context + preferences for this project. **Read at the start of each ses
 ## Class & schedule preferences
 - **Dislikes Restorative Yoga** — never recommend or auto-book it.
 - **Likes Monday Les Mills CORE, Vinyasa Yoga, and Lift & H.I.I.T.** — keep booking all three.
-- **Three classes are on trial — check in the week of 2026-09-07** on whether each stays. All three go live within a week of each other, so ~3 sessions each by then:
-  - **Thu 9:00 BODYPUMP** (Southwest) — first live 8/13
-  - **Fri 10:30 TRX for Beginners** (Southwest) — first live 8/14. If it doesn't work out, Fri 9:45 Les Mills CORE at *Northwest* is the fallback, but it reintroduces a cross-branch hop (see below).
-  - **Tue 9:00 BODYPUMP** (Southwest) — first live 8/18
+- **Three classes are on trial — check in one week after each goes live**, i.e. after its *second* session. Ask about each on/after its date; don't wait to batch them:
+  - **Thu 9:00 BODYPUMP** (Southwest) — first live 8/13 → **check in 8/20**
+  - **Fri 10:30 TRX for Beginners** (Southwest) — first live 8/14 → **check in 8/21**
+  - **Tue 9:00 BODYPUMP** (Southwest) — first live 8/18 → **check in 8/25**
+
+  **The two BODYPUMPs are a straight keep-or-drop.** Either they're liked and join the rotation permanently, or they're removed — which returns Tue and Thu to a single class each (Tue 10:15 Cycle, Thu 10:15 Cycle Sculpt). There's no third option to reshuffle them.
+
+  **The Friday TRX trial is a different question.** It isn't about whether the class is enjoyable — it's testing whether Friday can stay **entirely at Southwest with no branch hop**. Judge it on that: does the all-Southwest morning work, including the 5-min turnaround into Lift & H.I.I.T. at 11:20? If it doesn't, the fallback is Fri 9:45 Les Mills CORE at *Northwest*, which brings the cross-branch hop back.
+
   Trials came about because kids' school starts 8/13, freeing up earlier mornings; Thu starts right on school-start day, Tue naturally lands later since the pause calendar already covers the Tuesdays before that. _(Mon 8:45 BODYCOMBAT was also being trialed but was removed via the iOS app on 2026-07-24, before its 8/17 first-live.)_
 - **No cap on classes per day.** Generally avoid back-to-back high-intensity; at most one HIIT-type class per day.
 - **Don't add classes to the light days (Mon / Tue / Thu) unless asked** — currently left as-is on purpose.

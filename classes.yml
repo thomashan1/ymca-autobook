@@ -18,6 +18,10 @@
 
 timezone: America/Los_Angeles
 
+# Branches --list / browse should query. Without this it falls back to the home
+# branch only, which silently omits Northwest — where the Wednesday classes are.
+list_location_ids: [1392, 1388]
+
 classes:
   - key: core-mon                  # Southwest - Rec Room
     name: "Les Mills CORE"

@@ -26,11 +26,16 @@ from src.notify_email import send_email   # noqa: E402
 _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 _DOW = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4}
 SNAPSHOT_PATH = os.environ.get("SCHEDULE_SNAPSHOT_PATH", "schedule_snapshot.json")
-GREEN, DGREEN = "#2d6a4f", "#1b4332"
-# 5-minute rows, not 30. Class times don't land on half-hour boundaries — Fri
-# TRX ends 11:15 and Lift & H.I.I.T. starts 11:20 — and on a 30-minute grid both
-# floor into the same slot, so the second class emitted a <td> the first one's
-# rowspan already covered. That extra cell shoved Friday out past the table.
+BLUE, DBLUE = "#2663c9", "#173f7a"   # header / heading, matching the app's accent
+BLOCK_BG = "#e8f0fb"                 # class block fill
+
+# SW / NW chips, mirroring BranchChip in the iOS app: short code, bold, capsule,
+# tinted fill with matching text. Two blue shades rather than the app's
+# blue/purple, so the pair reads as one family in the mail.
+BRANCH_CHIP = {
+    "Southwest": ("SW", "#c9dcfa", "#1a44a8"),
+    "Northwest": ("NW", "#c2e6f5", "#0a5c82"),
+}
 # Rows are event bands (see _html), so these only shape proportions — they are
 # not what keeps blocks on the hour lines.
 PX_PER_MIN = 1.6    # a 5-minute gap reads as 8px, an hour as ~96px
@@ -99,6 +104,16 @@ def _markdown(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _chip(location: str) -> str:
+    """SW / NW capsule, the email twin of BranchChip in the iOS app."""
+    short, bg, fg = BRANCH_CHIP.get(location, (location, "#eee", "#666"))
+    return (
+        f"<span style='display:inline-block;padding:1px 7px;border-radius:9px;"
+        f"background:{bg};color:{fg};font-family:sans-serif;font-size:10px;"
+        f"font-weight:bold;line-height:1.5'>{short}</span>"
+    )
+
+
 def _html(rows: list[dict]) -> str:
     by_day: dict[int, list[dict]] = {d: [] for d in range(5)}
     for r in rows:
@@ -156,9 +171,9 @@ def _html(rows: list[dict]) -> str:
                for i in range(n_rows)]
 
     day_ths = "".join(
-        f"<th style='padding:7px 3px;text-align:center;background:{GREEN};color:#fff;"
+        f"<th style='padding:7px 3px;text-align:center;background:{BLUE};color:#fff;"
         f"font-family:sans-serif;font-size:13px;border-right:1px solid #ddd;"
-        f"border-bottom:2px solid {DGREEN}'>{_DAY_NAMES[d]}</th>"
+        f"border-bottom:2px solid {DBLUE}'>{_DAY_NAMES[d]}</th>"
         for d in range(5)
     )
     time_th = (
@@ -203,24 +218,28 @@ def _html(rows: list[dict]) -> str:
                 eh, em = divmod(r["start_min"] + r["duration"], 60)
                 start_lbl = f"{sh % 12 or 12}:{sm:02d} {'am' if sh < 12 else 'pm'}"
                 end_lbl = f"{eh % 12 or 12}:{em:02d} {'am' if eh < 12 else 'pm'}"
-                block_h = max(1, sum(heights[i:i + span]) - 4)
+                block_h = max(1, sum(heights[i:i + span]))
+                # The colour goes on the <td> itself, not an inner box. A nested
+                # div only ever had a min-height, so when a client scaled the
+                # table up the cell grew and the box didn't \u2014 the block stopped
+                # short of its own end time. Painting the cell makes the coloured
+                # area and the time span the same object; they cannot disagree.
                 day_tds += (
                     f"<td rowspan='{span}' style='vertical-align:top;{row_top_border};"
-                    f"{border};padding:2px 3px;background:#fff'>"
-                    f"<div style='background:#e8f5ee;border-left:3px solid {GREEN};"
-                    f"border-radius:3px;padding:3px 5px;min-height:{block_h}px;overflow:hidden;"
-                    f"font-family:sans-serif;font-size:11px;box-sizing:border-box'>"
+                    f"{border};padding:3px 5px;background:{BLOCK_BG};"
+                    f"border-left:3px solid {BLUE};height:{block_h}px;"
+                    f"font-family:sans-serif;font-size:11px'>"
                     f"<div style='font-size:10px;color:#555;white-space:nowrap'>"
                     f"{start_lbl} \u2013 {end_lbl}</div>"
-                    f"<div style='font-weight:bold;color:{DGREEN};margin-top:1px'>{r['name']}</div>"
-                    f"<div style='color:#888;font-size:10px;margin-top:1px'>{r['location']}</div>"
-                    f"</div></td>"
+                    f"<div style='font-weight:bold;color:{DBLUE};margin-top:1px'>{r['name']}</div>"
+                    f"<div style='margin-top:2px'>{_chip(r['location'])}</div>"
+                    f"</td>"
                 )
         body_rows += f"<tr>{time_td}{day_tds}</tr>"
 
     return (
         "<!DOCTYPE html><html><body style='margin:20px'>"
-        f"<h2 style='font-family:sans-serif;color:{GREEN};margin-bottom:2px'>"
+        f"<h2 style='font-family:sans-serif;color:{BLUE};margin-bottom:2px'>"
         "Standard weekly YMCA schedule</h2>"
         "<p style='font-family:sans-serif;font-size:13px;color:#555;margin:4px 0 10px'>"
         "Your recurring Mon\u2013Fri lineup (not tied to any specific week or booking status).</p>"

@@ -31,14 +31,10 @@ GREEN, DGREEN = "#2d6a4f", "#1b4332"
 # TRX ends 11:15 and Lift & H.I.I.T. starts 11:20 — and on a 30-minute grid both
 # floor into the same slot, so the second class emitted a <td> the first one's
 # rowspan already covered. That extra cell shoved Friday out past the table.
-SLOT = 5            # minutes per grid row
-# 8px per 5-minute row = 1.6px/minute. This is a correctness constraint, not
-# taste: table rows stretch to fit content, so if a class block's text needs
-# more height than its true duration buys, the browser inflates those rows and
-# every later block drifts off the hour lines. The shortest class is 30 min
-# (6 rows), and three lines of text need ~43px — so rows must be >=7.2px.
-ROW_H = 8
-SLOTS_PER_HOUR = 60 // SLOT
+# Rows are event bands (see _html), so these only shape proportions — they are
+# not what keeps blocks on the hour lines.
+PX_PER_MIN = 1.6    # a 5-minute gap reads as 8px, an hour as ~96px
+MIN_BAND_PX = 8     # floor, so a tiny band never collapses to nothing
 
 
 def _duration_lookup(token: str | None) -> dict[tuple, int]:
@@ -111,30 +107,53 @@ def _html(rows: list[dict]) -> str:
     starts = [r["start_min"] for r in rows]
     ends = [r["start_min"] + r["duration"] for r in rows]
     grid_start = (min(starts) // 60) * 60 if rows else 8 * 60
-    grid_end = ((max(ends) + 59) // 60) * 60 + SLOT if rows else 13 * 60
-    total_slots = (grid_end - grid_start) // SLOT
+    grid_end = ((max(ends) + 59) // 60) * 60 if rows else 13 * 60
 
-    grid: list[list] = [[None] * total_slots for _ in range(5)]
+    # Rows are the bands between event boundaries — every class start, every
+    # class end, and every hour mark — not fixed-length slots.
+    #
+    # This is what makes alignment structural rather than arithmetic. A class
+    # ending at 11:15 ends on the 11:15 boundary, and 11:00 is its own boundary
+    # inside that span, so the block visibly crosses the 11am rule no matter how
+    # the client sizes rows. Fixed pixel heights can't promise that: mail
+    # clients (Gmail on iOS especially) override font sizes, text grows, rows
+    # stretch, and blocks drift off the hour lines.
+    bounds = {grid_start, grid_end}
+    for r in rows:
+        bounds.add(r["start_min"])
+        bounds.add(r["start_min"] + r["duration"])
+    for m in range(grid_start, grid_end + 1, 60):
+        bounds.add(m)
+    edges = sorted(b for b in bounds if grid_start <= b <= grid_end)
+    n_rows = len(edges) - 1
+    at = {b: i for i, b in enumerate(edges)}
+
+    grid: list[list] = [[None] * n_rows for _ in range(5)]
     for dow in range(5):
         for r in by_day[dow]:
-            start_s = (r["start_min"] - grid_start) // SLOT
-            span = max(1, (r["duration"] + SLOT - 1) // SLOT)
-            if not (0 <= start_s < total_slots):
+            s = at.get(r["start_min"])
+            e = at.get(r["start_min"] + r["duration"])
+            if s is None or e is None or e <= s:
                 continue
+            span = e - s
             # Never write over an earlier class's rowspan: an extra <td> in a row
             # breaks the whole table's column alignment. Clip instead, and say so.
-            span = min(span, total_slots - start_s)
-            for s in range(start_s, start_s + span):
-                if grid[dow][s] is not None:
+            for k in range(s, s + span):
+                if grid[dow][k] is not None:
                     print(f"[grid] {r['name']} ({_DAY_NAMES[dow]} {r['start']}) overlaps "
-                          f"the previous class; clipping to {(s - start_s) * SLOT} min.")
-                    span = s - start_s
+                          f"the previous class; clipping.")
+                    span = k - s
                     break
             if span <= 0:
                 continue
-            grid[dow][start_s] = (r, span)
-            for s in range(start_s + 1, start_s + span):
-                grid[dow][s] = "skip"
+            grid[dow][s] = (r, span)
+            for k in range(s + 1, s + span):
+                grid[dow][k] = "skip"
+
+    # Height is only a hint now — it keeps a 5-minute gap from looking like an
+    # hour. If a client ignores it, the grid is still correctly ordered.
+    heights = [max(MIN_BAND_PX, round((edges[i + 1] - edges[i]) * PX_PER_MIN))
+               for i in range(n_rows)]
 
     day_ths = "".join(
         f"<th style='padding:7px 3px;text-align:center;background:{GREEN};color:#fff;"
@@ -148,43 +167,34 @@ def _html(rows: list[dict]) -> str:
     )
 
     body_rows = ""
-    for slot_idx in range(total_slots):
-        minutes = grid_start + slot_idx * SLOT
+    for i in range(n_rows):
+        minutes = edges[i]
         is_hour = (minutes % 60 == 0)
         h = minutes // 60
         ampm = "am" if h < 12 else "pm"
         label = f"{h % 12 or 12}:00 {ampm}" if is_hour else ""
-        # Rules only on the hour and half-hour — at 5-minute rows, a line per row
-        # would be a solid block of grey.
         if is_hour:
             row_top_border = "border-top:1px solid #ccc"
         elif minutes % 30 == 0:
             row_top_border = "border-top:1px dashed #eee"
         else:
             row_top_border = ""
-        # One time cell per hour, spanning the hour's rows — not one per row. A
-        # 10px label inside a 8px row would force that row taller and shove the
-        # rest of the grid out of alignment with the clock.
-        if is_hour:
-            span_h = min(SLOTS_PER_HOUR, total_slots - slot_idx)
-            time_td = (
-                f"<td rowspan='{span_h}' style='background:#f0f0f0;{row_top_border};"
-                f"border-right:1px solid #ccc;padding:0 4px;vertical-align:top;"
-                f"font-family:sans-serif;font-size:10px;color:#888;text-align:right;"
-                f"white-space:nowrap'>{label}</td>"
-            )
-        else:
-            time_td = ""
+        time_td = (
+            f"<td style='background:#f0f0f0;{row_top_border};border-right:1px solid #ccc;"
+            f"padding:0 4px;height:{heights[i]}px;vertical-align:top;"
+            f"font-family:sans-serif;font-size:10px;color:#888;text-align:right;"
+            f"white-space:nowrap'>{label}</td>"
+        )
         day_tds = ""
         for dow in range(5):
-            cell = grid[dow][slot_idx]
+            cell = grid[dow][i]
             border = "border-right:1px solid #ddd" if dow < 4 else ""
             if cell == "skip":
                 continue
             if cell is None:
                 bg = "#f9f9f9" if not is_hour else "#ffffff"
                 day_tds += (
-                    f"<td style='height:{ROW_H}px;{row_top_border};{border};"
+                    f"<td style='height:{heights[i]}px;{row_top_border};{border};"
                     f"background:{bg};padding:0'></td>"
                 )
             else:
@@ -193,7 +203,7 @@ def _html(rows: list[dict]) -> str:
                 eh, em = divmod(r["start_min"] + r["duration"], 60)
                 start_lbl = f"{sh % 12 or 12}:{sm:02d} {'am' if sh < 12 else 'pm'}"
                 end_lbl = f"{eh % 12 or 12}:{em:02d} {'am' if eh < 12 else 'pm'}"
-                block_h = span * ROW_H - 4
+                block_h = max(1, sum(heights[i:i + span]) - 4)
                 day_tds += (
                     f"<td rowspan='{span}' style='vertical-align:top;{row_top_border};"
                     f"{border};padding:2px 3px;background:#fff'>"
@@ -201,7 +211,7 @@ def _html(rows: list[dict]) -> str:
                     f"border-radius:3px;padding:3px 5px;min-height:{block_h}px;overflow:hidden;"
                     f"font-family:sans-serif;font-size:11px;box-sizing:border-box'>"
                     f"<div style='font-size:10px;color:#555;white-space:nowrap'>"
-                    f"{start_lbl} – {end_lbl}</div>"
+                    f"{start_lbl} \u2013 {end_lbl}</div>"
                     f"<div style='font-weight:bold;color:{DGREEN};margin-top:1px'>{r['name']}</div>"
                     f"<div style='color:#888;font-size:10px;margin-top:1px'>{r['location']}</div>"
                     f"</div></td>"
@@ -213,7 +223,7 @@ def _html(rows: list[dict]) -> str:
         f"<h2 style='font-family:sans-serif;color:{GREEN};margin-bottom:2px'>"
         "Standard weekly YMCA schedule</h2>"
         "<p style='font-family:sans-serif;font-size:13px;color:#555;margin:4px 0 10px'>"
-        "Your recurring Mon–Fri lineup (not tied to any specific week or booking status).</p>"
+        "Your recurring Mon\u2013Fri lineup (not tied to any specific week or booking status).</p>"
         "<table style='border-collapse:collapse;width:100%;min-width:600px'>"
         f"<thead><tr>{time_th}{day_ths}</tr></thead>"
         f"<tbody>{body_rows}</tbody>"

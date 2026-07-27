@@ -90,6 +90,10 @@ on:
         description: "Occurrence id to BOOK directly, independent of classes.yml (one-off exception)."
         required: false
         default: ""
+      browse:
+        description: "Books NOTHING: lists upcoming occurrences with full/joined so you can see what is still open. Use 'all' or a name filter, e.g. 'RPM'."
+        required: false
+        default: ""
 
 concurrency:
   group: book-${{{{ github.run_id }}}}
@@ -113,7 +117,13 @@ jobs:
           NOTIFY_EMAIL: ${{{{ secrets.NOTIFY_EMAIL }}}}
           GMAIL_APP_PASSWORD: ${{{{ secrets.GMAIL_APP_PASSWORD }}}}
         run: |
-          if [ -n "${{{{ github.event.inputs.cancel_id }}}}" ]; then
+          if [ -n "${{{{ github.event.inputs.browse }}}}" ]; then
+            # Read-only. Checked first so a stray value in another field can
+            # never turn an availability check into a booking or cancellation.
+            FILTER="${{{{ github.event.inputs.browse }}}}"
+            [ "$FILTER" = "all" ] && FILTER=""
+            python -m src.main --list "$FILTER"
+          elif [ -n "${{{{ github.event.inputs.cancel_id }}}}" ]; then
             python -m src.main --cancel-id "${{{{ github.event.inputs.cancel_id }}}}"
           elif [ -n "${{{{ github.event.inputs.cancel_class }}}}" ]; then
             python -m src.main --cancel-class "${{{{ github.event.inputs.cancel_class }}}}" ${{{{ github.event.inputs.cancel_on && format('--on {{0}}', github.event.inputs.cancel_on) || '' }}}}

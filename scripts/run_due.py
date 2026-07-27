@@ -61,8 +61,17 @@ def run() -> int:
                 except Exception as exc:  # one class failing must not kill the rest
                     ok, detail = False, f"{label}\nException: {exc!r}"
                 print(("OK: " if ok else "FAILED: ") + detail)
-                # Cheap skips (nothing due, or paused) aren't real attempts — no email.
-                if detail.startswith("Nothing to book") or detail.startswith("Paused"):
+                # Cheap skips aren't real attempts — no email. "Full:" (without
+                # "(new)") is a class we've already reported as full: re-sending
+                # it every cron fire is the noise that buries real failures.
+                if (detail.startswith("Nothing to book") or detail.startswith("Paused")
+                        or detail.startswith("Full:")):
+                    continue
+                # First time we see it full: report once, loudly (red run -> push
+                # -> email), but don't treat it as a booking failure to retry.
+                if detail.startswith("FULL (new)"):
+                    notify(False, label, detail, alert=True)
+                    failed_any = True
                     continue
                 notify(ok, label, detail, alert=True)
                 booked_any = booked_any or ok

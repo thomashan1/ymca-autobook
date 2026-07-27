@@ -9,6 +9,7 @@ struct SettingsView: View {
     @EnvironmentObject var pauses: PausesRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
+    @EnvironmentObject var fullClasses: FullRepository
 
     /// When shown as the first-run sheet this is true; false when it's the tab.
     var onboarding: Bool = false
@@ -210,6 +211,7 @@ struct SettingsView: View {
             await pauses.load()
             await snapshot.load()
             await bookings.load()
+            await fullClasses.load()
             reloading = false
         }
     }
@@ -234,6 +236,7 @@ struct SettingsView: View {
             for _ in 0..<20 {
                 try? await Task.sleep(nanoseconds: 6_000_000_000)
                 await bookings.load()
+                await fullClasses.load()
                 if bookings.updatedAt != before {
                     refreshNote = "Up to date."
                     refreshing = false

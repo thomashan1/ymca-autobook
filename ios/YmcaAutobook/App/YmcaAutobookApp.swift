@@ -7,6 +7,7 @@ struct YmcaAutobookApp: App {
     @StateObject private var pauses = PausesRepository()
     @StateObject private var snapshot = SnapshotRepository()
     @StateObject private var bookings = BookingsRepository()
+    @StateObject private var fullClasses = FullRepository()
 
     var body: some Scene {
         WindowGroup {
@@ -16,6 +17,7 @@ struct YmcaAutobookApp: App {
                 .environmentObject(pauses)
                 .environmentObject(snapshot)
                 .environmentObject(bookings)
+                .environmentObject(fullClasses)
                 .tint(Theme.accent)
         }
     }

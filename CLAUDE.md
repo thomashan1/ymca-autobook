@@ -5,7 +5,11 @@ Standing context + preferences for this project. **Read at the start of each ses
 ## Class & schedule preferences
 - **Dislikes Restorative Yoga** — never recommend or auto-book it.
 - **Likes Monday Les Mills CORE, Vinyasa Yoga, and Lift & H.I.I.T.** — keep booking all three.
-- **Trial early-morning classes (kids' school starts 8/13, freeing up earlier mornings):** Tue 9:00 BODYPUMP, Thu 9:00 BODYPUMP — both Southwest. Thu is fine starting right on 8/13 (school-start day); Tue naturally starts a bit later (8/18) since the pause calendar already covers the Tuesdays before that. Check in after a few weeks on whether to keep them. _(Mon 8:45 BODYCOMBAT was also being trialed but was removed via the iOS app on 2026-07-24, before its 8/17 first-live.)_
+- **Three classes are on trial — check in the week of 2026-09-07** on whether each stays. All three go live within a week of each other, so ~3 sessions each by then:
+  - **Thu 9:00 BODYPUMP** (Southwest) — first live 8/13
+  - **Fri 10:30 TRX for Beginners** (Southwest) — first live 8/14. If it doesn't work out, Fri 9:45 Les Mills CORE at *Northwest* is the fallback, but it reintroduces a cross-branch hop (see below).
+  - **Tue 9:00 BODYPUMP** (Southwest) — first live 8/18
+  Trials came about because kids' school starts 8/13, freeing up earlier mornings; Thu starts right on school-start day, Tue naturally lands later since the pause calendar already covers the Tuesdays before that. _(Mon 8:45 BODYCOMBAT was also being trialed but was removed via the iOS app on 2026-07-24, before its 8/17 first-live.)_
 - **No cap on classes per day.** Generally avoid back-to-back high-intensity; at most one HIIT-type class per day.
 - **Don't add classes to the light days (Mon / Tue / Thu) unless asked** — currently left as-is on purpose.
 - Prefer **same-branch** pairings; minimize cross-branch hops when suggesting additions.
@@ -24,7 +28,7 @@ Standing context + preferences for this project. **Read at the start of each ses
 | Wed | 10:30–11:00 | Les Mills CORE | Northwest | recurring |
 | Thu | 9:00–10:00 | BODYPUMP | Southwest | trial, first live 8/13 |
 | Thu | 10:15–11:15 | Cycle Sculpt | Southwest | recurring |
-| Fri | 10:30–11:15 | TRX for Beginners | Southwest | recurring, first live 8/14 |
+| Fri | 10:30–11:15 | TRX for Beginners | Southwest | trial, first live 8/14 |
 | Fri | 11:20–12:00 | Lift & H.I.I.T. | Southwest | recurring |
 
 ~11 classes/week, ~8h40m total, 5 days/week, no built-in rest day. Monday now

@@ -327,9 +327,15 @@ private struct OccurrenceRow: View {
     let away: Bool
 
     private var timeRange: String { occ.end.map { "\(occ.start)–\($0)" } ?? occ.start }
+    /// Not a hollow circle for the unbooked state: that's the shape of a
+    /// checkbox, so it invites a tap that does something else entirely (the row
+    /// opens the detail sheet — nothing here is togglable, since booking is
+    /// GitHub Actions' job). A clock says "waiting on its booking window"
+    /// instead of "check me", and the "Not booked" badge already carries the
+    /// literal status.
     private var icon: String {
         if away { return "moon.zzz.fill" }
-        return occ.booked ? "checkmark.circle.fill" : "circle"
+        return occ.booked ? "checkmark.circle.fill" : "clock"
     }
     private var iconColor: Color {
         if away { return Theme.away }

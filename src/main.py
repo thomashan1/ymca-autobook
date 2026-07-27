@@ -24,6 +24,7 @@ import yaml
 from playwright.sync_api import sync_playwright
 
 from . import fisikal
+from . import full_log
 from . import pauses
 from .login import login
 from .notify import notify
@@ -301,6 +302,28 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
 
     if dry_run:
         return True, "DRY RUN — identified target, did not book.\n" + plan
+
+    # A full class is not a failure to retry — it's a door that's shut. The API
+    # returns a bare HTTP 422 with no parseable error type, so TERMINAL_ERROR_TYPES
+    # never matched and every cron fire burned 3 attempts and emailed. The
+    # occurrence already tells us `full_group`, so check that instead and don't
+    # knock. Report the first time (red run -> push -> email), stay quiet after.
+    occ_date = datetime.fromisoformat(
+        target["occurs_at"].replace("Z", "+00:00")).astimezone(ZoneInfo(tz))
+    if target.get("full_group"):
+        newly = full_log.record(target["id"], {
+            "class_key": klass["key"], "name": klass["name"],
+            "date": occ_date.strftime("%Y-%m-%d"), "start": klass["start"],
+            "location": (target.get("location_name") or "").replace("Silicon Valley YMCA - ", ""),
+        })
+        if newly:
+            return False, (f"FULL (new): '{label}' on {occ_date:%Y-%m-%d} filled up "
+                           f"before it could be booked (occurrence {target['id']}). "
+                           f"Not retrying while it stays full.")
+        return True, (f"Full: '{label}' on {occ_date:%Y-%m-%d} is still full — "
+                      f"already reported, skipping.")
+    # Not full (any more): if we'd flagged it, a spot freed up — resume normally.
+    full_log.clear(target["id"])
 
     if not book_now:
         now = datetime.now(timezone.utc)

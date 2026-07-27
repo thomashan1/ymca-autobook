@@ -6,6 +6,7 @@ struct RootView: View {
     @EnvironmentObject var pauses: PausesRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
+    @EnvironmentObject var fullClasses: FullRepository
 
     // Initial tab, overridable via launch arg `-screenshotTab N` (for screenshots).
     @State private var tab = UserDefaults.standard.integer(forKey: "screenshotTab")
@@ -29,6 +30,7 @@ struct RootView: View {
             await pauses.load()
             await snapshot.load()
             await bookings.load()
+            await fullClasses.load()
         }
         .sheet(isPresented: .constant(!auth.hasToken)) {
             SettingsView(onboarding: true)

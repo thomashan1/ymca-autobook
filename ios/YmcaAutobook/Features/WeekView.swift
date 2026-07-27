@@ -11,6 +11,7 @@ struct WeekView: View {
     @EnvironmentObject var pauses: PausesRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
+    @EnvironmentObject var fullClasses: FullRepository
 
     private static let daysAhead = 14
     @State private var showZoom = false
@@ -32,7 +33,8 @@ struct WeekView: View {
             guard let date = cal.date(byAdding: .day, value: offset, to: today),
                   let wd = CalendarHelper.weekday(of: date) else { continue }
             let items = Occurrence.build(date: date, weekday: wd,
-                                         classes: classes, bookings: bookings, snapshot: snapshot)
+                                         classes: classes, bookings: bookings, snapshot: snapshot,
+                                         fullClasses: fullClasses)
                 .filter { CalendarHelper.startDate($0.start, on: date).map { $0 >= now } ?? true }
             if !items.isEmpty { out.append(Day(date: date, items: items)) }
         }
@@ -68,6 +70,7 @@ struct WeekView: View {
             .refreshable {
                 await classes.load(); await pauses.load()
                 await snapshot.load(); await bookings.load()
+                await fullClasses.load()
             }
             .fullScreenCover(isPresented: $showZoom) { CalendarZoomSheet() }
             .sheet(item: $detail) { ClassDetailSheet(detail: $0) }
@@ -157,6 +160,9 @@ struct Occurrence: Identifiable {
     let room: String?
     let instructor: String?
     let isTrial: Bool
+    /// Filled up before the bot could book it — distinct from merely unbooked,
+    /// because this one will not resolve itself.
+    let isFull: Bool
 
     var id: String { name + "|" + start }
 
@@ -165,24 +171,28 @@ struct Occurrence: Identifiable {
     static func build(date: Date, weekday: Weekday,
                       classes: ClassesRepository,
                       bookings: BookingsRepository,
-                      snapshot: SnapshotRepository) -> [Occurrence] {
+                      snapshot: SnapshotRepository,
+                      fullClasses: FullRepository) -> [Occurrence] {
         var map: [String: Occurrence] = [:]
         for c in classes.classes where c.weekday == weekday {
             map["\(c.name)|\(c.start)"] = Occurrence(
                 name: c.name, start: c.start, end: snapshot.endTime(for: c),
                 branch: c.branch, classKey: c.key, booked: false,
-                room: nil, instructor: nil, isTrial: c.isTrial)
+                room: nil, instructor: nil, isTrial: c.isTrial,
+                isFull: fullClasses.isFull(name: c.name, on: date, start: c.start))
         }
         for b in bookings.bookings(on: date) {
             let k = "\(b.name)|\(b.start)"
             if let ex = map[k] {
                 map[k] = Occurrence(name: ex.name, start: ex.start, end: b.end ?? ex.end,
                                     branch: ex.branch, classKey: ex.classKey, booked: true,
-                                    room: b.room, instructor: b.instructor, isTrial: ex.isTrial)
+                                    room: b.room, instructor: b.instructor, isTrial: ex.isTrial,
+                                    isFull: false)   // booked wins: it can't be both
             } else {
                 map[k] = Occurrence(name: b.name, start: b.start, end: b.end,
                                     branch: b.branch, classKey: nil, booked: true,
-                                    room: b.room, instructor: b.instructor, isTrial: false)
+                                    room: b.room, instructor: b.instructor, isTrial: false,
+                                    isFull: false)
             }
         }
         return map.values.sorted { $0.start < $1.start }
@@ -205,6 +215,7 @@ private struct TwoWeekGrid: View {
     @EnvironmentObject var pauses: PausesRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
+    @EnvironmentObject var fullClasses: FullRepository
 
     var cellFont: CGFloat
     var labelFont: CGFloat
@@ -237,7 +248,8 @@ private struct TwoWeekGrid: View {
 
     private func dayColumn(_ date: Date) -> some View {
         let occs = CalendarHelper.weekday(of: date).map {
-            Occurrence.build(date: date, weekday: $0, classes: classes, bookings: bookings, snapshot: snapshot)
+            Occurrence.build(date: date, weekday: $0, classes: classes, bookings: bookings,
+                             snapshot: snapshot, fullClasses: fullClasses)
         } ?? []
         return VStack(spacing: 4) {
             VStack(spacing: 1) {
@@ -335,11 +347,15 @@ private struct OccurrenceRow: View {
     /// literal status.
     private var icon: String {
         if away { return "moon.zzz.fill" }
-        return occ.booked ? "checkmark.circle.fill" : "clock"
+        if occ.booked { return "checkmark.circle.fill" }
+        // A full class isn't "pending" — the clock would promise it still might
+        // get booked, and it won't.
+        return occ.isFull ? "person.crop.circle.badge.xmark" : "clock"
     }
     private var iconColor: Color {
         if away { return Theme.away }
-        return occ.booked ? Theme.booked : Theme.away
+        if occ.booked { return Theme.booked }
+        return occ.isFull ? Theme.accent : Theme.away
     }
 
     var body: some View {
@@ -353,6 +369,7 @@ private struct OccurrenceRow: View {
                     if occ.isTrial { badge("Trial", Theme.queued) }
                     if away { badge("Skipped", Theme.away) }
                     else if occ.booked { badge("Booked", Theme.booked) }
+                    else if occ.isFull { badge("Full", Theme.accent) }
                     else { badge("Not booked", Theme.away) }
                 }
             }

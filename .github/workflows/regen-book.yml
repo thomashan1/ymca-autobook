@@ -3,6 +3,12 @@ name: Regenerate booking cron
 # When classes.yml changes on main (e.g. the iOS app deletes a class), the
 # per-class cron in book.yml can go stale. This regenerates it and opens an
 # auto-merging PR, so cron cleanup happens automatically without a human step.
+#
+# CAVEAT, learned the hard way: GITHUB_TOKEN may not create or update files
+# under .github/workflows — GitHub refuses the push outright, and no
+# `permissions:` value grants it. Only a PAT with the `workflow` scope can.
+# So this needs WORKFLOW_TOKEN; without it we report what's stale instead of
+# failing, because a red run here is a false alarm about the booking system.
 on:
   push:
     branches: [main]
@@ -31,12 +37,42 @@ jobs:
         run: python scripts/gen_workflow.py
       - name: Open PR if book.yml changed
         env:
-          GH_TOKEN: ${{ github.token }}
+          # Falls back to github.token only so the "nothing changed" path still
+          # works; that token cannot push the change itself.
+          GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN || github.token }}
+          HAVE_PAT: ${{ secrets.WORKFLOW_TOKEN != '' }}
         run: |
           if git diff --quiet .github/workflows/book.yml; then
             echo "book.yml already matches classes.yml — nothing to do."
             exit 0
           fi
+
+          echo "::group::Cron drift detected"
+          git --no-pager diff --stat .github/workflows/book.yml
+          git --no-pager diff .github/workflows/book.yml | grep -E '^[-+]    - cron' || true
+          echo "::endgroup::"
+
+          if [ "$HAVE_PAT" != "true" ]; then
+            {
+              echo "### ⚠️ book.yml cron is out of date"
+              echo
+              echo "classes.yml changed, but this job cannot push the regenerated"
+              echo "\`book.yml\`: GITHUB_TOKEN is forbidden from writing workflow files,"
+              echo "and no \`permissions:\` setting can grant it."
+              echo
+              echo "**To automate it:** add a repo secret \`WORKFLOW_TOKEN\` — a PAT with"
+              echo "Contents: write, Pull requests: write, **Workflows: write** on this repo."
+              echo
+              echo "**Meanwhile, run locally:** \`python scripts/gen_workflow.py\` and commit."
+              echo
+              echo "Deleted classes are harmless (run_due.py reads classes.yml, so a stale"
+              echo "cron just triggers a run that books nothing). **A newly added class will"
+              echo "not be booked at all until its cron exists.**"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "No WORKFLOW_TOKEN; reported the drift instead of failing."
+            exit 0
+          fi
+
           branch="auto/regen-book-${GITHUB_SHA::7}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

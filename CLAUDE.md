@@ -5,12 +5,7 @@ Standing context + preferences for this project. **Read at the start of each ses
 ## Class & schedule preferences
 - **Dislikes Restorative Yoga** — never recommend or auto-book it.
 - **Likes Monday Les Mills CORE, Vinyasa Yoga, and Lift & H.I.I.T.** — keep booking all three.
-- **One class is on trial — check in one week after it goes live**, i.e. after its *second* session:
-  - **Tue 9:00 BODYPUMP** (Southwest) — first live 8/18 → **check in 8/25**
-
-  It's a straight keep-or-drop: either it's liked and joins the rotation permanently, or it's removed, returning Tue to a single class (10:15 Cycle). No third option to reshuffle.
-
-  Trials came about because kids' school starts 8/13, freeing up earlier mornings. Two others didn't survive to their first session: **Thu 9:00 BODYPUMP** was removed via the iOS app on 2026-07-30, and **Mon 8:45 BODYCOMBAT** on 2026-07-24.
+- **No classes are on trial right now.** The three early-morning trials that followed the 8/13 school-start change were all removed via the iOS app before their first live session: **Mon 8:45 BODYCOMBAT** (2026-07-24), **Thu 9:00 BODYPUMP** (2026-07-30), **Tue 9:00 BODYPUMP** (2026-07-30). Don't re-suggest them unasked — the earlier mornings were tried and dropped.
 - **No cap on classes per day.** Generally avoid back-to-back high-intensity; at most one HIIT-type class per day.
 - **Don't add classes to the light days (Mon / Tue / Thu) unless asked** — currently left as-is on purpose.
 - Prefer **same-branch** pairings; minimize cross-branch hops when suggesting additions.
@@ -23,7 +18,6 @@ Standing context + preferences for this project. **Read at the start of each ses
 | Mon | 9:45–10:15 | Les Mills CORE | Southwest | recurring |
 | Mon | 10:15–11:15 | Vinyasa Yoga | Southwest | recurring |
 | Mon | 11:20–12:00 | Lift & H.I.I.T. | Southwest | recurring |
-| Tue | 9:00–10:00 | BODYPUMP | Southwest | trial, first live 8/18 |
 | Tue | 10:15–11:15 | Cycle | Southwest | recurring |
 | Wed | 9:30–10:20 | RPM | Northwest | recurring |
 | Wed | 10:30–11:00 | Les Mills CORE | Northwest | recurring |
@@ -31,8 +25,9 @@ Standing context + preferences for this project. **Read at the start of each ses
 | Fri | 9:45–10:15 | Les Mills CORE | Northwest | recurring, first live 8/14 |
 | Fri | 11:20–12:00 | Lift & H.I.I.T. | Southwest | recurring |
 
-10 classes/week, 5 days/week, no built-in rest day. Monday runs Les Mills
-CORE → Vinyasa → Lift & H.I.I.T. (a single HIIT-type class). Friday runs
+9 classes/week, 5 days/week, no built-in rest day. Monday is the heavy day
+(Les Mills CORE → Vinyasa → Lift & H.I.I.T., a single HIIT-type class);
+Tue and Thu are single-class days (Cycle / Cycle Sculpt); Friday runs
 Northwest CORE → Southwest Lift & H.I.I.T. Update this table whenever
 `classes.yml` changes so it doesn't go stale.
 

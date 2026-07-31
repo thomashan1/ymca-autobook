@@ -71,11 +71,11 @@ classes:
     start: "10:15"
     location_ids: [1392]
 
-  - key: trx-beginners-fri         # Southwest
-    name: "TRX for Beginners"
+  - key: core-fri                  # Northwest - Family Pavilion
+    name: "Les Mills CORE"
     weekday: Fri
-    start: "10:30"
-    location_ids: [1392]
+    start: "09:45"
+    location_ids: [1388]
 
   - key: lift-hiit-fri             # usually Southwest - Group Exercise Room
     name: "Lift & H.I.I.T."

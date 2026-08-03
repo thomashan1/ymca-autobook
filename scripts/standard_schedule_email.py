@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src import email_theme               # noqa: E402
 from src import private_store             # noqa: E402
 from src.main import load_config          # noqa: E402
 from src.notify_email import send_email   # noqa: E402
@@ -26,16 +27,9 @@ from src.notify_email import send_email   # noqa: E402
 _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 _DOW = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4}
 SNAPSHOT_PATH = os.environ.get("SCHEDULE_SNAPSHOT_PATH", "schedule_snapshot.json")
-BLUE, DBLUE = "#2663c9", "#173f7a"   # header / heading, matching the app's accent
-BLOCK_BG = "#e8f0fb"                 # class block fill
-
-# SW / NW chips, mirroring BranchChip in the iOS app: short code, bold, capsule,
-# tinted fill with matching text. Two blue shades rather than the app's
-# blue/purple, so the pair reads as one family in the mail.
-BRANCH_CHIP = {
-    "Southwest": ("SW", "#c9dcfa", "#1a44a8"),
-    "Northwest": ("NW", "#c2e6f5", "#0a5c82"),
-}
+# Shared with weekly_summary.py so the two mails can't drift apart again.
+BLUE, DBLUE = email_theme.BLUE, email_theme.DBLUE
+BLOCK_BG = email_theme.BLOCK_BG
 # Rows are event bands (see _html), so these only shape proportions — they are
 # not what keeps blocks on the hour lines.
 PX_PER_MIN = 1.6    # a 5-minute gap reads as 8px, an hour as ~96px
@@ -102,16 +96,6 @@ def _markdown(rows: list[dict]) -> str:
             lines.append(f"| {r['start']}–{h:02d}:{m:02d} | {r['name']} | {r['location']} |")
         lines.append("")
     return "\n".join(lines)
-
-
-def _chip(location: str) -> str:
-    """SW / NW capsule, the email twin of BranchChip in the iOS app."""
-    short, bg, fg = BRANCH_CHIP.get(location, (location, "#eee", "#666"))
-    return (
-        f"<span style='display:inline-block;padding:1px 7px;border-radius:9px;"
-        f"background:{bg};color:{fg};font-family:sans-serif;font-size:10px;"
-        f"font-weight:bold;line-height:1.5'>{short}</span>"
-    )
 
 
 def _html(rows: list[dict]) -> str:
@@ -232,7 +216,7 @@ def _html(rows: list[dict]) -> str:
                     f"<div style='font-size:10px;color:#555;white-space:nowrap'>"
                     f"{start_lbl} \u2013 {end_lbl}</div>"
                     f"<div style='font-weight:bold;color:{DBLUE};margin-top:1px'>{r['name']}</div>"
-                    f"<div style='margin-top:2px'>{_chip(r['location'])}</div>"
+                    f"<div style='margin-top:2px'>{email_theme.chip(r['location'])}</div>"
                     f"</td>"
                 )
         body_rows += f"<tr>{time_td}{day_tds}</tr>"
@@ -298,7 +282,7 @@ def run() -> int:
         send_email(
             login_email=notify_email,
             password=gmail_app_pw,
-            subject="Standard weekly YMCA schedule",
+            subject="📅 Standard weekly YMCA schedule",
             html=html,
             text=md,
         )

@@ -16,6 +16,7 @@ from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src import email_theme         # noqa: E402
 from src import fisikal              # noqa: E402
 from src import pauses              # noqa: E402
 from src.login import login         # noqa: E402
@@ -101,13 +102,20 @@ def _markdown(rows: list[dict], title: str, count: int, away_days=()) -> str:
     return "\n".join(lines)
 
 
+def _room_only(sub_location: str) -> str:
+    """'Southwest - Rec Room' -> 'Rec Room'. The chip already says the branch,
+    so repeating it in the text below would just crowd the block."""
+    text = sub_location or ""
+    return text.split(" - ", 1)[1].strip() if " - " in text else text
+
+
 def _html(rows: list[dict], title: str, count: int, today: date,
           paused_dates: frozenset[date] = frozenset()) -> str:
-    GREEN    = "#2d6a4f"
-    DGREEN   = "#1b4332"
-    WKND_BG  = "#6a8a7a"  # muted green for weekend header
-    AWAY_HDR = "#8a8f8c"  # gray header for away days
-    AWAY_BG  = "#e6e6e6"  # blocked-out cell fill
+    GREEN    = email_theme.BLUE      # kept as local names to limit the diff
+    DGREEN   = email_theme.DBLUE
+    WKND_BG  = email_theme.WKND_BG
+    AWAY_HDR = email_theme.AWAY_HDR
+    AWAY_BG  = email_theme.AWAY_BG
     SLOT     = 30  # minutes per grid row
     ROW_H    = 28  # px per row (30-min slot)
 
@@ -248,7 +256,7 @@ def _html(rows: list[dict], title: str, count: int, today: date,
 
             col_border = _col_border(col_idx)
             is_wknd = col_groups[col_idx][0].weekday() >= 5
-            bg = "#f4f6f5" if is_wknd else ("#f9f9f9" if not is_hour else "#ffffff")
+            bg = email_theme.WKND_CELL if is_wknd else ("#f9f9f9" if not is_hour else "#ffffff")
 
             if cell is None:
                 # Empty slot — gray it out if this whole day is an away day.
@@ -272,14 +280,15 @@ def _html(rows: list[dict], title: str, count: int, today: date,
                 day_tds += (
                     f"<td rowspan='{span}' style='vertical-align:top;{row_top_border};"
                     f"{col_border};padding:2px 3px;background:#fff'>"
-                    f"<div style='background:#e8f5ee;border-left:3px solid {GREEN};"
+                    f"<div style='background:{email_theme.BLOCK_BG};border-left:3px solid {GREEN};"
                     f"border-radius:3px;padding:3px 5px;min-height:{block_h}px;overflow:hidden;"
                     f"font-family:sans-serif;font-size:11px;box-sizing:border-box'>"
                     f"<div style='font-size:10px;color:#555;white-space:nowrap'>"
                     f"{r['time'].lower()} – {end_str}</div>"
                     f"<div style='font-weight:bold;color:{DGREEN};margin-top:1px'>{r['name']}</div>"
                     f"<div style='color:#444;margin-top:1px'>{r['instructor']}</div>"
-                    f"<div style='color:#888;font-size:10px;margin-top:1px'>{r['sub_location']}</div>"
+                    f"<div style='margin-top:2px'>{email_theme.chip_for(r['sub_location'])}"
+                    f"<span style='color:#888;font-size:10px'> {_room_only(r['sub_location'])}</span></div>"
                     f"</div></td>"
                 )
 

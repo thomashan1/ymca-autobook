@@ -289,7 +289,7 @@ def run() -> int:
         send_email(
             login_email=notify_email,
             password=gmail_app_pw,
-            subject="📅 Standard weekly YMCA schedule",
+            subject="📅 YMCA schedule",
             html=html,
             text=md,
         )

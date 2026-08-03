@@ -155,13 +155,18 @@ def _html(rows: list[dict]) -> str:
                for i in range(n_rows)]
 
     day_ths = "".join(
-        f"<th style='padding:7px 3px;text-align:center;background:{BLUE};color:#fff;"
+        f"<th style='width:20%;padding:7px 3px;text-align:center;background:{BLUE};color:#fff;"
         f"font-family:sans-serif;font-size:13px;border-right:1px solid #ddd;"
         f"border-bottom:2px solid {DBLUE}'>{_DAY_NAMES[d]}</th>"
         for d in range(5)
     )
+    # Equal day columns — see the same note in weekly_summary.py.
+    col_w = f"{(100.0 / 5):.4f}%"
+    colgroup = ("<colgroup><col style='width:56px'>"
+                + f"<col style='width:{col_w}'>" * 5
+                + "</colgroup>")
     time_th = (
-        "<th style='min-width:52px;padding:4px;background:#f0f0f0;"
+        "<th width='56' style='width:56px;padding:4px;background:#f0f0f0;"
         "border-right:1px solid #ccc;border-bottom:2px solid #bbb'></th>"
     )
 
@@ -215,7 +220,8 @@ def _html(rows: list[dict]) -> str:
                     f"font-family:sans-serif;font-size:11px'>"
                     f"<div style='font-size:10px;color:#555;white-space:nowrap'>"
                     f"{start_lbl} \u2013 {end_lbl}</div>"
-                    f"<div style='font-weight:bold;color:{DBLUE};margin-top:1px'>{r['name']}</div>"
+                    f"<div style='font-weight:bold;color:{DBLUE};margin-top:1px;"
+                    f"overflow-wrap:break-word'>{r['name']}</div>"
                     f"<div style='margin-top:2px'>{email_theme.chip(r['location'])}</div>"
                     f"</td>"
                 )
@@ -227,7 +233,8 @@ def _html(rows: list[dict]) -> str:
         "Standard weekly YMCA schedule</h2>"
         "<p style='font-family:sans-serif;font-size:13px;color:#555;margin:4px 0 10px'>"
         "Your recurring Mon\u2013Fri lineup (not tied to any specific week or booking status).</p>"
-        "<table style='border-collapse:collapse;width:100%;min-width:600px'>"
+        "<table style='border-collapse:collapse;table-layout:fixed;width:100%;min-width:600px'>"
+        f"{colgroup}"
         f"<thead><tr>{time_th}{day_ths}</tr></thead>"
         f"<tbody>{body_rows}</tbody>"
         "</table>"

@@ -208,8 +208,15 @@ def _html(rows: list[dict], title: str, count: int, today: date,
         return "border-right:1px solid #ddd" if i < num_cols - 1 else ""
 
     # Header row
+    # Equal day columns. Without table-layout:fixed the browser sizes columns
+    # to content, so a day holding one class block ends up several times wider
+    # than the away days beside it.
+    col_w = f"{(100.0 / num_cols):.4f}%"
+    colgroup = ("<colgroup><col style='width:56px'>"
+                + f"<col style='width:{col_w}'>" * num_cols
+                + "</colgroup>")
     time_th = (
-        f"<th style='min-width:52px;padding:4px;background:#f0f0f0;"
+        f"<th width='56' style='width:56px;padding:4px;background:#f0f0f0;"
         f"border-right:1px solid #ccc;border-bottom:2px solid #bbb'></th>"
     )
     day_ths = ""
@@ -224,7 +231,7 @@ def _html(rows: list[dict], title: str, count: int, today: date,
             bg = WKND_BG if is_wknd else GREEN
             tag = ""
         day_ths += (
-            f"<th style='padding:7px 3px;text-align:center;background:{bg};color:#fff;"
+            f"<th style='width:{col_w};padding:7px 3px;text-align:center;background:{bg};color:#fff;"
             f"font-family:sans-serif;font-size:13px;{_col_border(i)};border-bottom:2px solid {DGREEN}'>"
             f"{day_label}<br>"
             f"<span style='font-size:11px;font-weight:normal'>{date_label}</span>{tag}"
@@ -285,9 +292,12 @@ def _html(rows: list[dict], title: str, count: int, today: date,
                     f"font-family:sans-serif;font-size:11px;box-sizing:border-box'>"
                     f"<div style='font-size:10px;color:#555;white-space:nowrap'>"
                     f"{r['time'].lower()} – {end_str}</div>"
-                    f"<div style='font-weight:bold;color:{DGREEN};margin-top:1px'>{r['name']}</div>"
-                    f"<div style='color:#444;margin-top:1px'>{r['instructor']}</div>"
-                    f"<div style='margin-top:2px'>{email_theme.chip_for(r['sub_location'])}"
+                    f"<div style='font-weight:bold;color:{DGREEN};margin-top:1px;"
+                    f"overflow-wrap:break-word'>{r['name']}</div>"
+                    f"<div style='color:#444;margin-top:1px;white-space:nowrap;"
+                    f"overflow:hidden;text-overflow:ellipsis'>{r['instructor']}</div>"
+                    f"<div style='margin-top:2px;white-space:nowrap;overflow:hidden;"
+                    f"text-overflow:ellipsis'>{email_theme.chip_for(r['sub_location'])}"
                     f"<span style='color:#888;font-size:10px'> {_room_only(r['sub_location'])}</span></div>"
                     f"</div></td>"
                 )
@@ -302,7 +312,8 @@ def _html(rows: list[dict], title: str, count: int, today: date,
     return (
         f"<h2 style='font-family:sans-serif;color:{GREEN};margin-bottom:2px'>{title}</h2>"
         f"{count_line}"
-        f"<table style='border-collapse:collapse;width:100%;min-width:600px'>"
+        f"<table style='border-collapse:collapse;table-layout:fixed;width:100%;min-width:600px'>"
+        f"{colgroup}"
         f"<thead><tr>{time_th}{day_ths}</tr></thead>"
         f"<tbody>{body_rows}</tbody>"
         f"</table>"

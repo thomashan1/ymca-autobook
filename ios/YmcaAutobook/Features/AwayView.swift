@@ -5,8 +5,27 @@ import SwiftUI
 struct AwayView: View {
     @EnvironmentObject var pauses: PausesRepository
     @State private var showAdd = false
+    @State private var showPast = false
     @State private var busy = false
     @State private var errorMessage: String?
+
+    /// Midnight today in the gym's timezone — the cut between past and upcoming.
+    /// A range that ends *today* still counts as current, not past.
+    private var today: Date {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Config.timeZone
+        return cal.startOfDay(for: Date())
+    }
+
+    /// Ranges that haven't finished yet, soonest first.
+    private var upcoming: [Pause] {
+        pauses.pauses.filter { $0.end >= today }.sorted { $0.start < $1.start }
+    }
+
+    /// Ranges that ended before today, most recent first — collapsed by default.
+    private var past: [Pause] {
+        pauses.pauses.filter { $0.end < today }.sorted { $0.start > $1.start }
+    }
 
     var body: some View {
         NavigationStack {
@@ -19,21 +38,35 @@ struct AwayView: View {
                     .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
                 }
                 Section {
-                    if pauses.pauses.isEmpty {
-                        Text("No away dates set.").foregroundStyle(.secondary)
+                    if upcoming.isEmpty {
+                        Text(pauses.pauses.isEmpty ? "No away dates set."
+                                                   : "No upcoming away dates.")
+                            .foregroundStyle(.secondary)
                     }
-                    ForEach(pauses.pauses) { pause in
+                    ForEach(upcoming) { pause in
                         PauseRow(pause: pause)
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) { remove(pause) } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
+                            .swipeActions(edge: .trailing) { deleteButton(pause) }
                     }
                 } header: {
                     Text("Upcoming pauses")
                 } footer: {
                     Text("Synced to ymca-private/pauses.yml — swipe to delete.")
+                }
+
+                // Past ranges stay out of the way but remain reachable (and deletable).
+                if !past.isEmpty {
+                    Section {
+                        DisclosureGroup(isExpanded: $showPast) {
+                            ForEach(past) { pause in
+                                PauseRow(pause: pause)
+                                    .foregroundStyle(.secondary)
+                                    .swipeActions(edge: .trailing) { deleteButton(pause) }
+                            }
+                        } label: {
+                            Label("Past pauses (\(past.count))", systemImage: "clock.arrow.circlepath")
+                                .font(.subheadline)
+                        }
+                    }
                 }
             }
             .navigationTitle("Away Dates")
@@ -49,6 +82,13 @@ struct AwayView: View {
             .alert("Away dates", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK") { errorMessage = nil }
             } message: { Text(errorMessage ?? "") }
+        }
+    }
+
+    @ViewBuilder
+    private func deleteButton(_ pause: Pause) -> some View {
+        Button(role: .destructive) { remove(pause) } label: {
+            Label("Delete", systemImage: "trash")
         }
     }
 

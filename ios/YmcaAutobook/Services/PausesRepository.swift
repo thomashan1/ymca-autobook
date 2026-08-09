@@ -62,8 +62,21 @@ final class PausesRepository: ObservableObject {
     }
 
     func delete(_ pause: Pause) async -> String? {
-        let next = pauses.filter { $0.id != pause.id }
+        let next = Self.removing(pause, from: pauses)
         return await write(next, message: "Remove pause \(Self.df.string(from: pause.start))–\(Self.df.string(from: pause.end)) via iOS app")
+    }
+
+    /// Drop `pause` from `list`. If it owned a section header, hand the comment to
+    /// whichever entry now starts that section instead of deleting it too.
+    static func removing(_ pause: Pause, from list: [Pause]) -> [Pause] {
+        var next = list.filter { $0.id != pause.id }
+        guard !pause.header.isEmpty else { return next }
+        if let heir = next.indices
+            .filter({ next[$0].start >= pause.start })
+            .min(by: { next[$0].start < next[$1].start }) {
+            next[heir].header = pause.header + next[heir].header
+        }
+        return next
     }
 
     /// Commit the given set to pauses.yml. Returns nil on success, else a message.
@@ -86,10 +99,18 @@ final class PausesRepository: ObservableObject {
     static func serialize(_ pauses: [Pause]) -> String {
         var lines = ["pauses:"]
         for p in pauses.sorted(by: { $0.start < $1.start }) {
+            if !p.header.isEmpty {
+                lines.append("")
+                lines.append(contentsOf: p.header.map { "  # \($0)" })
+            }
             var inner = "start: \(df.string(from: p.start)), end: \(df.string(from: p.end))"
             if !p.except.isEmpty { inner += ", except: [\(p.except.joined(separator: ", "))]" }
             var line = "  - {\(inner)}"
-            if let note = p.note, !note.isEmpty { line += "  # \(note)" }
+            if let note = p.note, !note.isEmpty {
+                // Align inline notes the way the hand-maintained file does, so an
+                // app write doesn't reflow every line it didn't touch.
+                line += String(repeating: " ", count: max(2, 70 - line.count)) + "# \(note)"
+            }
             lines.append(line)
         }
         return lines.joined(separator: "\n") + "\n"
@@ -99,6 +120,7 @@ final class PausesRepository: ObservableObject {
 
     static func parse(_ yaml: String) -> [Pause] {
         var result: [Pause] = []
+        var pendingHeader: [String] = []
         for raw in yaml.components(separatedBy: .newlines) {
             // Split off any inline "# comment" (pauses.yml annotates entries) and keep it as a note.
             var line = raw
@@ -109,7 +131,12 @@ final class PausesRepository: ObservableObject {
                 line = String(line[..<hash])
             }
             line = line.trimmingCharacters(in: .whitespaces)
-            guard line.hasPrefix("- {") else { continue }
+            guard line.hasPrefix("- {") else {
+                // Nothing but a comment on this line -> a section header. Hold it
+                // for the next entry so a write-back can put it back.
+                if line.isEmpty, let note { pendingHeader.append(note) }
+                continue
+            }
             let inner = line.dropFirst(2).trimmingCharacters(in: CharacterSet(charactersIn: "{} "))
             var start: Date?, end: Date?, except: [String] = []
             // Protect commas inside the `except: [...]` list, then split fields.
@@ -130,8 +157,10 @@ final class PausesRepository: ObservableObject {
                 }
             }
             if let s = start, let e = end {
-                result.append(Pause(start: s, end: e, except: except, note: note))
+                result.append(Pause(start: s, end: e, except: except, note: note,
+                                    header: pendingHeader))
             }
+            pendingHeader = []
         }
         return result
     }

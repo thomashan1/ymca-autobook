@@ -195,11 +195,27 @@ private struct PauseRow: View {
             }
         }
     }
+    /// Month/day is enough for this year; anything else carries its year, since
+    /// the list now runs across a school year (e.g. "Dec 21, 2026 – Jan 1, 2027").
     private var range: String {
-        let f = Date.FormatStyle().month(.abbreviated).day()
-        return pause.start == pause.end
-            ? pause.start.formatted(f)
-            : "\(pause.start.formatted(f)) – \(pause.end.formatted(f))"
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Config.timeZone
+        let thisYear = cal.component(.year, from: Date())
+        let startYear = cal.component(.year, from: pause.start)
+        let endYear = cal.component(.year, from: pause.end)
+
+        let md = Date.FormatStyle().month(.abbreviated).day()
+        let mdy = Date.FormatStyle().month(.abbreviated).day().year()
+
+        if pause.start == pause.end {
+            return pause.start.formatted(startYear == thisYear ? md : mdy)
+        }
+        if startYear != endYear {
+            // Crosses New Year — without both years the range reads backwards.
+            return "\(pause.start.formatted(mdy)) – \(pause.end.formatted(mdy))"
+        }
+        // Same year on both ends: one trailing year covers it.
+        return "\(pause.start.formatted(md)) – \(pause.end.formatted(startYear == thisYear ? md : mdy))"
     }
 }
 

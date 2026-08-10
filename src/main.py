@@ -232,42 +232,18 @@ def find_occurrence(context, csrf, occurrence_id: int, horizon_days: int = 40) -
     return None
 
 
-def book_by_id(context, csrf, occurrence_id: int, book_now: bool = False) -> tuple[bool, str]:
+def book_by_id(context, csrf, occurrence_id: int) -> tuple[bool, str]:
     """Book a specific occurrence by id, independent of classes.yml.
 
     For one-off exceptions — e.g. a configured class is full/unavailable this
     week and you want to fall back to a specific alternate occurrence instead.
     Uses the same retry/lock-refresh logic as the scheduled path.
-
-    Waits for the booking window like book() does, so a one-off can be put on a
-    cron that fires *before* the open instant and sits through GitHub's queue
-    delay — landing a cron on the exact minute isn't reliable enough for a class
-    that fills fast.
     """
     target = find_occurrence(context, csrf, occurrence_id)
     if not target:
         return False, f"Occurrence id={occurrence_id} not found in the next 40 days."
     title = (target.get("service_title") or "?").strip()
     label = f"{title} at {target['occurs_at']} (id={occurrence_id})"
-    if target.get("is_joined"):
-        return True, f"{label}\nAlready booked — nothing to do."
-
-    open_dt = _open_dt(target)
-    if not book_now:
-        now = datetime.now(timezone.utc)
-        if open_dt - now > OPEN_GUARD:
-            return False, (f"{label}\nBooking doesn't open until {open_dt.isoformat()} — "
-                           f"too far out to wait. Run this closer to the open time.")
-        if open_dt > now:
-            print(f"Waiting until {open_dt.isoformat()} ...")
-            wait_until(open_dt)
-            # Re-read after the wait: picks up a fresh lock_version, and catches
-            # the case where a backstop run booked it while this one waited.
-            fresh = find_occurrence(context, csrf, occurrence_id)
-            if fresh is not None:
-                if fresh.get("is_joined"):
-                    return True, f"{label}\nAlready booked while waiting — nothing to do."
-                target = fresh
 
     lock = target.get("lock_version")
     last = "no attempt"
@@ -507,7 +483,7 @@ def main(argv=None) -> int:
                 return 0 if not failed else 1
 
             if args.book_id:
-                ok, detail = book_by_id(context, csrf, args.book_id, book_now=args.book_now)
+                ok, detail = book_by_id(context, csrf, args.book_id)
                 print(detail)
                 notify(ok, f"Book occurrence id={args.book_id}", detail, alert=True)
                 if ok:

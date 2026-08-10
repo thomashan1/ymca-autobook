@@ -8,6 +8,10 @@ struct Pause: Identifiable, Codable, Hashable {
     var except: [String] = []
     /// The inline "# comment" from pauses.yml, if any.
     var note: String? = nil
+    /// Standalone "#" lines that sat above this entry in pauses.yml (section
+    /// headers hand-written in the repo). Carried so a write-back from the app
+    /// re-emits them instead of silently flattening the file.
+    var header: [String] = []
 
     var id: String {
         let f = ISO8601DateFormatter()

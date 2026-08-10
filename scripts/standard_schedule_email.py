@@ -2,8 +2,10 @@
 a generic Mon-Fri "what does a normal week look like" view. Not tied to any
 specific week's dates or live booking status (see weekly_summary.py for that).
 
-Runs once a week via .github/workflows/standard-schedule-email.yml. Reads
-classes.yml only — no live Fisikal login needed. Pulls each class's end time
+Sent by .github/workflows/standard-schedule-email.yml whenever classes.yml
+changes on main (plus manual dispatch) — the lineup is static between edits, so
+there's nothing to say on an unchanged week. Reads classes.yml only — no live
+Fisikal login needed. Pulls each class's end time
 from the cached schedule_snapshot.json in the private repo (matched by
 day/start/name) for a proper calendar-grid look; falls back to a 60-minute
 default if a class isn't found there (fail-open, same spirit as pauses.py).
@@ -14,8 +16,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -242,34 +242,7 @@ def _html(rows: list[dict]) -> str:
     )
 
 
-def _wrong_dst_twin() -> bool:
-    """True if this run is the off-DST half of the cron pair (see the workflow).
-
-    Same approach as weekly_summary.py: both crons fire, and we key off WHICH
-    cron triggered rather than the wall clock, so a delayed run still resolves
-    correctly. Manual dispatches carry no cron and always send.
-    """
-    cron = os.environ.get("SCHEDULE_CRON", "").strip()
-    if not cron:
-        return False
-    try:
-        cron_hour = int(cron.split()[1])
-    except (IndexError, ValueError):
-        return False
-    now_local = datetime.now(ZoneInfo("America/Los_Angeles"))
-    correct_utc_hour = now_local.replace(
-        hour=17, minute=52, second=0, microsecond=0
-    ).astimezone(timezone.utc).hour
-    if cron_hour != correct_utc_hour:
-        print(f"[skip] cron '{cron}' is the off-DST pair for 17:52 PT "
-              f"(correct UTC hour today is {correct_utc_hour:02d}); skipping duplicate.")
-        return True
-    return False
-
-
 def run() -> int:
-    if _wrong_dst_twin():
-        return 0
     cfg = load_config()
     durations = _duration_lookup(os.environ.get("PRIVATE_REPO_TOKEN"))
     rows = _rows(cfg, durations)

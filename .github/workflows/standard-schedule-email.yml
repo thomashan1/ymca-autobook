@@ -1,17 +1,21 @@
 name: Standard schedule email
 
 on:
-  schedule:
-    # Sun 17:52 PT, aiming to land ~6pm. Both DST crons fire; the script checks
-    # which one triggered (github.event.schedule) and lets only the matching one
-    # send. :52 rather than :00 — the old "0 1 * * 1" sat in GitHub's
-    # top-of-hour queue and delivered 3.5h late, at 9:30pm.
-    - cron: "52 0 * * 1"  # Sun 17:52 PT (PDT = UTC-7)
-    - cron: "52 1 * * 1"  # Sun 17:52 PT (PST = UTC-8)
+  # The lineup only changes when classes.yml changes, so send it then instead of
+  # every Sunday. Covers the iOS app's auto-merging delete PRs too — they land on
+  # main as a normal push. Regenerating book.yml afterwards touches only
+  # .github/workflows, so it won't fire a second mail.
+  push:
+    branches: [main]
+    paths:
+      - classes.yml
   workflow_dispatch: {}
 
 concurrency:
-  group: standard-schedule-email-${{ github.run_id }}
+  # Collapse a burst of pushes into one email (the old group keyed on run_id, so
+  # it never actually deduplicated anything).
+  group: standard-schedule-email
+  cancel-in-progress: true
 
 jobs:
   email:
@@ -28,5 +32,4 @@ jobs:
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-          SCHEDULE_CRON: ${{ github.event.schedule }}
         run: python scripts/standard_schedule_email.py

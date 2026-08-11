@@ -13,6 +13,7 @@ enum Config {
     /// Files the app reads/writes.
     static let classesPath = "classes.yml"
     static let pausesPath = "pauses.yml"
+    static let swapsPath = "swaps.yml"
 
     /// Workflow dispatched for a one-off "Book now".
     static let bookWorkflow = "book.yml"

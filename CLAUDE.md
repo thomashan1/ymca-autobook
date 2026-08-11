@@ -41,7 +41,8 @@ Northwest CORE → Southwest Lift & H.I.I.T. Update this table whenever
 
 ## iOS app
 - SwiftUI companion app under `ios/` — a control panel over the GitHub state (Actions stays the booking engine; the app never books directly). Signs in with a fine-grained PAT (Contents + Pull requests + Actions + Workflows) stored in the device Keychain.
-- Reads `classes.yml`, `pauses.yml`, and two private-repo snapshots: `schedule_snapshot.json` (class end times/durations) and `bookings.json` (actually-booked classes with room/instructor, published by `scripts/snapshot_bookings.py` via `.github/workflows/bookings-snapshot.yml`, every 6h). The Week view merges the recurring plan with real bookings.
+- The Away tab also lists **upcoming one-off swaps** from the private repo's `swaps.yml` (read-only — securing a swap means booking the replacement before releasing the original against a live window, which stays the Actions engine's job).
+- Reads `classes.yml`, `pauses.yml`, `swaps.yml`, and two private-repo snapshots: `schedule_snapshot.json` (class end times/durations) and `bookings.json` (actually-booked classes with room/instructor, published by `scripts/snapshot_bookings.py` via `.github/workflows/bookings-snapshot.yml`, every 6h). The Week view merges the recurring plan with real bookings.
 - Editing classes (delete) opens an auto-merging PR against `classes.yml`; away-date edits write directly to `pauses.yml` in the private repo. See `ios/README.md`.
 
 ## Summary emails

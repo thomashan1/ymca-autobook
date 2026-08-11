@@ -21,7 +21,20 @@ import yaml
 # Fire a trigger at each of these minutes before booking opens. Multiple leads give
 # redundancy against GitHub dropping a scheduled trigger; all fire before the open
 # so whichever runs waits for the precise instant and books on the first attempt.
-FIRE_LEAD_MINS = [25, 15]
+#
+# The earliest lead is the delay budget: a run that starts late still books on time
+# as long as it starts before the open, because it waits. Measured over 100
+# scheduled runs the queue delay was a 4.3 min median, 13.4 at p90 and 18.8 at
+# worst — so the old 25 min lead had ~6 min of headroom. 45 roughly triples that.
+# Runner minutes spent waiting are free on a public repo, so the lead costs nothing
+# but idle time.
+#
+# CEILING: every lead must stay UNDER main.OPEN_GUARD (60 min). GitHub cron is
+# fixed UTC, so each lead emits both a PDT and a PST line and both fire all year;
+# the out-of-season twin arrives lead+60 min before the open, and OPEN_GUARD is
+# what makes it exit instead of waiting an extra hour. A lead of 60+ would stop
+# that twin being filtered and start booking from the wrong-season trigger.
+FIRE_LEAD_MINS = [45, 30, 15]
 CRON_DOW = {"Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6, "Sun": 0}
 HERE = os.path.dirname(__file__)
 CONFIG = os.path.join(HERE, os.pardir, "classes.yml")

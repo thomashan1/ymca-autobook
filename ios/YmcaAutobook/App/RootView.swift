@@ -4,6 +4,7 @@ struct RootView: View {
     @EnvironmentObject var auth: AuthStore
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var swaps: SwapsRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
     @EnvironmentObject var fullClasses: FullRepository
@@ -28,6 +29,7 @@ struct RootView: View {
             guard auth.hasToken else { return }
             await classes.load()
             await pauses.load()
+            await swaps.load()
             await snapshot.load()
             await bookings.load()
             await fullClasses.load()

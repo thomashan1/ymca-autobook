@@ -10,7 +10,7 @@ state through the GitHub REST API:
 | **Week**    | Two-week calendar + agenda merging `classes.yml` with real bookings (`bookings.json`); durations from `schedule_snapshot.json` |
 | **Classes** | `classes.yml` — regulars vs. trials; a toggle edits the file |
 | **Jobs**    | Scheduled bookings + live 167h countdowns; recent run feed (Actions API) |
-| **Away**    | `pauses.yml` in the private repo — add/remove away dates |
+| **Away**    | `pauses.yml` in the private repo — add/remove away dates, plus a read-only list of upcoming one-off swaps from `swaps.yml` |
 
 ## Why the app is a client, not the engine
 
@@ -20,6 +20,9 @@ Actions. The app only:
 
 - reads `classes.yml` (public repo)
 - reads/writes `pauses.yml` (private repo)
+- reads `swaps.yml` (private repo) — one-off swaps are shown, never edited: the
+  replacement has to be booked before the original is released, against a live
+  booking window, so Actions owns that and the app just reflects it
 - reads workflow run history for job status + the success/failure feed
 - fires `workflow_dispatch` on `book.yml` for one-off "Book now"
 

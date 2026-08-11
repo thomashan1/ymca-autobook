@@ -55,4 +55,19 @@ enum SampleData {
         (7, 3, "Away Mon–Wed", []),
         (10, 1, "Half day — keep morning class", ["cycle-sculpt-thu"]),
     ]
+
+    /// One-off swaps, dated relative to this week's Monday so screenshots always
+    /// show them as upcoming.
+    static var swaps: [Swap] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Config.timeZone; cal.firstWeekday = 2
+        let mon = cal.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        func day(_ offset: Int) -> Date { cal.date(byAdding: .day, value: offset, to: mon) ?? mon }
+        return [
+            Swap(date: day(8), skipKey: "cycle-tue", bookName: "BODYCOMBAT",
+                 bookStart: "09:50", bookLocationIDs: [1388],
+                 note: "Northwest BODYCOMBAT instead of Cycle"),
+            Swap(date: day(15), skipKey: "cycle-tue", note: "dentist"),
+        ]
+    }
 }

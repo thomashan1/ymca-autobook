@@ -4,6 +4,7 @@ import SwiftUI
 /// paused days grey out on the Week screen and skip their jobs.
 struct AwayView: View {
     @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var swaps: SwapsRepository
     @State private var showAdd = false
     @State private var showPast = false
     @State private var busy = false
@@ -53,6 +54,22 @@ struct AwayView: View {
                     Text("Synced to ymca-private/pauses.yml — swipe to delete.")
                 }
 
+                // One-off swaps are the other kind of schedule exception, so they
+                // belong next to pauses. Read-only: securing a swap means booking
+                // the replacement before releasing the original, against a live
+                // booking window — that's the Actions engine's job, not the app's.
+                if !swaps.upcoming().isEmpty {
+                    Section {
+                        ForEach(swaps.upcoming()) { swap in
+                            SwapRow(swap: swap)
+                        }
+                    } header: {
+                        Text("One-off swaps")
+                    } footer: {
+                        Text("From ymca-private/swaps.yml. Booked by Actions — the original class is kept until its replacement is secured.")
+                    }
+                }
+
                 // Past ranges stay out of the way but remain reachable (and deletable).
                 if !past.isEmpty {
                     Section {
@@ -77,7 +94,10 @@ struct AwayView: View {
                 }
             }
             .overlay { if busy { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
-            .refreshable { await pauses.load() }
+            .refreshable {
+                await pauses.load()
+                await swaps.load()
+            }
             .sheet(isPresented: $showAdd) { AddPauseSheet(onSave: add) }
             .alert("Away dates", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK") { errorMessage = nil }
@@ -178,6 +198,50 @@ private struct MonthGrid: View {
             RoundedRectangle(cornerRadius: 7)
                 .strokeBorder(today ? Theme.accent : .clear, lineWidth: 2)
         )
+    }
+}
+
+/// A pending one-off swap: the class being dropped, and what takes its place.
+private struct SwapRow: View {
+    let swap: Swap
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(dateLabel).font(.body.weight(.medium))
+            HStack(spacing: 6) {
+                if let skip = swap.skipKey {
+                    Text(skip)
+                        .font(.caption)
+                        .strikethrough()
+                        .foregroundStyle(.secondary)
+                }
+                if swap.skipKey != nil && swap.bookName != nil {
+                    Image(systemName: "arrow.right").font(.caption2).foregroundStyle(.secondary)
+                }
+                if let name = swap.bookName {
+                    Text([name, swap.bookStart].compactMap { $0 }.joined(separator: " "))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Theme.booked)
+                }
+            }
+            if let branch = swap.bookBranch {
+                Text(branch).font(.caption2).foregroundStyle(.secondary)
+            }
+            if let note = swap.note {
+                Text(note).font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Matches PauseRow: month/day this year, with the year once it isn't.
+    private var dateLabel: String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Config.timeZone
+        let sameYear = cal.component(.year, from: swap.date) == cal.component(.year, from: Date())
+        let style = sameYear
+            ? Date.FormatStyle().weekday(.abbreviated).month(.abbreviated).day()
+            : Date.FormatStyle().weekday(.abbreviated).month(.abbreviated).day().year()
+        return swap.date.formatted(style)
     }
 }
 

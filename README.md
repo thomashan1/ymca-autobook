@@ -88,6 +88,38 @@ so the run that would book a paused class fires a week earlier. Add `PRIVATE_REP
 this. Fail-open: a missing or broken token means "no pauses" so a misconfiguration can
 never silently stop bookings.
 
+## One-off swaps
+A swap is a single-date exception: miss a recurring class that day and take a different
+one instead. It lives beside `pauses.yml` in the same private repo as `swaps.yml`,
+following [`swaps.example.yml`](swaps.example.yml):
+
+```yaml
+swaps:
+  - date: 2026-08-18        # the CLASS date, not the run date
+    skip: cycle-tue         # a key from classes.yml (optional)
+    book:                   # the replacement (optional)
+      name: "BODYCOMBAT"
+      start: "09:50"
+      location_ids: [1388]
+```
+
+The replacement is described by **name + start + branch**, never an occurrence id —
+ids change week to week and can only be found by browsing, so they can't be written
+ahead of the booking window. Omit `book` for a one-day skip, or `skip` to add a class
+without displacing anything.
+
+**The original is never released until the replacement is booked.** If the replacement
+is full, errors, or its window hasn't opened yet, the recurring class stays on your
+roster; once the replacement lands, the original is cancelled automatically. So the
+worst case is keeping the class you already had, never an empty slot. A replacement
+still unbooked after its window has opened fails the run and sends a ❌ email, because
+a swap that silently never executes looks exactly like an ordinary week.
+
+Swaps have **no schedule of their own** — `run_due.py` applies them on `book.yml`'s
+existing cron fires. That's deliberate: a purpose-built one-off cron fired 46 minutes
+late, while `book.yml`'s long-established crons have never been more than 19 minutes
+late across 100 runs.
+
 ## Local setup & testing
 ```bash
 /usr/bin/python3 -m venv .venv

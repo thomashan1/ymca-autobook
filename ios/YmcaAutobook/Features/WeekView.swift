@@ -69,7 +69,7 @@ struct WeekView: View {
             .navigationTitle("This & Next Week")
             .navigationBarTitleDisplayMode(.inline)
             .refreshable {
-                await classes.load(); await pauses.load()
+                await classes.load(); await pauses.load(); await swaps.load()
                 await snapshot.load(); await bookings.load()
                 await fullClasses.load()
             }

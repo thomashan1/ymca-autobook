@@ -59,6 +59,20 @@ final class SwapsRepository: ObservableObject {
         swaps.contains { $0.matches(day, calendar: calendar) && $0.skipKey == classKey }
     }
 
+    /// Whether a swap touches this occurrence, and from which side.
+    ///
+    /// The replacement is matched on name + start time rather than a class key,
+    /// because it isn't in classes.yml at all — it reaches the Week view through
+    /// bookings.json once Actions has booked it, with no key to join on.
+    func role(name: String, start: String, classKey: String?, on day: Date,
+              calendar: Calendar = .current) -> SwapRole? {
+        for swap in swaps where swap.matches(day, calendar: calendar) {
+            if let key = classKey, swap.skipKey == key { return .displaced }
+            if swap.bookName == name, swap.bookStart == start { return .replacement }
+        }
+        return nil
+    }
+
     // MARK: Minimal YAML for the fixed swaps.yml shape
     //
     // Keyed off field NAMES rather than indentation: `date`/`skip`/`note` only

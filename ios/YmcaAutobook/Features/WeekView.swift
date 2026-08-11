@@ -9,6 +9,7 @@ import SwiftUI
 struct WeekView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var swaps: SwapsRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
     @EnvironmentObject var fullClasses: FullRepository
@@ -112,10 +113,12 @@ struct WeekView: View {
         Section {
             ForEach(day.items) { occ in
                 let away = occ.classKey.map { pauses.isAway(day.date, classKey: $0) } ?? false
+                let role = swaps.role(name: occ.name, start: occ.start,
+                                      classKey: occ.classKey, on: day.date)
                 Button {
                     detail = occ.detail(on: day.date)
                 } label: {
-                    OccurrenceRow(occ: occ, away: away)
+                    OccurrenceRow(occ: occ, away: away, swapRole: role)
                 }
                 .buttonStyle(.plain)
             }
@@ -213,6 +216,7 @@ struct Occurrence: Identifiable {
 private struct TwoWeekGrid: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var swaps: SwapsRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
     @EnvironmentObject var fullClasses: FullRepository
@@ -261,6 +265,8 @@ private struct TwoWeekGrid: View {
             ForEach(occs) { occ in
                 let away = occ.classKey.map { pauses.isAway(date, classKey: $0) } ?? false
                 GridCell(occ: occ, away: away,
+                         swapRole: swaps.role(name: occ.name, start: occ.start,
+                                              classKey: occ.classKey, on: date),
                          past: CalendarHelper.startDate(occ.start, on: date).map { $0 < Date() } ?? false,
                          font: cellFont)
             }
@@ -272,11 +278,17 @@ private struct TwoWeekGrid: View {
 private struct GridCell: View {
     let occ: Occurrence
     let away: Bool
+    var swapRole: SwapRole? = nil
     let past: Bool
     let font: CGFloat
 
+    /// A displaced class reads like an away day — struck through and dimmed —
+    /// because in both cases it simply isn't happening for you that day.
+    private var dropped: Bool { away || swapRole == .displaced }
+
     private var fill: Color {
-        if away { return Theme.away.opacity(0.12) }
+        if dropped { return Theme.away.opacity(0.12) }
+        if swapRole == .replacement { return Theme.queued.opacity(0.18) }
         return occ.booked ? Theme.booked.opacity(0.18) : Theme.away.opacity(0.10)
     }
 
@@ -284,7 +296,14 @@ private struct GridCell: View {
         VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 2) {
                 Text(occ.start).font(.system(size: font, weight: .bold)).monospacedDigit()
-                if occ.booked && !away {
+                // No room for a word at this size, so the swap arrows carry it;
+                // the agenda row below spells it out as a badge.
+                if swapRole != nil {
+                    Image(systemName: "arrow.triangle.swap")
+                        .font(.system(size: font - 1, weight: .heavy))
+                        .foregroundStyle(swapRole == .replacement ? Theme.queued : Theme.away)
+                }
+                if occ.booked && !dropped {
                     Image(systemName: "checkmark").font(.system(size: font - 1, weight: .heavy))
                         .foregroundStyle(Theme.booked)
                 }
@@ -296,11 +315,17 @@ private struct GridCell: View {
         .background(fill, in: RoundedRectangle(cornerRadius: 7))
         .overlay(
             RoundedRectangle(cornerRadius: 7)
-                .strokeBorder(occ.booked && !away ? Theme.booked.opacity(0.5) : .clear, lineWidth: 1)
+                .strokeBorder(strokeColor, lineWidth: 1)
         )
-        .foregroundStyle(away ? Theme.away : .primary)
-        .strikethrough(away, color: Theme.away)
-        .opacity(past ? 0.4 : (away ? 0.6 : 1))
+        .foregroundStyle(dropped ? Theme.away : .primary)
+        .strikethrough(dropped, color: Theme.away)
+        .opacity(past ? 0.4 : (dropped ? 0.6 : 1))
+    }
+
+    private var strokeColor: Color {
+        if dropped { return .clear }
+        if swapRole == .replacement { return Theme.queued.opacity(0.5) }
+        return occ.booked ? Theme.booked.opacity(0.5) : .clear
     }
 }
 
@@ -337,6 +362,10 @@ private struct CalendarZoomSheet: View {
 private struct OccurrenceRow: View {
     let occ: Occurrence
     let away: Bool
+    var swapRole: SwapRole? = nil
+
+    /// Displaced by a swap, or paused — either way it isn't happening that day.
+    private var dropped: Bool { away || swapRole == .displaced }
 
     private var timeRange: String { occ.end.map { "\(occ.start)–\($0)" } ?? occ.start }
     /// Not a hollow circle for the unbooked state: that's the shape of a
@@ -346,6 +375,7 @@ private struct OccurrenceRow: View {
     /// instead of "check me", and the "Not booked" badge already carries the
     /// literal status.
     private var icon: String {
+        if swapRole == .displaced { return "arrow.triangle.swap" }
         if away { return "moon.zzz.fill" }
         if occ.booked { return "checkmark.circle.fill" }
         // A full class isn't "pending" — the clock would promise it still might
@@ -353,6 +383,8 @@ private struct OccurrenceRow: View {
         return occ.isFull ? "person.crop.circle.badge.xmark" : "clock"
     }
     private var iconColor: Color {
+        if swapRole == .displaced { return Theme.away }
+        if swapRole == .replacement { return Theme.queued }
         if away { return Theme.away }
         if occ.booked { return Theme.booked }
         return occ.isFull ? Theme.accent : Theme.away
@@ -362,12 +394,16 @@ private struct OccurrenceRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon).foregroundStyle(iconColor)
             VStack(alignment: .leading, spacing: 2) {
-                Text(occ.name).font(.body.weight(.medium)).strikethrough(away, color: Theme.away)
+                Text(occ.name).font(.body.weight(.medium)).strikethrough(dropped, color: Theme.away)
                 HStack(spacing: 6) {
                     Text(timeRange).font(.caption).foregroundStyle(.secondary).monospacedDigit()
                     BranchChip(branch: occ.branch)
                     if occ.isTrial { badge("Trial", Theme.queued) }
-                    if away { badge("Skipped", Theme.away) }
+                    // The one-off marker comes first: it explains *why* the
+                    // status beside it isn't what this weekday usually shows.
+                    if swapRole == .replacement { badge("One-off", Theme.queued) }
+                    if swapRole == .displaced { badge("Swapped out", Theme.away) }
+                    else if away { badge("Skipped", Theme.away) }
                     else if occ.booked { badge("Booked", Theme.booked) }
                     else if occ.isFull { badge("Full", Theme.accent) }
                     else { badge("Not booked", Theme.away) }
@@ -376,7 +412,7 @@ private struct OccurrenceRow: View {
             Spacer()
             Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
         }
-        .opacity(away ? 0.6 : 1)
+        .opacity(dropped ? 0.6 : 1)
         .contentShape(Rectangle())
     }
 

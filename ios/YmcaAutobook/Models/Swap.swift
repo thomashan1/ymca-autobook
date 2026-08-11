@@ -1,5 +1,13 @@
 import Foundation
 
+/// How a one-off swap touches a particular occurrence on the Week screen.
+enum SwapRole {
+    /// The one-off class taking the slot — booked only this once.
+    case replacement
+    /// The recurring class the swap displaces on this date.
+    case displaced
+}
+
 /// A one-off schedule exception from the private `swaps.yml`: on a single date,
 /// drop a recurring class and take a different one instead.
 ///

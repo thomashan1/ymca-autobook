@@ -36,8 +36,12 @@ RETRY_SLEEP_SECONDS = 5.0     # seconds between retries
 LIST_WINDOW_DAYS = 16         # how far ahead to look for occurrences
 # If the next unbooked instance opens more than this far out, this week is
 # already booked (or it isn't this class's run) -> exit instead of waiting.
-# Sized to proceed on an in-season cron (fires ~25 min early) but skip an
-# off-season DST-shifted cron (fires ~85 min early).
+# Sized to proceed on an in-season cron but skip an off-season DST-shifted one.
+# Cron is fixed UTC, so each trigger emits a PDT and a PST line and both fire all
+# year: the in-season twin arrives gen_workflow.FIRE_LEAD_MINS early (max 45), the
+# out-of-season twin a further 60 min early (min 75). Anything in (45, 75] separates
+# them; 60 sits in the middle. Raising FIRE_LEAD_MINS to 60+ would break that, so
+# the two constants have to move together.
 OPEN_GUARD = timedelta(minutes=60)
 
 

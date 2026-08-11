@@ -1,0 +1,52 @@
+# TEMPLATE — the REAL file lives in a separate PRIVATE repo (default:
+# thomashan1/ymca-private) so your schedule changes are never published here.
+#
+# A swap is a ONE-OFF exception to classes.yml: on a single date, miss a
+# recurring class and take a different one instead. Anything you want every
+# week belongs in classes.yml; anything that's "I'm out that day" belongs in
+# pauses.yml. This file is only for "that day, do THIS instead".
+#
+# `date` is the CLASS date, not the date the booking run fires — booking opens
+# ~7 days ahead, so the run that acts on a swap happens about a week earlier.
+#
+# `skip` (optional) is a class key from classes.yml.
+# `book` (optional) describes the replacement the same way classes.yml describes
+#   a class — name + start + branch, NOT an occurrence id. Ids change week to
+#   week and can only be found by browsing the API; a name/time/branch triple is
+#   stable, so a swap can be written days ahead of its booking window.
+#   location_ids: Southwest = 1392, Northwest = 1388.
+#
+# Either field may be omitted: `skip` alone is a one-day skip, `book` alone adds
+# a class without displacing anything.
+#
+# SAFETY: the original is never released until the replacement is actually
+# booked. If the replacement is full, errors, or its window hasn't opened yet,
+# the recurring class stays on your roster — and once the replacement does land,
+# the original is cancelled automatically. A replacement still unbooked after
+# its window has opened sends a ❌ email rather than failing silently.
+#
+# Edit the copy in the private repo (GitHub web/mobile: open file -> edit ->
+# commit). This template is only here to document the format. Past dates are
+# ignored, so old entries can be left in place or tidied up whenever.
+
+swaps:
+  # Swap out Tuesday's Cycle for BODYCOMBAT at the other branch, just this once.
+  - date: 2026-08-18
+    skip: cycle-tue
+    book:
+      name: "BODYCOMBAT"
+      start: "09:50"
+      location_ids: [1388]
+    note: "one-off: Northwest BODYCOMBAT instead of Cycle"
+
+  # Skip-only: drop a single class that day, book nothing in its place.
+  - date: 2026-09-15
+    skip: cycle-tue
+    note: "dentist"
+
+  # Book-only: add an extra class on a day that isn't displacing anything.
+  - date: 2026-09-22
+    book:
+      name: "RPM"
+      start: "09:30"
+      location_ids: [1388]

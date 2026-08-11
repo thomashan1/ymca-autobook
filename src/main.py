@@ -65,6 +65,12 @@ def _fmt(dt: datetime, tz: str) -> str:
     return dt.astimezone(ZoneInfo(tz)).strftime("%a %Y-%m-%d %H:%M %Z")
 
 
+def _local_date(occ: dict, tz: str):
+    """The occurrence's own calendar date in the schedule's timezone."""
+    return datetime.fromisoformat(
+        occ["occurs_at"].replace("Z", "+00:00")).astimezone(ZoneInfo(tz)).date()
+
+
 _EXCLUDE_KEYWORDS = {
     "dance", "salsa", "zumba", "hip hop", "cha cha", "cumbia", "jazzercise", "bollyx",  # dance
     "swim", "aqua", "lap ", "pool",                                                       # water
@@ -188,20 +194,46 @@ def run_list(context, csrf, cfg, name_filter: str | None) -> None:
               f"{title} / {o.get('sub_location_name')} / {o.get('trainer_name')}")
 
 
-def pick_target(context, csrf, cfg, klass) -> dict | None:
-    """Find the next not-yet-booked occurrence of the configured class."""
+def _matches(context, csrf, cfg, klass) -> list[dict]:
+    """All upcoming occurrences matching a classes.yml-shaped entry."""
     now = datetime.now(timezone.utc)
     occs = fisikal.list_occurrences(
         context, csrf, now - timedelta(hours=2), now + timedelta(days=LIST_WINDOW_DAYS),
         location_ids=klass.get("location_ids"),
     )
-    matches = fisikal.find_matches(
+    return fisikal.find_matches(
         occs, klass["name"], klass["weekday"], klass["start"], cfg["timezone"],
         sub_location=klass.get("sub_location"), trainer=klass.get("trainer"),
     )
-    for o in matches:
+
+
+def pick_target(context, csrf, cfg, klass, on_date=None) -> dict | None:
+    """Find the next not-yet-booked occurrence of the configured class.
+
+    `on_date` (a local date) pins the search to one specific day instead of
+    "whichever instance comes next" — what a one-off swap needs, since its
+    replacement class is only wanted on that single date.
+    """
+    now = datetime.now(timezone.utc)
+    for o in _matches(context, csrf, cfg, klass):
         occurs = datetime.fromisoformat(o["occurs_at"].replace("Z", "+00:00"))
-        if occurs > now and not o.get("is_joined"):
+        if occurs <= now or o.get("is_joined"):
+            continue
+        if on_date is not None and _local_date(o, cfg["timezone"]) != on_date:
+            continue
+        return o
+    return None
+
+
+def booked_on(context, csrf, cfg, klass, on_date) -> dict | None:
+    """The already-booked occurrence of `klass` on `on_date`, if any.
+
+    Swaps need this from both ends: to confirm a replacement is genuinely
+    secured before giving up the original, and to find the original again if it
+    was booked as a fallback and now needs releasing.
+    """
+    for o in _matches(context, csrf, cfg, klass):
+        if o.get("is_joined") and _local_date(o, cfg["timezone"]) == on_date:
             return o
     return None
 
@@ -292,20 +324,28 @@ def book_by_id(context, csrf, occurrence_id: int, book_now: bool = False) -> tup
 
 
 def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
-         pause_ranges: list | None = None) -> tuple[bool, str]:
+         pause_ranges: list | None = None, on_date=None,
+         skip_dates: set | None = None) -> tuple[bool, str]:
     tz = cfg["timezone"]
     label = f"{klass['name']} {klass['weekday']} {klass['start']}"
 
-    target = pick_target(context, csrf, cfg, klass)
+    target = pick_target(context, csrf, cfg, klass, on_date=on_date)
     if not target:
         return False, f"No upcoming bookable occurrence found for {label}."
+
+    # Dropped for a one-off swap (src/swaps.py). run_due.py only puts a date in
+    # here once the replacement is confirmed booked, so this branch can never be
+    # what leaves a day empty.
+    if skip_dates and _local_date(target, tz) in skip_dates:
+        occ_local = _local_date(target, tz)
+        return True, (f"Swapped out: skipping '{label}' on {occ_local} — the "
+                      f"one-off replacement for that day is already booked.")
 
     # Skip if the class we'd book falls on an away-date. We match on the
     # occurrence's own (local) date, not "today" — booking opens ~7 days ahead,
     # so the run booking a paused class fires the week before.
     if pause_ranges:
-        occ_local = datetime.fromisoformat(
-            target["occurs_at"].replace("Z", "+00:00")).astimezone(ZoneInfo(tz)).date()
+        occ_local = _local_date(target, tz)
         for rng in pause_ranges:
             if rng.start <= occ_local <= rng.end:
                 # An `except` entry keeps this specific class bookable while away.

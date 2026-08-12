@@ -134,4 +134,15 @@ LOCK_CONFLICT_TYPES = {"lock_version_conflict", "stale_object", "optimistic_lock
 TERMINAL_ERROR_TYPES = {
     "spare_schedule_violation",  # conflicts with another booking you hold
     "already_joined", "full", "no_spaces", "group_is_full",
+    # "taken" was previously in neither set, so it fell through to the retry
+    # path: three attempts, three refusals, then a failed run and a ❌ email.
+    # It is never transient — retrying cannot un-take a slot.
+    "taken",
 }
+# Errors that mean "this occurrence already has a booking on it". Every class
+# fires several redundant triggers (gen_workflow.FIRE_LEAD_MINS), and they all
+# wait for the same instant, so the losers of that race land here. Whether that
+# is benign depends on WHOSE booking it is, which is why book() re-reads the
+# occurrence rather than assuming: ours means success, anyone else's is a real
+# miss. Checked before TERMINAL_ERROR_TYPES, which these also belong to.
+RACE_ERROR_TYPES = {"taken", "already_joined"}

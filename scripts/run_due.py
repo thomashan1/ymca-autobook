@@ -177,8 +177,12 @@ def run() -> int:
                 # Cheap skips aren't real attempts — no email. "Full:" (without
                 # "(new)") is a class we've already reported as full: re-sending
                 # it every cron fire is the noise that buries real failures.
+                # "Already booked" is a redundant trigger finding the class taken
+                # by one of its own siblings — the winner already reported it, so
+                # a second mail would just be an echo.
                 if (detail.startswith("Nothing to book") or detail.startswith("Paused")
-                        or detail.startswith("Full:") or detail.startswith("Swapped out:")):
+                        or detail.startswith("Full:") or detail.startswith("Swapped out:")
+                        or detail.startswith("Already booked")):
                     continue
                 # First time we see it full: report once, loudly (red run -> push
                 # -> email), but don't treat it as a booking failure to retry.

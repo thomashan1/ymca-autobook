@@ -242,8 +242,8 @@ def booked_on(context, csrf, cfg, klass, on_date) -> dict | None:
     return None
 
 
-def refresh_lock_version(context, csrf, klass, target_id, target_occurs_at) -> int | None:
-    """Re-list a narrow window to read the target occurrence's current lock_version."""
+def refresh_occurrence(context, csrf, klass, target_id, target_occurs_at) -> dict | None:
+    """Re-list a narrow window to read the target occurrence's current state."""
     occurs = datetime.fromisoformat(target_occurs_at.replace("Z", "+00:00"))
     occs = fisikal.list_occurrences(
         context, csrf, occurs - timedelta(days=1), occurs + timedelta(days=1),
@@ -251,8 +251,14 @@ def refresh_lock_version(context, csrf, klass, target_id, target_occurs_at) -> i
     )
     for o in occs:
         if o["id"] == target_id:
-            return o.get("lock_version")
+            return o
     return None
+
+
+def refresh_lock_version(context, csrf, klass, target_id, target_occurs_at) -> int | None:
+    """The target occurrence's current lock_version, for retrying a lock conflict."""
+    fresh = refresh_occurrence(context, csrf, klass, target_id, target_occurs_at)
+    return fresh.get("lock_version") if fresh else None
 
 
 def find_occurrence(context, csrf, occurrence_id: int, horizon_days: int = 40) -> dict | None:
@@ -315,6 +321,12 @@ def book_by_id(context, csrf, occurrence_id: int, book_now: bool = False) -> tup
         if ok:
             return True, f"{label}\n{last}"
         types = {e.get("type") for e in errors}
+        # Same race as in book(): a retry trigger can arrive to find the booking
+        # already made. Ours = done, someone else's = a genuine miss.
+        if types & fisikal.RACE_ERROR_TYPES:
+            fresh = find_occurrence(context, csrf, occurrence_id)
+            if fresh and fresh.get("is_joined"):
+                return True, f"{label}\nAlready booked (occurrence {occurrence_id})."
         if types & fisikal.TERMINAL_ERROR_TYPES:
             return False, f"{label}\n{last} (terminal)"
         if types & fisikal.LOCK_CONFLICT_TYPES:
@@ -415,6 +427,15 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
         if ok:
             return True, f"{label}\n{last}\nopened {_fmt(open_dt, tz)}"
         types = {e.get("type") for e in errors}
+        # Lost the race to one of this class's own redundant triggers? That's a
+        # success wearing a failure's clothes — but only if the booking on the
+        # occurrence is actually ours, so confirm rather than assume.
+        if types & fisikal.RACE_ERROR_TYPES:
+            fresh = refresh_occurrence(context, csrf, klass, target["id"], target["occurs_at"])
+            if fresh and fresh.get("is_joined"):
+                return True, (f"Already booked: '{label}' on {occ_date:%Y-%m-%d} — "
+                              f"another trigger for this class got there first "
+                              f"(occurrence {target['id']}).")
         if types & fisikal.TERMINAL_ERROR_TYPES:
             return False, f"{label}\n{last} (terminal)"
         if types & fisikal.LOCK_CONFLICT_TYPES:

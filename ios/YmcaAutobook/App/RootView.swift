@@ -26,7 +26,10 @@ struct RootView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape") }.tag(4)
         }
         .task(id: auth.hasToken) {
-            guard auth.hasToken else { return }
+            // SampleMode (simulator, no token) serves canned data from the
+            // repositories, so the tabs are worth loading without a token —
+            // otherwise the sample lineup could never actually be seen.
+            guard auth.hasToken || SampleMode.active else { return }
             await classes.load()
             await pauses.load()
             await swaps.load()
@@ -34,7 +37,7 @@ struct RootView: View {
             await bookings.load()
             await fullClasses.load()
         }
-        .sheet(isPresented: .constant(!auth.hasToken)) {
+        .sheet(isPresented: .constant(!auth.hasToken && !SampleMode.active)) {
             SettingsView(onboarding: true)
                 .interactiveDismissDisabled()
         }

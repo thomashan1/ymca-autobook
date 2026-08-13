@@ -17,6 +17,22 @@ enum Theme {
     }
 }
 
+/// Blue "THIS WEEK" / "NEXT WEEK" band that separates weeks in a List. Shared
+/// by the Week and Jobs screens so a week boundary looks the same on both.
+/// Must be placed as a direct child of a `List` — it is a `Section`.
+struct WeekDivider: View {
+    let title: String
+    var body: some View {
+        Section {
+            Text(title.uppercased())
+                .font(.subheadline.weight(.heavy))
+                .foregroundStyle(Theme.weekDivider)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .listRowBackground(Theme.weekDivider.opacity(0.14))
+        }
+    }
+}
+
 /// SW / NW branch chip.
 struct BranchChip: View {
     let branch: Branch

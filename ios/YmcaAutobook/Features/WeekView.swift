@@ -80,34 +80,11 @@ struct WeekView: View {
 
     // MARK: Agenda pieces
 
-    private func weekIndex(of date: Date) -> Int {
-        guard let thisMon = cal.dateInterval(of: .weekOfYear, for: Date())?.start else { return 0 }
-        let days = cal.dateComponents([.day], from: thisMon, to: cal.startOfDay(for: date)).day ?? 0
-        return max(0, days / 7)
-    }
+    private func weekIndex(of date: Date) -> Int { CalendarHelper.weekIndex(of: date) }
 
-    private func weekLabel(_ wi: Int) -> String {
-        switch wi {
-        case 0: return "This week"
-        case 1: return "Next week"
-        default:
-            if let thisMon = cal.dateInterval(of: .weekOfYear, for: Date())?.start,
-               let mon = cal.date(byAdding: .day, value: wi * 7, to: thisMon) {
-                return "Week of " + mon.formatted(.dateTime.month().day())
-            }
-            return "Later"
-        }
-    }
+    private func weekLabel(_ wi: Int) -> String { CalendarHelper.weekLabel(wi) }
 
-    private func weekDivider(_ title: String) -> some View {
-        Section {
-            Text(title.uppercased())
-                .font(.subheadline.weight(.heavy))
-                .foregroundStyle(Theme.weekDivider)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .listRowBackground(Theme.weekDivider.opacity(0.14))
-        }
-    }
+    private func weekDivider(_ title: String) -> some View { WeekDivider(title: title) }
 
     private func daySection(_ day: Day) -> some View {
         Section {
@@ -136,6 +113,42 @@ enum CalendarHelper {
         c.timeZone = Config.timeZone
         c.firstWeekday = 2 // Monday
         return c
+    }
+
+    /// 0 = the Monday-anchored week containing today, 1 = next week, and so on.
+    /// Dates before this week clamp to 0 rather than going negative — every
+    /// screen using this shows forward-looking dates only.
+    static func weekIndex(of date: Date) -> Int {
+        let cal = pacific
+        guard let thisMon = cal.dateInterval(of: .weekOfYear, for: Date())?.start else { return 0 }
+        let days = cal.dateComponents([.day], from: thisMon, to: cal.startOfDay(for: date)).day ?? 0
+        return max(0, days / 7)
+    }
+
+    static func weekLabel(_ wi: Int) -> String {
+        switch wi {
+        case 0: return "This week"
+        case 1: return "Next week"
+        default:
+            let cal = pacific
+            if let thisMon = cal.dateInterval(of: .weekOfYear, for: Date())?.start,
+               let mon = cal.date(byAdding: .day, value: wi * 7, to: thisMon) {
+                return "Week of " + mon.formatted(.dateTime.month().day())
+            }
+            return "Later"
+        }
+    }
+
+    /// `weekLabel` spelled out as being about classes. A Jobs row names two
+    /// dates — the class and the earlier instant its booking opens — so a bare
+    /// "Next week" there would be genuinely ambiguous about which one the
+    /// heading groups by. The Week view needs no such help; it lists classes.
+    static func weekLabelForClasses(_ wi: Int) -> String {
+        switch wi {
+        case 0: return "This week's classes"
+        case 1: return "Next week's classes"
+        default: return "Classes " + weekLabel(wi).lowercased()
+        }
     }
 
     static func weekday(of date: Date) -> Weekday? {

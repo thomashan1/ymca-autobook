@@ -1,9 +1,10 @@
 import SwiftUI
 import Combine
 
-/// Scheduled bookings grouped by weekday, each with a live countdown to the
-/// next time its booking *opens* (167h before class). Swipe a row to book that
-/// class immediately via a book.yml workflow_dispatch (issue #47).
+/// Scheduled bookings ordered by the soonest booking-open, each with a live
+/// countdown to the next time its booking *opens* (167h before class), and cut
+/// into blue week bands matching the Week view. Swipe a row to book that class
+/// immediately via a book.yml workflow_dispatch (issue #47).
 struct JobsView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
@@ -32,6 +33,22 @@ struct JobsView: View {
         jobs.sorted { $0.opensAt < $1.opensAt }
     }
 
+    /// The same jobs cut into weeks, ordered soonest first. Grouped by the week
+    /// the *class* falls in, not the week its booking opens, so the headings
+    /// line up with how the Week view reads. Since every open is exactly
+    /// `bookOpenLeadHours` before its class, ordering by open time already
+    /// orders by class date — so these groups come out contiguous.
+    private var jobsByWeek: [(weekIndex: Int, jobs: [BookingJob])] {
+        var order: [Int] = []
+        var buckets: [Int: [BookingJob]] = [:]
+        for job in sortedJobs {
+            let wi = CalendarHelper.weekIndex(of: job.classDate)
+            if buckets[wi] == nil { order.append(wi) }
+            buckets[wi, default: []].append(job)
+        }
+        return order.map { ($0, buckets[$0] ?? []) }
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -42,19 +59,25 @@ struct JobsView: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
-                Section("Next to book") {
-                    ForEach(sortedJobs) { job in
-                        JobRow(job: job, now: now,
-                               paused: pauses.isAway(job.classDate, classKey: job.classKey))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button {
-                                    bookTarget = job
-                                } label: {
-                                    Label("Book now", systemImage: "bolt.fill")
+                ForEach(jobsByWeek, id: \.weekIndex) { group in
+                    WeekDivider(title: CalendarHelper.weekLabelForClasses(group.weekIndex))
+                    Section {
+                        ForEach(group.jobs) { job in
+                            JobRow(job: job, now: now,
+                                   paused: pauses.isAway(job.classDate, classKey: job.classKey))
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button {
+                                        bookTarget = job
+                                    } label: {
+                                        Label("Book now", systemImage: "bolt.fill")
+                                    }
+                                    .tint(Theme.accent)
                                 }
-                                .tint(Theme.accent)
-                            }
+                        }
                     }
+                }
+                if jobsByWeek.isEmpty {
+                    Text("No scheduled bookings.").foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Scheduled Jobs")

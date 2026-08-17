@@ -72,9 +72,12 @@ def run() -> int:
         print(f"Snapshot unchanged ({len(classes)} classes).")
         return 0
 
+    # Same overlap risk as the bookings snapshot: a full regeneration, so the
+    # later write wins on merit rather than clobbering anything.
     private_store.put_file(
         token, SNAPSHOT_PATH, new_text, sha,
         f"schedule snapshot: {nowiso} — {len(classes)} classes",
+        retry_conflict=True,
     )
     print(f"Snapshot written: {len(classes)} classes.")
     return 0

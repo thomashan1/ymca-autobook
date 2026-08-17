@@ -143,13 +143,41 @@ struct SettingsView: View {
             step(2, "Tap “Generate new token”. Name it (e.g. “YMCA Autobook app”) and set an expiration.")
             step(3, "Resource owner: \(Config.owner).")
             step(4, "Repository access → Only select repositories → choose both \(Config.publicRepo) and \(Config.privateRepo).")
-            step(5, "Permissions → Repository permissions, set: Contents = Read and write, Pull requests = Read and write, Actions = Read and write, Workflows = Read and write.")
+            step(5, "Permissions → Repository permissions. Set all four of these — every one is Read and write, not Read-only:")
+            ForEach(Self.tokenPermissions, id: \.self) { permissionRow($0) }
             step(6, "Generate the token, copy it, and paste it into the field above.")
         } header: {
             Text("How to create a token")
         } footer: {
             Text("A fine-grained token limited to these two repos. If it ever leaks, revoke it on github.com and create a new one — nothing else is affected.")
         }
+    }
+
+    /// The repository permissions the token needs. All four are Read and write:
+    /// every one of them backs a write path — Contents edits pauses.yml,
+    /// Pull requests opens the classes.yml PR, Actions dispatches a booking run,
+    /// Workflows covers book.yml living under .github/workflows.
+    static let tokenPermissions = ["Contents", "Pull requests", "Actions", "Workflows"]
+
+    /// One permission as a row rather than a clause in a sentence — you set
+    /// these one dropdown at a time on github.com, so a list you can tick off
+    /// while switching between two screens beats prose. The level is repeated
+    /// on every row on purpose: a single "all of them are Read and write" line
+    /// is exactly what gets skimmed past, and Read-only is the wrong default
+    /// GitHub offers first.
+    private func permissionRow(_ name: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "circle.fill")
+                .font(.system(size: 5)).foregroundStyle(.secondary)
+            Text(name).font(.callout)
+            Spacer()
+            Text("Read and write")
+                .font(.caption2.weight(.bold))
+                .padding(.horizontal, 7).padding(.vertical, 2)
+                .background(Theme.weekDivider.opacity(0.15), in: Capsule())
+                .foregroundStyle(Theme.weekDivider)
+        }
+        .padding(.leading, 30)   // line up under the step text, past the number badge
     }
 
     /// Numbered step. Deliberately *not* the accent red — these are ordinary

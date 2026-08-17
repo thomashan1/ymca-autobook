@@ -105,9 +105,14 @@ def run() -> int:
         print(f"Bookings unchanged ({len(bookings)} booked).")
         return 0
 
+    # Two runs can overlap — the app's "refresh now" button fires a dispatch per
+    # device, and the 6h cron can land on top of one. Both read the same sha and
+    # the loser gets a 409. This file is a full re-read of Fisikal, so the newer
+    # write is simply the better one; retrying is correct, not a clobber.
     private_store.put_file(
         token, SNAPSHOT_PATH, new_text, sha,
         f"bookings snapshot: {snapshot['updated_at']} — {len(bookings)} booked",
+        retry_conflict=True,
     )
     print(f"Bookings written: {len(bookings)} booked.")
     return 0

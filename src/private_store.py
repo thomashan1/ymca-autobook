@@ -41,20 +41,32 @@ def get_file(token: str, path: str) -> tuple[str | None, str | None]:
     return text, data["sha"]
 
 
-def put_file(token: str, path: str, text: str, sha: str | None, message: str) -> dict:
-    """Create or update a file. Pass the current sha to update; None to create."""
+def put_file(token: str, path: str, text: str, sha: str | None, message: str,
+             *, retry_conflict: bool = False) -> dict:
+    """Create or update a file. Pass the current sha to update; None to create.
+
+    `retry_conflict` re-reads the sha and writes once more on a 409, which the
+    Contents API returns when someone else committed between our read and our
+    write. Only pass it when `text` is a full regeneration that doesn't depend
+    on what it replaces — for a read-modify-append, overwriting the winner would
+    silently drop their work, and losing loudly is the better outcome.
+    """
     body = {
         "message": message,
         "content": base64.b64encode(text.encode("utf-8")).decode("ascii"),
         "branch": REF,
     }
-    if sha:
-        body["sha"] = sha
-    resp = httpx.put(
-        f"{_API}/repos/{REPO}/contents/{path}",
-        json=body,
-        headers=_headers(token),
-        timeout=15.0,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    for attempt in range(2):
+        if sha:
+            body["sha"] = sha
+        resp = httpx.put(
+            f"{_API}/repos/{REPO}/contents/{path}",
+            json=body,
+            headers=_headers(token),
+            timeout=15.0,
+        )
+        if resp.status_code == 409 and retry_conflict and attempt == 0:
+            _, sha = get_file(token, path)
+            continue
+        resp.raise_for_status()
+        return resp.json()

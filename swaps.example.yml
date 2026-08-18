@@ -26,8 +26,9 @@
 # its window has opened sends a ❌ email rather than failing silently.
 #
 # Edit the copy in the private repo (GitHub web/mobile: open file -> edit ->
-# commit). This template is only here to document the format. Past dates are
-# ignored, so old entries can be left in place or tidied up whenever.
+# commit). This template is only here to document the format. A swap retires the
+# moment its class starts — not at the end of that day — so old entries can be
+# left in place or tidied up whenever.
 
 swaps:
   # Swap out Tuesday's Cycle for BODYCOMBAT at the other branch, just this once.

@@ -38,7 +38,7 @@ fails differently from a booking error — there is nothing to alert about.
 from __future__ import annotations
 
 import os
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import NamedTuple
 
 import httpx
@@ -53,6 +53,16 @@ class Swap(NamedTuple):
     book_start: str | None = None
     book_location_ids: tuple[int, ...] = ()
     note: str | None = None
+
+    @property
+    def start_time(self) -> time | None:
+        """Local start time of the replacement, or None for a skip-only swap."""
+        if not self.book_start:
+            return None
+        try:
+            return time.fromisoformat(self.book_start)
+        except ValueError:   # a typo in swaps.yml must not crash the run
+            return None
 
     @property
     def label(self) -> str:
@@ -146,6 +156,31 @@ def load_swaps(token: str | None = None) -> list[Swap]:
         return []
 
 
-def upcoming(swaps: list[Swap], today: date) -> list[Swap]:
-    """Swaps whose class date hasn't passed yet — the only ones worth acting on."""
-    return [s for s in swaps if s.date >= today]
+def upcoming(swaps: list[Swap], now: datetime) -> list[Swap]:
+    """Swaps still worth acting on at local time `now`.
+
+    Past dates drop out, and so does a swap on today's date whose replacement has
+    already started. That second half matters: once a class is under way Fisikal
+    stops listing its occurrence, so re-running a spent swap can only report "No
+    upcoming bookable occurrence found" and fail a run whose work was done hours
+    earlier. That is exactly what happened on 2026-08-18 — the BODYCOMBAT
+    replacement was booked at 09:50 and taken, and every book.yml fire after
+    ~12:00 PDT that day emailed a ❌ for a swap that had already succeeded.
+
+    A skip-only swap (no `book:`) has no time of its own — the class it drops is
+    just a key into classes.yml — so it stays live for the whole day. It books
+    nothing, so it cannot fail this way.
+
+    `now` must be timezone-aware local time, not the runner's UTC: date.today()
+    on a UTC runner rolls over at 17:00 PDT and would retire an evening swap on
+    the wrong side of midnight.
+    """
+    out = []
+    for s in swaps:
+        if s.date > now.date():
+            out.append(s)
+        elif s.date == now.date():
+            start = s.start_time
+            if start is None or now.time() < start:
+                out.append(s)
+    return out

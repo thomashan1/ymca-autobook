@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright
 
@@ -116,8 +117,11 @@ def run() -> int:
                   + (f" except {sorted(r.except_keys)}" if r.except_keys else "")
                   for r in pause_ranges))
 
-    # One-off swaps for dates that haven't passed yet.
-    swap_list = swaps.upcoming(swaps.load_swaps(), date.today())
+    # One-off swaps that haven't happened yet. Local time, not the runner's UTC:
+    # a swap is retired the moment its class starts, and UTC's midnight lands at
+    # 17:00 PT — mid-afternoon, with booking fires still to come.
+    now_local = datetime.now(ZoneInfo(cfg.get("timezone", "America/Los_Angeles")))
+    swap_list = swaps.upcoming(swaps.load_swaps(), now_local)
     if swap_list:
         print(f"Loaded {len(swap_list)} upcoming swap(s): "
               + "; ".join(s.label for s in swap_list))
@@ -148,7 +152,7 @@ def run() -> int:
                     if sw.skip_key:
                         skip_dates.setdefault(sw.skip_key, set()).add(sw.date)
                     booked_any = booked_any or detail is not None
-                elif (sw.date - date.today()).days <= OPEN_BY_DAYS:
+                elif (sw.date - now_local.date()).days <= OPEN_BY_DAYS:
                     # Window has opened and the replacement still isn't booked.
                     # The original stays booked (we never added it to skip_dates),
                     # so nothing is lost — but this needs to be seen. Synthesise a

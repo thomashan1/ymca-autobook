@@ -5,36 +5,42 @@ Standing context + preferences for this project. **Read at the start of each ses
 ## Class & schedule preferences
 - **Dislikes Restorative Yoga** — never recommend or auto-book it.
 - **Likes Monday Les Mills CORE, Vinyasa Yoga, and Lift & H.I.I.T.** — keep booking all three.
-- **No classes are on trial right now.** The three early-morning trials that followed the 8/13 school-start change were all removed via the iOS app before their first live session: **Mon 8:45 BODYCOMBAT** (2026-07-24), **Thu 9:00 BODYPUMP** (2026-07-30), **Tue 9:00 BODYPUMP** (2026-07-30). Don't re-suggest them unasked — the earlier mornings were tried and dropped.
+- **BODYPUMP Tue + Thu 9:00 Southwest is on trial** (added 2026-08-18). Added as *recurring* rather than as a one-off deliberately: the class fills within hours of its window opening, so only the real cron lead reliably holds a seat (see the booking-model note). Verdict still pending the first live session — Thu 8/27. If it doesn't stick, remove it the usual way (iOS app / a PR against `classes.yml`) and regenerate the cron.
+- **Mon 8:45 BODYCOMBAT was tried and dropped** (added and removed 2026-07-24, before its first live session). Don't re-suggest it unasked. The Tue/Thu 9:00 BODYPUMP pair was dropped the same way on 2026-07-30 and has now been deliberately re-added — the earlier removal was about the hour, not the class.
+- **BODYCOMBAT is worth keeping in mind.** First tried live on 2026-08-18 (Tue 9:50 Northwest, via a swap) and liked. It can never *join* Tuesday — 9:50–10:50 runs straight through Cycle's 10:15 start — so it is a substitution or nothing. Fri 8:45 Northwest is the cleanest untried option: same room as the Friday CORE that follows it, zero travel.
 - **No cap on classes per day.** Generally avoid back-to-back high-intensity; at most one HIIT-type class per day.
-- **Don't add classes to the light days (Mon / Tue / Thu) unless asked** — currently left as-is on purpose.
+- **Don't add classes to the light days unless asked.** As of 2026-08-18 only Wed and Fri are light (2 classes each); Tue and Thu gained the BODYPUMP above.
 - Prefer **same-branch** pairings; minimize cross-branch hops when suggesting additions.
 - Branch by day: **Mon / Tue / Thu = Southwest**, **Wed = Northwest**, **Fri = both** (Northwest first, then Southwest). IDs: Southwest = 1392, Northwest = 1388.
 - **Friday keeps the cross-branch hop, deliberately.** Les Mills CORE 9:45–10:15 at *Northwest*, then Lift & H.I.I.T. 11:20–12:00 at *Southwest* — a comfortable hour to cross. This settles the experiment: Southwest TRX for Beginners (10:30) briefly replaced the CORE to test whether Friday could be all-Southwest, and on **2026-07-30** that was reversed in favour of the CORE. Friday is the one day where the same-branch preference above is knowingly overridden, so don't "fix" it. First live booking of the restored CORE lands **8/14** (the pause calendar covers 7/31 and 8/7).
 
-## Current weekly schedule (snapshot 2026-07-30 — see `classes.yml` for the authoritative source)
+## Current weekly schedule (snapshot 2026-08-18 — see `classes.yml` for the authoritative source)
 | Day | Time | Class | Branch | Status |
 |---|---|---|---|---|
 | Mon | 9:45–10:15 | Les Mills CORE | Southwest | recurring |
 | Mon | 10:15–11:15 | Vinyasa Yoga | Southwest | recurring |
 | Mon | 11:20–12:00 | Lift & H.I.I.T. | Southwest | recurring |
+| Tue | 9:00–10:00 | BODYPUMP | Southwest | recurring, first live 9/1 |
 | Tue | 10:15–11:15 | Cycle | Southwest | recurring |
 | Wed | 9:30–10:20 | RPM | Northwest | recurring |
 | Wed | 10:30–11:00 | Les Mills CORE | Northwest | recurring |
+| Thu | 9:00–10:00 | BODYPUMP | Southwest | recurring, first live 8/27 |
 | Thu | 10:15–11:15 | Cycle Sculpt | Southwest | recurring |
 | Fri | 9:45–10:15 | Les Mills CORE | Northwest | recurring, first live 8/14 |
 | Fri | 11:20–12:00 | Lift & H.I.I.T. | Southwest | recurring |
 
-9 classes/week, 5 days/week, no built-in rest day. Monday is the heavy day
-(Les Mills CORE → Vinyasa → Lift & H.I.I.T., a single HIIT-type class);
-Tue and Thu are single-class days (Cycle / Cycle Sculpt); Friday runs
-Northwest CORE → Southwest Lift & H.I.I.T. Update this table whenever
-`classes.yml` changes so it doesn't go stale.
+11 classes/week (8h40 in class), 5 days/week, no built-in rest day. Monday is
+the heavy day (Les Mills CORE → Vinyasa → Lift & H.I.I.T., a single HIIT-type
+class); Tue and Thu are BODYPUMP → spin, same branch with a 15-min changeover —
+Thursday is the heaviest for legs, since BODYPUMP feeds straight into Cycle
+Sculpt; Friday runs Northwest CORE → Southwest Lift & H.I.I.T. Update this table
+whenever `classes.yml` changes so it doesn't go stale.
 
 ## Booking model
 - `classes.yml` = recurring classes to auto-book. Booking opens ~7 days ahead, so each class's cron fires ~1 week before and books that future date.
 - Away dates live in the **private** repo `thomashan1/ymca-private` (`pauses.yml`); supports an optional per-class `except:` list to keep booking specific classes on a paused day. The summary calendar greys out away days.
-- **One-off swaps** ("that Tuesday, skip Cycle and take BODYCOMBAT instead") live in the same private repo as `swaps.yml` (`src/swaps.py`, applied by `scripts/run_due.py`; template at `swaps.example.yml`). Each entry is a class `date` plus an optional `skip:` key from `classes.yml` and an optional `book:` block naming the replacement by name/start/location_ids — **never an occurrence id**, since ids change weekly and can't be written ahead of time. **The original is never released until the replacement is actually booked**: if the replacement is full, errors, or its window hasn't opened, the recurring class stays on the roster, and once the replacement lands the original is cancelled automatically. A replacement still unbooked after its window opened fails the run and sends a ❌ email. Deliberately has **no cron of its own** — swaps ride `book.yml`'s existing fires, because the purpose-built one-off cron for 2026-08-18 fired 46 min late while `book.yml`'s established crons have never exceeded 19 min across 100 runs. **Don't build another bespoke one-off workflow; add a swap.**
+- **One-off swaps** ("that Tuesday, skip Cycle and take BODYCOMBAT instead") live in the same private repo as `swaps.yml` (`src/swaps.py`, applied by `scripts/run_due.py`; template at `swaps.example.yml`). Each entry is a class `date` plus an optional `skip:` key from `classes.yml` and an optional `book:` block naming the replacement by name/start/location_ids — **never an occurrence id**, since ids change weekly and can't be written ahead of time. **The original is never released until the replacement is actually booked**: if the replacement is full, errors, or its window hasn't opened, the recurring class stays on the roster, and once the replacement lands the original is cancelled automatically. A replacement still unbooked after its window opened fails the run and sends a ❌ email. Deliberately has **no cron of its own** — swaps ride `book.yml`'s existing fires, because the purpose-built one-off cron for 2026-08-18 fired 46 min late while `book.yml`'s established crons have never exceeded 19 min across 100 runs. **Don't build another bespoke one-off workflow; add a swap.** A swap retires the moment its class starts (not at end of day) — before that fix, every fire after a swapped class had run reported "no bookable occurrence" and emailed a ❌ for work that had already succeeded (2026-08-18).
+- **A swap can't win a popular class.** Swaps ride `book.yml`'s existing fires, which are positioned for the *recurring* classes, so a swap's own window may already have opened by the time anything runs — Thursday's earliest fire is 10:30, half an hour after a 9:00 class's window opens. For anything that fills fast, add it to `classes.yml` (real 45/30/15 lead) rather than reaching for a swap. Measured 2026-08-18: BODYPUMP Tue 9:00 Southwest went from window-open to full in under 5 hours, and the Thu 8/20 sitting was already full 2 days out.
 - Full Mon-Fri schedule (both branches, 8:30-15:00, no fee/dance/swim/senior/pickleball) is cached in `schedule_snapshot.json` in the private repo, refreshed daily by `.github/workflows/schedule-snapshot.yml` (`scripts/snapshot_schedule.py`). Read it instead of a live browse when just discussing/recommending classes — it has an `updated_at` timestamp; re-browse live only if it looks stale or a one-off dispatch is needed.
 - Manual one-off booking: dispatch `book.yml` with `class_key=<key>` (this path ignores pauses).
 - `book.yml`'s per-class cron is generated from `classes.yml` by `scripts/gen_workflow.py`. `.github/workflows/regen-book.yml` tries to rerun it on any push to `main` touching `classes.yml`, **but cannot push the result**: GITHUB_TOKEN is forbidden from writing files under `.github/workflows`, and no `permissions:` value grants it (only a PAT with `workflow` scope, via a `WORKFLOW_TOKEN` secret that doesn't exist yet). Without that secret it reports the drift and exits 0. **So after any classes.yml change, run `python scripts/gen_workflow.py` and commit.** A stale cron for a *deleted* class is harmless (run_due.py reads classes.yml), but an *added* class won't be booked at all until its cron exists.

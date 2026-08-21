@@ -14,7 +14,8 @@ running unattended on GitHub Actions.
 
 A SwiftUI companion app (in [`ios/`](ios/)) is a control panel over the same
 GitHub state — it does **not** book classes itself (Actions stays the engine),
-it reads and steers it through the GitHub API. See [`ios/README.md`](ios/README.md).
+it reads and steers it through the GitHub API. Universal: one build runs on
+iPhone and iPad. See [`ios/README.md`](ios/README.md).
 
 | This & Next Week | My Classes | Scheduled Jobs | Away Dates |
 |:---:|:---:|:---:|:---:|
@@ -22,12 +23,15 @@ it reads and steers it through the GitHub API. See [`ios/README.md`](ios/README.
 
 - **Week** — a two-week calendar grid + dated agenda, merging the recurring
   schedule with your **real bookings** (green ✓ = actually booked); tap a class
-  for room/instructor. Pause days are struck through.
+  for room/instructor. Pause days are struck through, and a **⇅ badge** marks a
+  day with a one-off swap.
 - **Classes** — your recurring lineup by weekday; swipe to remove a class (opens
   an auto-merging PR against `classes.yml`).
-- **Jobs** — live countdowns to each class's 167h booking-open, with a **Book
-  now** swipe; pause-skipped jobs are flagged.
-- **Away** — the `pauses.yml` away-dates with their notes.
+- **Jobs** — live countdowns to each class's 167h booking-open, **grouped by the
+  week they book**, with a **Book now** swipe; pause-skipped jobs are flagged.
+- **Away** — the `pauses.yml` away-dates with their notes, plus upcoming one-off
+  swaps from `swaps.yml` (read-only — securing a swap stays the Actions engine's
+  job). Past pauses collapse behind a disclosure row.
 
 _Screenshots use sample data._
 

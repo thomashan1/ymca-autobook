@@ -45,7 +45,7 @@ final class BookingsRepository: ObservableObject {
         if SampleMode.active {
             var cal = Calendar(identifier: .gregorian)
             cal.timeZone = Config.timeZone; cal.firstWeekday = 2
-            let mon = cal.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+            let mon = CalendarHelper.currentMonday
             var map: [String: [Booking]] = [:]
             for (offset, list) in SampleData.weekBookings {
                 guard let d = cal.date(byAdding: .day, value: offset, to: mon) else { continue }

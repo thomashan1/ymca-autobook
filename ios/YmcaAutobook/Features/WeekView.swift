@@ -115,13 +115,35 @@ enum CalendarHelper {
         return c
     }
 
-    /// 0 = the Monday-anchored week containing today, 1 = next week, and so on.
-    /// Dates before this week clamp to 0 rather than going negative — every
-    /// screen using this shows forward-looking dates only.
+    /// The Monday that starts the week the app calls "this week".
+    ///
+    /// Not simply the calendar week: the schedule is Mon–Fri, so from Saturday
+    /// on there is nothing left in it — "This week" would head five days that
+    /// have all already happened, and the only useful week is the one ahead.
+    /// So once Friday is done, Saturday and Sunday anchor to the coming Monday.
+    ///
+    /// Every screen that divides classes into weeks reads this, so the grid,
+    /// the agenda and the Jobs headings roll over together.
+    static var currentMonday: Date {
+        let cal = pacific
+        let now = Date()
+        guard let mon = cal.dateInterval(of: .weekOfYear, for: now)?.start else {
+            return cal.startOfDay(for: now)
+        }
+        // firstWeekday is Monday, so within this calendar the weekend days are
+        // the tail of the week: .weekday 7 = Saturday, 1 = Sunday.
+        let wd = cal.component(.weekday, from: now)
+        guard wd == 7 || wd == 1 else { return mon }
+        return cal.date(byAdding: .day, value: 7, to: mon) ?? mon
+    }
+
+    /// 0 = the week starting at `currentMonday`, 1 = the one after, and so on.
+    /// Dates before it clamp to 0 rather than going negative — every screen
+    /// using this shows forward-looking dates only.
     static func weekIndex(of date: Date) -> Int {
         let cal = pacific
-        guard let thisMon = cal.dateInterval(of: .weekOfYear, for: Date())?.start else { return 0 }
-        let days = cal.dateComponents([.day], from: thisMon, to: cal.startOfDay(for: date)).day ?? 0
+        let days = cal.dateComponents([.day], from: currentMonday,
+                                      to: cal.startOfDay(for: date)).day ?? 0
         return max(0, days / 7)
     }
 
@@ -131,8 +153,7 @@ enum CalendarHelper {
         case 1: return "Next week"
         default:
             let cal = pacific
-            if let thisMon = cal.dateInterval(of: .weekOfYear, for: Date())?.start,
-               let mon = cal.date(byAdding: .day, value: wi * 7, to: thisMon) {
+            if let mon = cal.date(byAdding: .day, value: wi * 7, to: currentMonday) {
                 return "Week of " + mon.formatted(.dateTime.month().day())
             }
             return "Later"
@@ -239,7 +260,7 @@ private struct TwoWeekGrid: View {
 
     private var weeks: [[Date]] {
         let cal = CalendarHelper.pacific
-        guard let thisMon = cal.dateInterval(of: .weekOfYear, for: Date())?.start else { return [] }
+        let thisMon = CalendarHelper.currentMonday
         return (0..<2).map { w in
             (0..<5).compactMap { d in cal.date(byAdding: .day, value: w * 7 + d, to: thisMon) }
         }

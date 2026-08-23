@@ -23,7 +23,7 @@ final class PausesRepository: ObservableObject {
         if SampleMode.active {
             var cal = Calendar(identifier: .gregorian)
             cal.timeZone = Config.timeZone; cal.firstWeekday = 2
-            let mon = cal.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+            let mon = CalendarHelper.currentMonday
             pauses = SampleData.awayNotes.compactMap { n in
                 guard let s = cal.date(byAdding: .day, value: n.offsetFromThisMon, to: mon) else { return nil }
                 let e = cal.date(byAdding: .day, value: n.days - 1, to: s) ?? s

@@ -129,6 +129,7 @@ jobs:
           PRIVATE_REPO_TOKEN: ${{{{ secrets.PRIVATE_REPO_TOKEN }}}}
           NOTIFY_EMAIL: ${{{{ secrets.NOTIFY_EMAIL }}}}
           GMAIL_APP_PASSWORD: ${{{{ secrets.GMAIL_APP_PASSWORD }}}}
+          GITHUB_EVENT_SCHEDULE: ${{{{ github.event.schedule }}}}
         run: |
           if [ -n "${{{{ github.event.inputs.browse }}}}" ]; then
             # Read-only. Checked first so a stray value in another field can

@@ -1,9 +1,18 @@
 """Scheduled entrypoint: book whichever configured class is opening now.
 
-GitHub `schedule` triggers can't pass which class to a run, so we log in once and
-loop over every class. book() bails out cheaply (OPEN_GUARD) for classes whose
-next opening is far off, and waits + books the one whose window is about to open.
-Emails are sent only for real booking attempts, not the no-op skips.
+GitHub doesn't pass which cron line fired as an input, but it does expose the
+fired cron *expression* itself as `github.event.schedule` (book.yml wires it to
+GITHUB_EVENT_SCHEDULE). gen_workflow.cron_lines() is the same function that
+generated every cron line from classes.yml, so re-running it here and matching
+against the fired expression tells us which class(es) this particular fire was
+for — almost always exactly one, occasionally a couple that happen to land on
+the same minute. We only call book() for those, instead of every class in
+classes.yml on every fire; each class still gets its own real list_occurrences
+check once its own cron actually fires. Falls back to checking every class when
+there's no fired-cron match (manual dispatch with no inputs, i.e. no
+GITHUB_EVENT_SCHEDULE at all — or the rarer case of classes.yml having changed
+without regenerating book.yml, so a class's live cron and its freshly
+recomputed one disagree) — a false-safe default over silently checking nothing.
 
 Away-periods (vacations) live in a private repo (see src/pauses.py). We load them
 once and skip booking any class whose own date falls in a range — matching the
@@ -27,6 +36,7 @@ from playwright.sync_api import sync_playwright
 
 # Allow running as `python scripts/run_due.py` from the repo root.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src import fisikal            # noqa: E402
 from src import main as m          # noqa: E402
@@ -34,6 +44,7 @@ from src import pauses             # noqa: E402
 from src import swaps              # noqa: E402
 from src.login import login        # noqa: E402
 from src.notify import notify      # noqa: E402
+from gen_workflow import cron_lines  # noqa: E402
 
 # Booking opens 167h (~6.96 days) ahead, so once a class date is this close its
 # window has definitely opened. A replacement still unbooked by then wasn't
@@ -126,6 +137,19 @@ def run() -> int:
         print(f"Loaded {len(swap_list)} upcoming swap(s): "
               + "; ".join(s.label for s in swap_list))
 
+    # Which class(es) this fire's cron expression actually belongs to (see module
+    # docstring). None = no fired-cron info (manual run) -> check every class.
+    # Empty set = fired but matched nothing (stale/regenerated-since drift) ->
+    # also check every class, rather than silently skip the run.
+    fired_cron = os.environ.get("GITHUB_EVENT_SCHEDULE", "").strip()
+    due_keys = None
+    if fired_cron:
+        due_keys = {k["key"] for k in cfg["classes"]
+                    if fired_cron in {expr for expr, _ in cron_lines(k)}}
+        print(f"Fired cron '{fired_cron}' -> "
+              + (f"due: {sorted(due_keys)}" if due_keys
+                 else "no match; checking every class"))
+
     user = os.environ.get("EGYM_USERNAME")
     pw = os.environ.get("EGYM_PASSWORD")
     if not user or not pw:
@@ -168,6 +192,8 @@ def run() -> int:
                     notify(secured, f"swap {sw.label}", detail, alert=True)
 
             for klass in cfg.get("classes", []):
+                if due_keys and klass["key"] not in due_keys:
+                    continue
                 label = f"{klass['name']} {klass['weekday']} {klass['start']}"
                 print(f"\n--- {klass['key']} ---")
                 try:

@@ -46,6 +46,7 @@ classes:
     weekday: Tue
     start: "09:00"
     location_ids: [1392]
+    extra_leads: [50, 10, 5]      # fills within ~5h of open; extra insurance
 
   - key: cycle-tue                 # Southwest - room varies (GER / Rec Room)
     name: "Cycle"
@@ -70,6 +71,7 @@ classes:
     weekday: Thu
     start: "09:00"
     location_ids: [1392]
+    extra_leads: [50, 10, 5]      # fills within ~5h of open; extra insurance
 
   - key: cycle-sculpt-thu          # Southwest - Group Exercise Room
     name: "Cycle Sculpt"

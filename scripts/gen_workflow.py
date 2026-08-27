@@ -42,11 +42,20 @@ OUT = os.path.join(HERE, os.pardir, ".github", "workflows", "book.yml")
 
 
 def cron_lines(klass) -> list[tuple[str, str]]:
-    """Return [(cron_expr, comment), ...] for a class — one per UTC offset."""
+    """Return [(cron_expr, comment), ...] for a class — one per UTC offset.
+
+    `extra_leads` (optional, in classes.yml) adds more redundant fires beyond
+    FIRE_LEAD_MINS for a class worth extra insurance — e.g. BODYPUMP, which has
+    been observed to fill within ~5h of its window opening. Same CEILING as
+    FIRE_LEAD_MINS applies: every lead must stay under main.OPEN_GUARD (60).
+    """
     dow = klass["weekday"]
     h, m = (int(x) for x in klass["start"].split(":"))
+    leads = sorted(set(FIRE_LEAD_MINS) | set(klass.get("extra_leads", [])), reverse=True)
+    assert all(0 < lead < 60 for lead in leads), \
+        f"{klass['key']}: every lead must be in (0, 60) minutes"
     out = []
-    for i, lead in enumerate(FIRE_LEAD_MINS):
+    for i, lead in enumerate(leads):
         # First lead is the primary trigger; the rest are redundant retries in case
         # GitHub drops/delays the earlier one.
         role = "primary" if i == 0 else f"retry {i}"

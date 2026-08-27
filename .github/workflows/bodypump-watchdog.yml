@@ -1,0 +1,60 @@
+# Backup for BODYPUMP Tue/Thu, added after 2026-08-27: book.yml's own scheduled
+# triggers went completely silent for a full day (zero fires, confirmed via the
+# Actions API) while every other scheduled workflow in this repo fired normally.
+# book.yml has by far the most cron lines of anything here, which is the leading
+# theory for why it's the one that's occasionally unreliable.
+#
+# This workflow is deliberately tiny (4 cron lines total) and separate from
+# book.yml, so it isn't exposed to whatever made a 78-line workflow's schedule
+# unreliable. It fires well after each class's booking window opens (open + 75m
+# on the correctly-seasoned line, open + 15m on the other — see gen_workflow.py's
+# DST comment for why cron emits both) and just re-runs the same single-class
+# entrypoint book.yml's own leads already use. If book.yml's leads already
+# secured it, `book()` finds nothing to do and stays quiet — no duplicate email.
+# If they didn't, this catches up immediately and alerts either way.
+name: BODYPUMP watchdog
+
+on:
+  schedule:
+    - cron: "15 18 * * 2"  # bodypump-tue — PDT, open (Tue 10:00 PT) + 75m
+    - cron: "15 19 * * 2"  # bodypump-tue — PST, open + 75m (or +15m if PDT is live)
+    - cron: "15 18 * * 4"  # bodypump-thu — PDT, open (Thu 10:00 PT) + 75m
+    - cron: "15 19 * * 4"  # bodypump-thu — PST, open + 75m (or +15m if PDT is live)
+  workflow_dispatch:
+    inputs:
+      class_key:
+        description: "Override: bodypump-tue or bodypump-thu (blank = decide from the fired cron's weekday)"
+        required: false
+        default: ""
+
+concurrency:
+  group: bodypump-watchdog-${{ github.run_id }}
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Determine class
+        id: which
+        run: |
+          if [ -n "${{ github.event.inputs.class_key }}" ]; then
+            echo "key=${{ github.event.inputs.class_key }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event.schedule }}" == *"* * 2" ]]; then
+            echo "key=bodypump-tue" >> "$GITHUB_OUTPUT"
+          else
+            echo "key=bodypump-thu" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Catch up if book.yml's own leads missed it
+        env:
+          EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
+          EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python -m src.main --class "${{ steps.which.outputs.key }}"

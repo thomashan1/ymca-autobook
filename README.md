@@ -65,10 +65,10 @@ classes:
     location_ids: [1392]        # branch: Southwest=1392, Northwest=1388
 ```
 
-After editing, regenerate the workflow:
+After editing, regenerate the workflows:
 ```bash
-.venv/bin/python scripts/gen_workflow.py   # rewrites .github/workflows/book.yml
-git add classes.yml .github/workflows/book.yml && git commit && git push
+.venv/bin/python scripts/gen_workflow.py   # rewrites .github/workflows/book-<day>.yml + manual.yml
+git add classes.yml .github/workflows/book-*.yml .github/workflows/manual.yml && git commit && git push
 ```
 
 ## Away / pause dates
@@ -119,10 +119,10 @@ worst case is keeping the class you already had, never an empty slot. A replacem
 still unbooked after its window has opened fails the run and sends a ❌ email, because
 a swap that silently never executes looks exactly like an ordinary week.
 
-Swaps have **no schedule of their own** — `run_due.py` applies them on `book.yml`'s
-existing cron fires. That's deliberate: a purpose-built one-off cron fired 46 minutes
-late, while `book.yml`'s long-established crons have never been more than 19 minutes
-late across 100 runs.
+Swaps have **no schedule of their own** — `run_due.py` applies them on the per-weekday
+`book-<day>.yml` files' existing cron fires. That's deliberate: a purpose-built one-off
+cron fired 46 minutes late, while the established per-class crons have never been more
+than 19 minutes late across 100 runs.
 
 ## Local setup & testing
 ```bash

@@ -15,8 +15,10 @@ enum Config {
     static let pausesPath = "pauses.yml"
     static let swapsPath = "swaps.yml"
 
-    /// Workflow dispatched for a one-off "Book now".
-    static let bookWorkflow = "book.yml"
+    /// Workflow dispatched for a one-off "Book now". Scheduled classes live in
+    /// book-<day>.yml instead (split 2026-08-28); this app only ever dispatches
+    /// manual.yml, which has no schedule of its own.
+    static let bookWorkflow = "manual.yml"
 
     /// Republishes bookings.json. It runs every 6h on its own, so the app is
     /// otherwise up to 6h stale after a booking — this lets it be asked directly.

@@ -1,17 +1,20 @@
-# Backup for BODYPUMP Tue/Thu, added after 2026-08-27: book.yml's own scheduled
-# triggers went completely silent for a full day (zero fires, confirmed via the
-# Actions API) while every other scheduled workflow in this repo fired normally.
-# book.yml has by far the most cron lines of anything here, which is the leading
-# theory for why it's the one that's occasionally unreliable.
+# Backup for BODYPUMP Tue/Thu, added after 2026-08-27: the single book.yml that
+# existed then (78 cron lines, every class in one file) went completely silent
+# for a full day, twice in two days — zero fires, confirmed via the Actions API —
+# while every other scheduled workflow in this repo fired normally. That's what
+# motivated splitting book.yml into per-weekday files (2026-08-28); this watchdog
+# predates that split and is kept as a second, independent line of defense for
+# the two tightest-margin classes specifically.
 #
-# This workflow is deliberately tiny (4 cron lines total) and separate from
-# book.yml, so it isn't exposed to whatever made a 78-line workflow's schedule
-# unreliable. It fires well after each class's booking window opens (open + 75m
-# on the correctly-seasoned line, open + 15m on the other — see gen_workflow.py's
-# DST comment for why cron emits both) and just re-runs the same single-class
-# entrypoint book.yml's own leads already use. If book.yml's leads already
-# secured it, `book()` finds nothing to do and stays quiet — no duplicate email.
-# If they didn't, this catches up immediately and alerts either way.
+# This workflow is deliberately tiny (4 cron lines total) and separate from the
+# book-<day>.yml files, so it isn't exposed to whatever made a many-line workflow's
+# schedule unreliable. It fires well after each class's booking window opens
+# (open + 75m on the correctly-seasoned line, open + 15m on the other — see
+# gen_workflow.py's DST comment for why cron emits both) and just re-runs the same
+# single-class entrypoint book-tue.yml/book-thu.yml's own leads already use. If
+# those leads already secured it, `book()` finds nothing to do and stays quiet —
+# no duplicate email. If they didn't, this catches up immediately and alerts
+# either way.
 name: BODYPUMP watchdog
 
 on:
@@ -51,7 +54,7 @@ jobs:
           else
             echo "key=bodypump-thu" >> "$GITHUB_OUTPUT"
           fi
-      - name: Catch up if book.yml's own leads missed it
+      - name: Catch up if book-tue.yml/book-thu.yml's own leads missed it
         env:
           EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
           EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}

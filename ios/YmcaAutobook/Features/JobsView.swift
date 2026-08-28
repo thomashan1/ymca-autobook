@@ -4,7 +4,7 @@ import Combine
 /// Scheduled bookings ordered by the soonest booking-open, each with a live
 /// countdown to the next time its booking *opens* (167h before class), and cut
 /// into blue week bands matching the Week view. Swipe a row to book that class
-/// immediately via a book.yml workflow_dispatch (issue #47).
+/// immediately via a manual.yml workflow_dispatch (issue #47).
 struct JobsView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository

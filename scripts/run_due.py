@@ -1,18 +1,19 @@
 """Scheduled entrypoint: book whichever configured class is opening now.
 
 GitHub doesn't pass which cron line fired as an input, but it does expose the
-fired cron *expression* itself as `github.event.schedule` (book.yml wires it to
-GITHUB_EVENT_SCHEDULE). gen_workflow.cron_lines() is the same function that
-generated every cron line from classes.yml, so re-running it here and matching
-against the fired expression tells us which class(es) this particular fire was
-for — almost always exactly one, occasionally a couple that happen to land on
-the same minute. We only call book() for those, instead of every class in
-classes.yml on every fire; each class still gets its own real list_occurrences
-check once its own cron actually fires. Falls back to checking every class when
-there's no fired-cron match (manual dispatch with no inputs, i.e. no
-GITHUB_EVENT_SCHEDULE at all — or the rarer case of classes.yml having changed
-without regenerating book.yml, so a class's live cron and its freshly
-recomputed one disagree) — a false-safe default over silently checking nothing.
+fired cron *expression* itself as `github.event.schedule` (each book-<day>.yml
+wires it to GITHUB_EVENT_SCHEDULE). gen_workflow.cron_lines() is the same
+function that generated every cron line from classes.yml, so re-running it here
+and matching against the fired expression tells us which class(es) this
+particular fire was for — almost always exactly one, occasionally a couple that
+happen to land on the same minute. We only call book() for those, instead of
+every class in classes.yml on every fire; each class still gets its own real
+list_occurrences check once its own cron actually fires. Falls back to checking
+every class when there's no fired-cron match (manual dispatch with no inputs,
+i.e. no GITHUB_EVENT_SCHEDULE at all — or the rarer case of classes.yml having
+changed without regenerating the workflow files, so a class's live cron and its
+freshly recomputed one disagree) — a false-safe default over silently checking
+nothing.
 
 Away-periods (vacations) live in a private repo (see src/pauses.py). We load them
 once and skip booking any class whose own date falls in a range — matching the
@@ -21,8 +22,9 @@ class date, not today, because booking opens ~7 days ahead.
 One-off swaps ("this Tuesday, skip Cycle and take BODYCOMBAT instead") live in
 the same private repo (see src/swaps.py) and are handled here rather than in a
 workflow of their own, deliberately: a purpose-built one-off cron fired 46
-minutes late, while book.yml's established crons have never been more than 19
-minutes late over 100 runs. Riding the existing fires is simply more reliable.
+minutes late, while the established per-class crons have never been more than
+19 minutes late over 100 runs. Riding the existing fires is simply more
+reliable.
 """
 
 from __future__ import annotations

@@ -147,7 +147,7 @@ def run() -> int:
     due_keys = None
     if fired_cron:
         due_keys = {k["key"] for k in cfg["classes"]
-                    if fired_cron in {expr for expr, _ in cron_lines(k)}}
+                    if fired_cron in {expr for expr, _, _ in cron_lines(k)}}
         print(f"Fired cron '{fired_cron}' -> "
               + (f"due: {sorted(due_keys)}" if due_keys
                  else "no match; checking every class"))

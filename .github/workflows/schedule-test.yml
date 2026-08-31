@@ -1,0 +1,18 @@
+# TEMPORARY — re-test of whether GitHub's scheduler fires for this repo, now
+# that book.yml is back to a single file (revert in #120). Two one-shot fires
+# today, ~15 and ~25 min out. Delete this file once we have an answer — see
+# CLAUDE.md's "keep main clean" rule.
+name: Schedule test (delete after use)
+
+on:
+  schedule:
+    - cron: "25 23 31 8 *"  # 2026-08-31 23:25 UTC (4:25pm PDT) — one-shot
+    - cron: "35 23 31 8 *"  # 2026-08-31 23:35 UTC (4:35pm PDT) — one-shot
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "Scheduled trigger fired at $(date -u) (event=${{ github.event_name }}, schedule=${{ github.event.schedule }})"

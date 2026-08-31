@@ -1,0 +1,19 @@
+# TEMPORARY — throwaway test of whether GitHub's scheduler is firing at all for
+# this repo right now, after the 2026-08-31 hard-reset (delete step). Two fires
+# today only, ~20 and ~35 min out, to get a same-afternoon signal instead of
+# waiting for tomorrow's real BODYPUMP window. Delete this file once we have an
+# answer — see CLAUDE.md's "keep main clean" rule.
+name: Schedule test (delete after use)
+
+on:
+  schedule:
+    - cron: "25 22 31 8 *"  # 2026-08-31 22:25 UTC (3:25pm PDT) — one-shot
+    - cron: "40 22 31 8 *"  # 2026-08-31 22:40 UTC (3:40pm PDT) — one-shot
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "Scheduled trigger fired at $(date -u) (event=${{ github.event_name }}, schedule=${{ github.event.schedule }})"

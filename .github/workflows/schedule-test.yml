@@ -1,13 +1,16 @@
 # TEMPORARY — re-test of whether GitHub's scheduler fires for this repo, now
-# that book.yml is back to a single file (revert in #120). Two one-shot fires
-# today, ~15 and ~25 min out. Delete this file once we have an answer — see
-# CLAUDE.md's "keep main clean" rule.
+# that book.yml is back to a single file (revert in #120). The previous two
+# pairs today were either too-tight (inconclusive, <5 min registration
+# window) or fired zero times with a proper buffer. This pair has a proper
+# ~28/~43 min buffer, matching the methodology that already showed a clean
+# failure yesterday. Delete this file once we have an answer — see CLAUDE.md's
+# "keep main clean" rule.
 name: Schedule test (delete after use)
 
 on:
   schedule:
-    - cron: "16 23 31 8 *"  # 2026-08-31 23:16 UTC (4:16pm PDT) — one-shot
-    - cron: "18 23 31 8 *"  # 2026-08-31 23:18 UTC (4:18pm PDT) — one-shot
+    - cron: "15 0 1 9 *"  # 2026-09-01 00:15 UTC (5:15pm PDT) — one-shot
+    - cron: "30 0 1 9 *"  # 2026-09-01 00:30 UTC (5:30pm PDT) — one-shot
   workflow_dispatch: {}
 
 jobs:

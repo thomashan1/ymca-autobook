@@ -1,5 +1,4 @@
-"""Generate .github/workflows/book-<day>.yml (schedule) and manual.yml
-(workflow_dispatch) from classes.yml.
+"""Generate .github/workflows/book.yml from classes.yml.
 
 Booking opens 167h before a class = same weekday, (start time + 1 hour). We fire
 each job at several FIRE_LEAD_MINS minutes before that. GitHub cron is best-effort
@@ -11,25 +10,25 @@ true open instant and waits, and any redundant run no-ops via the OPEN_GUARD (th
 booking API is idempotent, so a duplicate just sees "already booked"). Run:
   python scripts/gen_workflow.py
 
-Split into one file per weekday (2026-08-28): a single 78-line book.yml went
-completely silent for 17+ hours, twice in two days, while every other (much
-smaller) scheduled workflow in this repo fired normally in the same window — the
-leading theory is that GitHub's scheduler struggles with cron volume concentrated
-in one workflow file. Splitting by weekday caps the busiest file (Tue or Thu, the
-BODYPUMP days) at ~24 lines instead of 78. Manual actions (class_key, cancel_*,
-book_id, browse) have no schedule at all, so they move to their own file
-(manual.yml) untouched by any of this.
+Split into 5 weekday files + manual.yml on 2026-08-28, then reverted back to this
+single file on 2026-08-31: the split didn't fix anything — a brand-new, 18-line
+weekday file still fired zero times, and a same-afternoon test on a completely
+fresh throwaway workflow (created minutes before its own cron) also fired zero
+times, ruling out "cron volume in one file" and "stuck state tied to an old
+workflow file's history" alike. GitHub's status history shows a Critical Actions
+incident on 2026-08-26 15:02-15:45 UTC ("Actions jobs failed to start", database
+saturation, jobs stuck in queued state) right when reliability started degrading;
+best working theory is this repo got left in a stuck scheduler state that incident's
+"resolved" status never individually cleared, which no amount of restructuring our
+own workflow files can fix. So: back to the simpler single-file structure that
+was previously reliable (100 runs, median 4.3 min delay) rather than carrying the
+extra complexity of 6 files for a problem they didn't solve. See CLAUDE.md.
 
-NATIVE_TIMEZONE_DAYS pilot (2026-08-28): GitHub Actions added a native
-`timezone:` field on schedule entries in March 2026 (GA) — the cron's h/m fields
-are read as *local* time in that zone and GitHub itself handles the DST switch,
-so a class needs only ONE line per lead instead of two (no more hand-written
-PDT/PST twins). Piloting on Wed only before trusting it repo-wide: a community
-report says `if` conditions on `github.event.schedule` can misbehave against a
-timezone-bearing cron entry, which would matter here since run_due.py's due-key
-filtering (#109) depends on exactly that match. If it breaks, the fallback in
-run_due.py already degrades to "check every class" rather than silently booking
-nothing — worst case on Wed is checking both classes instead of one.
+NATIVE_TIMEZONE_DAYS (2026-08-28): GitHub Actions added a native `timezone:` field
+on schedule entries in March 2026 (GA) — the cron's h/m fields are read as *local*
+time in that zone and GitHub itself handles the DST switch, so a class needs only
+ONE line per lead instead of two (no more hand-written PDT/PST twins). Piloted on
+Wed classes only; unrelated to the file-split question above, so it stays.
 """
 
 from __future__ import annotations
@@ -57,18 +56,12 @@ import yaml
 # that twin being filtered and start booking from the wrong-season trigger.
 FIRE_LEAD_MINS = [45, 30, 15]
 CRON_DOW = {"Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6, "Sun": 0}
-WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 LOCAL_TZ = "America/Los_Angeles"
 # Pilot scope for the native `timezone:` cron field — see module docstring.
 NATIVE_TIMEZONE_DAYS = {"Wed"}
 HERE = os.path.dirname(__file__)
 CONFIG = os.path.join(HERE, os.pardir, "classes.yml")
-WORKFLOWS_DIR = os.path.join(HERE, os.pardir, ".github", "workflows")
-MANUAL_OUT = os.path.join(WORKFLOWS_DIR, "manual.yml")
-
-
-def weekday_out(dow: str) -> str:
-    return os.path.join(WORKFLOWS_DIR, f"book-{dow.lower()}.yml")
+OUT = os.path.join(HERE, os.pardir, ".github", "workflows", "book.yml")
 
 
 def cron_lines(klass) -> list[tuple[str, str, str | None]]:
@@ -113,61 +106,26 @@ def cron_lines(klass) -> list[tuple[str, str, str | None]]:
     return out
 
 
-BOOK_ENV = """\
-        env:
-          EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
-          EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
-          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}"""
-
-SETUP_STEPS = """\
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -r requirements.txt
-      - run: python -m playwright install --with-deps chromium"""
-
-
 def _sched_line(expr: str, comment: str, tz: str | None) -> str:
     if tz is None:
         return f"    - cron: \"{expr}\"  # {comment}"
     return f"    - cron: \"{expr}\"  # {comment}\n      timezone: \"{tz}\""
 
 
-def weekday_workflow(dow: str, crons: list[tuple[str, str, str | None]]) -> str:
+def main():
+    cfg = yaml.safe_load(open(CONFIG))
+    crons = []
+    for k in cfg["classes"]:
+        crons.extend(cron_lines(k))
+
     sched = "\n".join(_sched_line(expr, c, tz) for expr, c, tz in crons)
-    return f"""# AUTO-GENERATED by scripts/gen_workflow.py — edit classes.yml then regenerate.
-# Scheduled classes only; manual one-off actions live in manual.yml instead.
-name: Book YMCA classes — {dow}
+    keys = [k["key"] for k in cfg["classes"]]
+    body = f"""# AUTO-GENERATED by scripts/gen_workflow.py — edit classes.yml then regenerate.
+name: Book YMCA classes
 
 on:
   schedule:
 {sched}
-
-concurrency:
-  group: book-{dow.lower()}-${{{{ github.run_id }}}}
-
-jobs:
-  book:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    steps:
-{SETUP_STEPS}
-      - name: Book
-{BOOK_ENV}
-          GITHUB_EVENT_SCHEDULE: ${{{{ github.event.schedule }}}}
-        run: python scripts/run_due.py
-"""
-
-
-def manual_workflow() -> str:
-    return f"""# AUTO-GENERATED by scripts/gen_workflow.py — edit classes.yml then regenerate.
-# Manual one-off actions only; scheduled classes live in book-<day>.yml instead.
-name: Manual booking actions
-
-on:
   workflow_dispatch:
     inputs:
       class_key:
@@ -200,16 +158,27 @@ on:
         default: ""
 
 concurrency:
-  group: manual-${{{{ github.run_id }}}}
+  group: book-${{{{ github.run_id }}}}
 
 jobs:
   book:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-{SETUP_STEPS}
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
       - name: Book
-{BOOK_ENV}
+        env:
+          EGYM_USERNAME: ${{{{ secrets.EGYM_USERNAME }}}}
+          EGYM_PASSWORD: ${{{{ secrets.EGYM_PASSWORD }}}}
+          PRIVATE_REPO_TOKEN: ${{{{ secrets.PRIVATE_REPO_TOKEN }}}}
+          NOTIFY_EMAIL: ${{{{ secrets.NOTIFY_EMAIL }}}}
+          GMAIL_APP_PASSWORD: ${{{{ secrets.GMAIL_APP_PASSWORD }}}}
+          GITHUB_EVENT_SCHEDULE: ${{{{ github.event.schedule }}}}
         run: |
           if [ -n "${{{{ github.event.inputs.browse }}}}" ]; then
             # Read-only. Checked first so a stray value in another field can
@@ -231,31 +200,10 @@ jobs:
             python scripts/run_due.py
           fi
 """
-
-
-def main():
-    cfg = yaml.safe_load(open(CONFIG))
-    by_day: dict[str, list] = {d: [] for d in WEEKDAYS}
-    for k in cfg["classes"]:
-        by_day[k["weekday"]].append(k)
-
-    os.makedirs(WORKFLOWS_DIR, exist_ok=True)
-    total = 0
-    for dow in WEEKDAYS:
-        crons = []
-        for k in by_day[dow]:
-            crons.extend(cron_lines(k))
-        total += len(crons)
-        with open(weekday_out(dow), "w") as f:
-            f.write(weekday_workflow(dow, crons))
-        print(f"Wrote {weekday_out(dow)} with {len(crons)} cron lines "
-              f"for {len(by_day[dow])} classes.")
-
-    with open(MANUAL_OUT, "w") as f:
-        f.write(manual_workflow())
-    print(f"Wrote {MANUAL_OUT}.")
-    print(f"Total: {total} cron lines for {len(cfg['classes'])} classes across "
-          f"{len(WEEKDAYS)} files (was 1 file, {total} lines).")
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    with open(OUT, "w") as f:
+        f.write(body)
+    print(f"Wrote {OUT} with {len(crons)} cron lines for {len(keys)} classes.")
 
 
 if __name__ == "__main__":

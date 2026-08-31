@@ -107,7 +107,7 @@ struct GitHubClient {
 
     // MARK: Actions API
 
-    /// Fire `manual.yml` for a one-off booking of a specific class key.
+    /// Fire `book.yml` for a one-off booking of a specific class key.
     func dispatchBook(classKey: String, ref: String = "main") async throws {
         let url = baseURL.appending(
             path: "/repos/\(Config.owner)/\(Config.publicRepo)/actions/workflows/\(Config.bookWorkflow)/dispatches")

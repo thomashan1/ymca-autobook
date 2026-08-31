@@ -24,11 +24,10 @@ written a week ahead, which is the whole point of the file.
 
 WHY THIS EXISTS: the first one-off swap (BODYCOMBAT 2026-08-18) shipped as its
 own temporary workflow with its own cron. That cron fired 46 minutes late — a
-brand-new, once-a-year schedule gets treated far worse by GitHub than the
-established weekly per-class crons (in book-<day>.yml, split by weekday
-2026-08-28), which over 100 runs have never been more than 19 minutes late. So
-swaps deliberately carry no schedule of their own: run_due.py picks them up on
-the existing book-<day>.yml fires. See issue #95.
+brand-new, once-a-year schedule gets treated far worse by GitHub than book.yml's
+established weekly crons, which over 100 runs have never been more than 19
+minutes late. So swaps deliberately carry no schedule of their own: run_due.py
+picks them up on the existing book.yml fires. See issue #95.
 
 FAIL-SAFE by design: a missing token, network error or unparseable file yields
 "no swaps", so the ordinary classes.yml schedule books as usual. The failure mode

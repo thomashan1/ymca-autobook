@@ -156,7 +156,7 @@ struct SettingsView: View {
     /// The repository permissions the token needs. All four are Read and write:
     /// every one of them backs a write path — Contents edits pauses.yml,
     /// Pull requests opens the classes.yml PR, Actions dispatches a booking run,
-    /// Workflows covers manual.yml and book-<day>.yml living under .github/workflows.
+    /// Workflows covers book.yml living under .github/workflows.
     static let tokenPermissions = ["Contents", "Pull requests", "Actions", "Workflows"]
 
     /// One permission as a row rather than a clause in a sentence — you set

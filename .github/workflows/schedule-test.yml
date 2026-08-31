@@ -6,8 +6,8 @@ name: Schedule test (delete after use)
 
 on:
   schedule:
-    - cron: "17 23 31 8 *"  # 2026-08-31 23:17 UTC (4:17pm PDT) — one-shot
-    - cron: "20 23 31 8 *"  # 2026-08-31 23:20 UTC (4:20pm PDT) — one-shot
+    - cron: "16 23 31 8 *"  # 2026-08-31 23:16 UTC (4:16pm PDT) — one-shot
+    - cron: "18 23 31 8 *"  # 2026-08-31 23:18 UTC (4:18pm PDT) — one-shot
   workflow_dispatch: {}
 
 jobs:

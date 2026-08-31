@@ -3,8 +3,8 @@ name: Standard schedule email
 on:
   # The lineup only changes when classes.yml changes, so send it then instead of
   # every Sunday. Covers the iOS app's auto-merging delete PRs too — they land on
-  # main as a normal push. Regenerating the book-<day>.yml/manual.yml workflow
-  # files afterwards touches only .github/workflows, so it won't fire a second mail.
+  # main as a normal push. Regenerating book.yml afterwards touches only
+  # .github/workflows, so it won't fire a second mail.
   push:
     branches: [main]
     paths:

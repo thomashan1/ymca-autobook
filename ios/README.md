@@ -24,7 +24,7 @@ Actions. The app only:
   replacement has to be booked before the original is released, against a live
   booking window, so Actions owns that and the app just reflects it
 - reads workflow run history for job status + the success/failure feed
-- fires `workflow_dispatch` on `manual.yml` for one-off "Book now"
+- fires `workflow_dispatch` on `book.yml` for one-off "Book now"
 
 No always-on backend is needed for v1.
 

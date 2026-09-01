@@ -149,7 +149,7 @@ ROWS="$(python3 "$ROWS_SCRIPT" "$CLASSES_YML" "$CLASS_FILTER")"
 
 FAILED=()
 while IFS=$'\t' read -r class_key weekday wday hour minute lead_label; do
-  title="${class_key} backup trigger (${lead_label})"
+  title="${class_key} (${lead_label})"
   if job_exists "$title"; then
     echo "Skipping ${title} — already exists."
     continue

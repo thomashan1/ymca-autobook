@@ -7,12 +7,17 @@
 # own crons stay in place as free, harmless redundancy (a late GH fire just
 # finds "already booked" and no-ops).
 #
-# Two fires per class (-30m and -10m before its window opens), one cron-job.org
-# job per (class, lead) — kept as separate jobs rather than one job with two
-# minute values, since a lead can cross an hour boundary (e.g. a class whose
-# open is 11:15 has leads at 10:45 and 11:05, in different hours — a single
-# job with minutes=[45,5] hours=[10,11] would fire at all four combinations,
-# not just the two intended).
+# One fire per class (-15m before its window opens) by default; two (-30m and
+# -10m) for classes carrying `extra_leads` in classes.yml — currently just
+# BODYPUMP, the one class where cron-job.org itself having a bad moment could
+# actually cost a seat (fills within ~5h; everything else has more slack).
+# Reuses `extra_leads` rather than a second parallel config, since it's
+# already the same signal gen_workflow.py uses for GitHub-side redundancy.
+# One cron-job.org job per (class, lead) — kept as separate jobs rather than
+# one job with multiple minute values, since leads can cross an hour boundary
+# (e.g. a class whose open is 11:15 has leads at 10:45 and 11:05, in different
+# hours — a single job with minutes=[45,5] hours=[10,11] would fire at all
+# four combinations, not just the two intended).
 #
 # Idempotent: re-running SKIPS any existing job with the same title (does not
 # delete/recreate — cron-job.org's API proved flaky enough under back-to-back
@@ -134,7 +139,8 @@ for k in cfg["classes"]:
         continue
     h, m = (int(x) for x in k["start"].split(":"))
     open_dt = datetime(2000, 1, 3, h, m) + timedelta(hours=1)
-    for lead, label in ((30, "-30m"), (10, "-10m")):
+    leads = ((30, "-30m"), (10, "-10m")) if k.get("extra_leads") else ((15, "-15m"),)
+    for lead, label in leads:
         fire = open_dt - timedelta(minutes=lead)
         print(f"{k['key']}\t{k['weekday']}\t{cron_dow[k['weekday']]}\t{fire.hour}\t{fire.minute}\t{label}")
 PYEOF

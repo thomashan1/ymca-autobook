@@ -14,8 +14,14 @@
 # job with minutes=[45,5] hours=[10,11] would fire at all four combinations,
 # not just the two intended).
 #
-# Idempotent: re-running replaces any existing job with the same title, so
-# it's safe to re-run after a classes.yml change or to add more classes later.
+# Idempotent: re-running SKIPS any existing job with the same title (does not
+# delete/recreate — cron-job.org's API proved flaky enough under back-to-back
+# calls that a delete-then-recreate pattern risked net-losing a job if the
+# create after a successful delete failed). To pick up a changed schedule for
+# one class, delete that class's jobs by hand in the console first, then
+# re-run. Each create retries a few times on a failed/empty response before
+# giving up on that one job and moving on — safe to just re-run the whole
+# script afterward to fill in whatever's still missing.
 #
 # Run this yourself, locally — it never sends either secret anywhere but
 # cron-job.org's API, and neither one should be pasted into a chat session.
@@ -41,34 +47,26 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLASSES_YML="${HERE}/../classes.yml"
 CLASS_FILTER="${1:-}"
 
-EXISTING_JOBS=$(curl -sS https://api.cron-job.org/jobs -H "Authorization: Bearer ${CRONJOB_ORG_API_KEY}")
-
-delete_if_exists() {
-  local title="$1" job_id
-  job_id=$(printf '%s' "$EXISTING_JOBS" | python3 -c "
+EXISTING_TITLES=$(curl -sS https://api.cron-job.org/jobs -H "Authorization: Bearer ${CRONJOB_ORG_API_KEY}" \
+  | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 for j in data.get('jobs', []):
-    if j['title'] == sys.argv[1]:
-        print(j['jobId'])
-        break
-" "$title")
-  if [ -n "$job_id" ]; then
-    echo "  (replacing existing job $job_id)"
-    curl -sS -X DELETE "https://api.cron-job.org/jobs/${job_id}" \
-      -H "Authorization: Bearer ${CRONJOB_ORG_API_KEY}" >/dev/null
-  fi
+    print(j['title'])
+")
+
+job_exists() {
+  printf '%s\n' "$EXISTING_TITLES" | grep -qxF "$1"
 }
 
+# Retries a few times on a failed/empty response — cron-job.org's API proved
+# flaky enough under back-to-back calls that a single attempt wasn't reliable.
 create_job() {
   local title="$1" class_key="$2" wday="$3" hour="$4" minute="$5"
-  local body_json
-  body_json=$(printf '{"ref":"main","inputs":{"class_key":"%s"}}' "$class_key")
+  local body_json payload attempt resp job_id
 
-  curl -sS -X PUT https://api.cron-job.org/jobs \
-    -H "Authorization: Bearer ${CRONJOB_ORG_API_KEY}" \
-    -H "Content-Type: application/json" \
-    -d @- <<JSON
+  body_json=$(printf '{"ref":"main","inputs":{"class_key":"%s"}}' "$class_key")
+  payload=$(cat <<JSON
 {
   "job": {
     "title": "${title}",
@@ -95,7 +93,25 @@ create_job() {
   }
 }
 JSON
-  echo
+)
+
+  for attempt in 1 2 3 4; do
+    resp=$(curl -sS -X PUT https://api.cron-job.org/jobs \
+      -H "Authorization: Bearer ${CRONJOB_ORG_API_KEY}" \
+      -H "Content-Type: application/json" \
+      -d "$payload")
+    job_id=$(printf '%s' "$resp" | python3 -c "import json,sys
+try: print(json.load(sys.stdin).get('jobId',''))
+except Exception: print('')" 2>/dev/null || true)
+    if [ -n "$job_id" ]; then
+      echo "  created job $job_id"
+      return 0
+    fi
+    echo "  attempt $attempt failed (response: ${resp:-<empty>}), retrying..."
+    sleep $((attempt * 2))
+  done
+  echo "  GAVE UP on ${title} after 4 attempts"
+  return 1
 }
 
 # Emit (class_key, weekday, cron_wday, hour, minute, lead_label) rows — two
@@ -125,12 +141,21 @@ PYEOF
 
 ROWS="$(python3 "$ROWS_SCRIPT" "$CLASSES_YML" "$CLASS_FILTER")"
 
+FAILED=()
 while IFS=$'\t' read -r class_key weekday wday hour minute lead_label; do
   title="${class_key} backup trigger (${lead_label})"
+  if job_exists "$title"; then
+    echo "Skipping ${title} — already exists."
+    continue
+  fi
   echo "Creating ${title} — ${weekday} $(printf '%02d:%02d' "$hour" "$minute") PT..."
-  delete_if_exists "$title"
-  create_job "$title" "$class_key" "$wday" "$hour" "$minute"
-  sleep 1  # be gentle on cron-job.org's API — rapid-fire requests got rate-limited
+  create_job "$title" "$class_key" "$wday" "$hour" "$minute" || FAILED+=("$title")
+  sleep 2  # be gentle on cron-job.org's API — rapid-fire requests got rate-limited
 done <<< "$ROWS"
 
+if [ "${#FAILED[@]}" -gt 0 ]; then
+  echo
+  echo "${#FAILED[@]} job(s) never landed after retries — re-run this script to fill them in:"
+  printf '  %s\n' "${FAILED[@]}"
+fi
 echo "Done — verify jobs at https://console.cron-job.org"

@@ -99,13 +99,13 @@ JSON
 }
 
 # Emit (class_key, weekday, cron_wday, hour, minute, lead_label) rows — two
-# leads (-30m, -10m before open=start+1h) per class — from classes.yml.
-while IFS=$'\t' read -r class_key weekday wday hour minute lead_label; do
-  title="${class_key} backup trigger (${lead_label})"
-  echo "Creating ${title} — ${weekday} $(printf '%02d:%02d' "$hour" "$minute") PT..."
-  delete_if_exists "$title"
-  create_job "$title" "$class_key" "$wday" "$hour" "$minute"
-done < <(python3 - "$CLASSES_YML" "$CLASS_FILTER" <<'PYEOF'
+# leads (-30m, -10m before open=start+1h) per class — from classes.yml. Written
+# to a temp file rather than an inline heredoc: a heredoc nested inside a
+# process substitution inside a while-loop is a known bash parsing trap (it
+# gets mis-read as the loop repeats), so this sidesteps that entirely.
+ROWS_SCRIPT="$(mktemp)"
+trap 'rm -f "$ROWS_SCRIPT"' EXIT
+cat > "$ROWS_SCRIPT" <<'PYEOF'
 import sys
 import yaml
 from datetime import datetime, timedelta
@@ -122,6 +122,15 @@ for k in cfg["classes"]:
         fire = open_dt - timedelta(minutes=lead)
         print(f"{k['key']}\t{k['weekday']}\t{cron_dow[k['weekday']]}\t{fire.hour}\t{fire.minute}\t{label}")
 PYEOF
-)
+
+ROWS="$(python3 "$ROWS_SCRIPT" "$CLASSES_YML" "$CLASS_FILTER")"
+
+while IFS=$'\t' read -r class_key weekday wday hour minute lead_label; do
+  title="${class_key} backup trigger (${lead_label})"
+  echo "Creating ${title} — ${weekday} $(printf '%02d:%02d' "$hour" "$minute") PT..."
+  delete_if_exists "$title"
+  create_job "$title" "$class_key" "$wday" "$hour" "$minute"
+  sleep 1  # be gentle on cron-job.org's API — rapid-fire requests got rate-limited
+done <<< "$ROWS"
 
 echo "Done — verify jobs at https://console.cron-job.org"

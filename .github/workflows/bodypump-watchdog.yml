@@ -22,11 +22,15 @@
 name: BODYPUMP watchdog
 
 on:
-  schedule:
-    - cron: "15 18 * * 2"  # bodypump-tue — PDT, open (Tue 10:00 PT) + 75m
-    - cron: "15 19 * * 2"  # bodypump-tue — PST, open + 75m (or +15m if PDT is live)
-    - cron: "15 18 * * 4"  # bodypump-thu — PDT, open (Thu 10:00 PT) + 75m
-    - cron: "15 19 * * 4"  # bodypump-thu — PST, open + 75m (or +15m if PDT is live)
+  # Paused 2026-09-01 — see CLAUDE.md's cron-job.org section. BODYPUMP's own
+  # cron-job.org jobs (bodypump-tue/-thu, -30m and -10m leads) now cover this
+  # directly via workflow_dispatch; re-enable once GitHub's own scheduler has
+  # demonstrated reliable timing again over a real stretch of runs.
+  # schedule:
+  #   - cron: "15 18 * * 2"  # bodypump-tue — PDT, open (Tue 10:00 PT) + 75m
+  #   - cron: "15 19 * * 2"  # bodypump-tue — PST, open + 75m (or +15m if PDT is live)
+  #   - cron: "15 18 * * 4"  # bodypump-thu — PDT, open (Thu 10:00 PT) + 75m
+  #   - cron: "15 19 * * 4"  # bodypump-thu — PST, open + 75m (or +15m if PDT is live)
   workflow_dispatch:
     inputs:
       class_key:

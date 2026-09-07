@@ -24,7 +24,7 @@ list_location_ids: [1392, 1388]
 
 classes:
   - key: core-mon                  # Southwest - Rec Room
-    name: "Les Mills CORE"
+    name: "Core Conditioning"      # renamed from "Les Mills CORE" by the YMCA, effective the week of 2026-09-07
     weekday: Mon
     start: "09:45"
     location_ids: [1392]

@@ -583,7 +583,9 @@ def main(argv=None) -> int:
                 raise SystemExit("Provide --class <key> (or --list).")
 
             klass = get_class(cfg, args.klass)
-            success, detail = book(context, csrf, cfg, klass, args.dry_run, args.book_now)
+            pause_ranges = pauses.load_ranges()
+            success, detail = book(context, csrf, cfg, klass, args.dry_run, args.book_now,
+                                    pause_ranges=pause_ranges)
             if not args.dry_run:
                 # "Nothing to book now" is a no-op (already booked / window not open
                 # yet, always success=True) — not a real attempt, so no alert either way.

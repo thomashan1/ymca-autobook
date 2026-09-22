@@ -38,22 +38,42 @@
 #      generate one scoped ONLY to thomashan1/ymca-autobook, permission
 #      "Actions: Read and write" (nothing else)
 #
-# Usage:
+# Usage (either works — CRONJOB_ORG_API_KEY/GITHUB_PAT can also just live in
+# the repo's gitignored .env, loaded automatically below):
+#   ./scripts/setup_cronjob_org.sh
 #   CRONJOB_ORG_API_KEY=... GITHUB_PAT=... ./scripts/setup_cronjob_org.sh
-#   CRONJOB_ORG_API_KEY=... GITHUB_PAT=... ./scripts/setup_cronjob_org.sh bodypump-tue   # just one class
+#   ./scripts/setup_cronjob_org.sh bodypump-tue   # just one class
 set -euo pipefail
 
-: "${CRONJOB_ORG_API_KEY:?Set CRONJOB_ORG_API_KEY (from cron-job.org Console > Settings > API)}"
-: "${GITHUB_PAT:?Set GITHUB_PAT (fine-grained token scoped to this repo, Actions: Read and write)}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Fall back to the repo's local .env (gitignored) for either var not already
+# in the environment, so this doesn't need typing/pasting secrets each run.
+if [ -f "${HERE}/../.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${HERE}/../.env"
+  set +a
+fi
+
+: "${CRONJOB_ORG_API_KEY:?Set CRONJOB_ORG_API_KEY (from cron-job.org Console > Settings > API), or add it to .env}"
+: "${GITHUB_PAT:?Set GITHUB_PAT (fine-grained token scoped to this repo, Actions: Read and write), or add it to .env}"
+
+# Prefer the repo's own venv (pyyaml et al) if one's been set up, so this
+# doesn't depend on whatever python3 happens to be first on PATH.
+if [ -x "${HERE}/../.venv/bin/python3" ]; then
+  PYTHON="${HERE}/../.venv/bin/python3"
+else
+  PYTHON="python3"
+fi
 
 REPO="thomashan1/ymca-autobook"
 DISPATCH_URL="https://api.github.com/repos/${REPO}/actions/workflows/book.yml/dispatches"
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLASSES_YML="${HERE}/../classes.yml"
 CLASS_FILTER="${1:-}"
 
 EXISTING_TITLES=$(curl -sS https://api.cron-job.org/jobs -H "Authorization: Bearer ${CRONJOB_ORG_API_KEY}" \
-  | python3 -c "
+  | "$PYTHON" -c "
 import json, sys
 data = json.load(sys.stdin)
 for j in data.get('jobs', []):
@@ -85,7 +105,7 @@ create_job() {
         "X-GitHub-Api-Version": "2022-11-28",
         "Content-Type": "application/json"
       },
-      "body": $(printf '%s' "$body_json" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+      "body": $(printf '%s' "$body_json" | "$PYTHON" -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
     },
     "schedule": {
       "timezone": "America/Los_Angeles",
@@ -105,7 +125,7 @@ JSON
       -H "Authorization: Bearer ${CRONJOB_ORG_API_KEY}" \
       -H "Content-Type: application/json" \
       -d "$payload")
-    job_id=$(printf '%s' "$resp" | python3 -c "import json,sys
+    job_id=$(printf '%s' "$resp" | "$PYTHON" -c "import json,sys
 try: print(json.load(sys.stdin).get('jobId',''))
 except Exception: print('')" 2>/dev/null || true)
     if [ -n "$job_id" ]; then
@@ -172,7 +192,7 @@ JSON
       -H "Authorization: Bearer ${CRONJOB_ORG_API_KEY}" \
       -H "Content-Type: application/json" \
       -d "$payload")
-    job_id=$(printf '%s' "$resp" | python3 -c "import json,sys
+    job_id=$(printf '%s' "$resp" | "$PYTHON" -c "import json,sys
 try: print(json.load(sys.stdin).get('jobId',''))
 except Exception: print('')" 2>/dev/null || true)
     if [ -n "$job_id" ]; then
@@ -212,7 +232,7 @@ for k in cfg["classes"]:
         print(f"{k['key']}\t{k['weekday']}\t{cron_dow[k['weekday']]}\t{fire.hour}\t{fire.minute}\t{label}")
 PYEOF
 
-ROWS="$(python3 "$ROWS_SCRIPT" "$CLASSES_YML" "$CLASS_FILTER")"
+ROWS="$("$PYTHON" "$ROWS_SCRIPT" "$CLASSES_YML" "$CLASS_FILTER")"
 
 FAILED=()
 while IFS=$'\t' read -r class_key weekday wday hour minute lead_label; do

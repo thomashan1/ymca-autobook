@@ -119,6 +119,73 @@ except Exception: print('')" 2>/dev/null || true)
   return 1
 }
 
+# A blank workflow_dispatch (no inputs at all) falls through book.yml's
+# if/elif chain to `python scripts/run_due.py` -- the only path that reads
+# swaps.yml. Every one of the per-class jobs above dispatches with class_key
+# set, so none of them ever take this branch; without a job like this,
+# swaps.yml is silently never applied. One job, not one per class: run_due.py
+# already scans every class in classes.yml on each fire (cheap no-ops for
+# whatever isn't due yet), so a single dense-ish sweep across the morning
+# covers every class's and every swap's own open time without needing to know
+# either in advance. 30-minute resolution, 9:00-13:30 PT bracket (earliest
+# class opens 10:00, latest 12:20; margin on both ends for a swap that opens
+# outside that range), Mon-Fri -- one job via cron-job.org's native
+# multi-hour/multi-minute/multi-wday support (safe here since every hour uses
+# the *same* minute set, unlike the per-lead jobs above where combining hours
+# and minutes would cross-product into times nobody wants).
+create_swap_check_job() {
+  local title="swap-check" payload resp job_id attempt
+
+  payload=$(cat <<'JSON'
+{
+  "job": {
+    "title": "swap-check",
+    "url": "DISPATCH_URL_PLACEHOLDER",
+    "enabled": true,
+    "requestMethod": 1,
+    "extendedData": {
+      "headers": {
+        "Authorization": "Bearer GITHUB_PAT_PLACEHOLDER",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json"
+      },
+      "body": "{\"ref\":\"main\"}"
+    },
+    "schedule": {
+      "timezone": "America/Los_Angeles",
+      "minutes": [0, 30],
+      "hours": [9, 10, 11, 12, 13],
+      "mdays": [-1],
+      "months": [-1],
+      "wdays": [1, 2, 3, 4, 5]
+    }
+  }
+}
+JSON
+)
+  payload="${payload/DISPATCH_URL_PLACEHOLDER/$DISPATCH_URL}"
+  payload="${payload/GITHUB_PAT_PLACEHOLDER/$GITHUB_PAT}"
+
+  for attempt in 1 2 3 4; do
+    resp=$(curl -sS -X PUT https://api.cron-job.org/jobs \
+      -H "Authorization: Bearer ${CRONJOB_ORG_API_KEY}" \
+      -H "Content-Type: application/json" \
+      -d "$payload")
+    job_id=$(printf '%s' "$resp" | python3 -c "import json,sys
+try: print(json.load(sys.stdin).get('jobId',''))
+except Exception: print('')" 2>/dev/null || true)
+    if [ -n "$job_id" ]; then
+      echo "  created job $job_id"
+      return 0
+    fi
+    echo "  attempt $attempt failed (response: ${resp:-<empty>}), retrying..."
+    sleep $((attempt * 2))
+  done
+  echo "  GAVE UP on ${title} after 4 attempts"
+  return 1
+}
+
 # Emit (class_key, weekday, cron_wday, hour, minute, lead_label) rows — two
 # leads (-30m, -10m before open=start+1h) per class — from classes.yml. Written
 # to a temp file rather than an inline heredoc: a heredoc nested inside a
@@ -158,6 +225,16 @@ while IFS=$'\t' read -r class_key weekday wday hour minute lead_label; do
   create_job "$title" "$class_key" "$wday" "$hour" "$minute" || FAILED+=("$title")
   sleep 2  # be gentle on cron-job.org's API — rapid-fire requests got rate-limited
 done <<< "$ROWS"
+
+# Not class-specific, so only touch it on a full (unfiltered) run.
+if [ -z "$CLASS_FILTER" ]; then
+  if job_exists "swap-check"; then
+    echo "Skipping swap-check — already exists."
+  else
+    echo "Creating swap-check — Mon-Fri, every 30m 09:00-13:30 PT..."
+    create_swap_check_job || FAILED+=("swap-check")
+  fi
+fi
 
 if [ "${#FAILED[@]}" -gt 0 ]; then
   echo

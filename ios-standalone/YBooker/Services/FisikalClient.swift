@@ -26,13 +26,15 @@ actor FisikalClient {
 
     enum SessionPath: String, Codable { case reused, relogin, reloginSkippedQuietWindow }
 
-    private let cookies = HTTPCookieStorage()
+    private let cookies: HTTPCookieStorage
     private let session: URLSession
     private var csrf: String?
 
     private init() {
         let cfg = URLSessionConfiguration.ephemeral
-        cfg.httpCookieStorage = cookies
+        // Use the ephemeral config's own in-memory store: a bare HTTPCookieStorage()
+        // silently keeps nothing, and Fisikal answers a cookieless API call with a 500.
+        cookies = cfg.httpCookieStorage!
         cfg.httpCookieAcceptPolicy = .always
         cfg.timeoutIntervalForRequest = 15
         session = URLSession(configuration: cfg)
@@ -135,10 +137,12 @@ actor FisikalClient {
         req.setValue(Self.fisikal.absoluteString + "/", forHTTPHeaderField: "Referer")
         let (data, resp) = try await session.data(for: req)
         let http = resp as? HTTPURLResponse
-        // A dead session redirects to an HTML login page rather than erroring.
-        guard let http, http.statusCode == 200,
-              (http.value(forHTTPHeaderField: "Content-Type") ?? "").contains("json") else {
-            if let code = http?.statusCode, code >= 500 { throw Failure.http(code) }
+        // A missing or dead session doesn't get a clean 401: Fisikal answers with an
+        // HTML page — a login redirect, or a Rails "something went wrong" 500. So
+        // anything that isn't JSON means "log in again"; only a JSON error is real.
+        let isJSON = (http?.value(forHTTPHeaderField: "Content-Type") ?? "").contains("json")
+        guard let http, http.statusCode == 200, isJSON else {
+            if isJSON, let code = http?.statusCode { throw Failure.http(code) }
             self.csrf = nil
             throw Failure.sessionExpired
         }

@@ -4,3 +4,5 @@
 *.log
 push.env
 push_send.log
+push_send.out
+session_probe.out

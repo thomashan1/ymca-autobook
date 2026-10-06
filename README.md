@@ -58,7 +58,7 @@ flowchart TB
         direction LR
         route{"dispatch<br/>inputs?"}
         cls["src.main --class KEY<br/>book one class"]
-        due["scripts/run_due.py<br/>swaps + all due classes"]
+        due["scripts/run_due.py<br/>swaps only"]
         manual["--book-id · --cancel-*<br/>--list"]
         route -- "class_key" --> cls
         route -- "none" --> due
@@ -133,7 +133,9 @@ Key properties:
 - **Redundant triggers are expected to race.** The loser sees `taken`, re-reads the
   occurrence, and exits quietly if the seat is ours.
 - **Swaps only run on blank dispatches** (`run_due.py`), which is why `swap-check`
-  exists — the per-class jobs never take that path.
+  exists — the per-class jobs never take that path. A blank dispatch handles swaps
+  *only* (each recurring class has its own trigger) and skips the login entirely when
+  none are pending.
 - **Secrets** live in GitHub Actions secrets (`EGYM_*`, `PRIVATE_REPO_TOKEN`,
   `NOTIFY_EMAIL`, `GMAIL_APP_PASSWORD`) and, for cron-job.org, inside each job's
   `Authorization` header (a fine-grained PAT scoped to Actions on this repo).

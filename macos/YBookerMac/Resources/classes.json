@@ -1,0 +1,101 @@
+[
+ {
+  "key": "core-mon",
+  "name": "Core Conditioning",
+  "weekday": "Mon",
+  "start": "09:45",
+  "locationIds": [
+   1392
+  ]
+ },
+ {
+  "key": "vinyasa-yoga-mon",
+  "name": "Vinyasa Yoga",
+  "weekday": "Mon",
+  "start": "10:15",
+  "locationIds": [
+   1392
+  ]
+ },
+ {
+  "key": "lift-hiit-mon",
+  "name": "Lift & H.I.I.T.",
+  "weekday": "Mon",
+  "start": "11:20",
+  "locationIds": [
+   1392
+  ]
+ },
+ {
+  "key": "bodypump-tue",
+  "name": "BODYPUMP",
+  "weekday": "Tue",
+  "start": "09:00",
+  "locationIds": [
+   1392
+  ]
+ },
+ {
+  "key": "cycle-tue",
+  "name": "Cycle",
+  "weekday": "Tue",
+  "start": "10:15",
+  "locationIds": [
+   1392
+  ]
+ },
+ {
+  "key": "rpm-wed",
+  "name": "RPM",
+  "weekday": "Wed",
+  "start": "09:30",
+  "locationIds": [
+   1388
+  ]
+ },
+ {
+  "key": "core-wed",
+  "name": "Les Mills CORE",
+  "weekday": "Wed",
+  "start": "10:30",
+  "locationIds": [
+   1388
+  ]
+ },
+ {
+  "key": "bodypump-thu",
+  "name": "BODYPUMP",
+  "weekday": "Thu",
+  "start": "09:00",
+  "locationIds": [
+   1392
+  ]
+ },
+ {
+  "key": "cycle-sculpt-thu",
+  "name": "Cycle Sculpt",
+  "weekday": "Thu",
+  "start": "10:15",
+  "locationIds": [
+   1392
+  ]
+ },
+ {
+  "key": "core-fri",
+  "name": "Les Mills CORE",
+  "weekday": "Fri",
+  "start": "09:45",
+  "locationIds": [
+   1388
+  ]
+ },
+ {
+  "key": "lift-hiit-fri",
+  "name": "Lift & H.I.I.T.",
+  "weekday": "Fri",
+  "start": "11:20",
+  "locationIds": [
+   1392
+  ]
+ }
+]

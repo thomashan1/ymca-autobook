@@ -1,0 +1,7 @@
+# Personal away-dates — generated locally from the private repo, never committed.
+YBookerMac/Resources/pauses.json
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store

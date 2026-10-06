@@ -2,3 +2,5 @@
 *.html
 *.js
 *.log
+push.env
+push_send.log

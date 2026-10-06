@@ -8,11 +8,11 @@ against the fired expression tells us which class(es) this particular fire was
 for — almost always exactly one, occasionally a couple that happen to land on
 the same minute. We only call book() for those, instead of every class in
 classes.yml on every fire; each class still gets its own real list_occurrences
-check once its own cron actually fires. Falls back to checking every class when
-there's no fired-cron match (manual dispatch with no inputs, i.e. no
-GITHUB_EVENT_SCHEDULE at all — or the rarer case of classes.yml having changed
-without regenerating book.yml, so a class's live cron and its freshly
-recomputed one disagree) — a false-safe default over silently checking nothing.
+check once its own cron actually fires. A fired cron that matches nothing (classes.yml
+changed without regenerating book.yml) falls back to checking every class — a
+false-safe default over silently checking nothing. A dispatch with no fired cron at
+all is cron-job.org's swap-check sweep: it applies swaps only (RUN_DUE_ALL=1 to
+check every class instead), and skips the login entirely when no swap is pending.
 
 Away-periods (vacations) live in a private repo (see src/pauses.py). We load them
 once and skip booking any class whose own date falls in a range — matching the
@@ -87,10 +87,11 @@ def _run_swap(context, csrf, cfg, sw) -> tuple[bool, str | None]:
     Returns (secured, detail). `detail` is None when nothing happened worth an
     email — the replacement was already booked, or its window isn't open yet.
     """
-    # A swap with no `book:` is just a one-day skip; there is nothing to secure,
-    # so it takes effect immediately.
+    # A swap with no `book:` is just a one-day skip; there is nothing to secure.
+    # The original may still get booked by its own per-class trigger (that path
+    # doesn't read swaps), so release it here once it shows up on the roster.
     if not sw.book_name:
-        return True, None
+        return True, (_release_original(context, csrf, cfg, sw) if sw.skip_key else None)
 
     repl = sw.as_class()
     detail = None
@@ -150,6 +151,16 @@ def run() -> int:
               + (f"due: {sorted(due_keys)}" if due_keys
                  else "no match; checking every class"))
 
+    # A dispatch with no fired cron is cron-job.org's swap-check sweep (10x a
+    # day). Each recurring class already has its own cron-job.org trigger, so the
+    # sweep only applies swaps. Checking every class here used to sit waiting on
+    # other classes' openings (90-min timeouts) and turned sweeps red whenever
+    # Fisikal hiccuped on a class that wasn't even due. RUN_DUE_ALL=1 restores it.
+    swaps_only = not fired_cron and os.environ.get("RUN_DUE_ALL") != "1"
+    if swaps_only and not swap_list:
+        print("Swap-check sweep: no upcoming swaps — nothing to do (no login).")
+        return 0
+
     user = os.environ.get("EGYM_USERNAME")
     pw = os.environ.get("EGYM_PASSWORD")
     if not user or not pw:
@@ -191,7 +202,9 @@ def run() -> int:
                 if detail:
                     notify(secured, f"swap {sw.label}", detail, alert=True)
 
-            for klass in cfg.get("classes", []):
+            if swaps_only:
+                print("\nSwap-check sweep: recurring classes are left to their own triggers.")
+            for klass in ([] if swaps_only else cfg.get("classes", [])):
                 if due_keys and klass["key"] not in due_keys:
                     continue
                 label = f"{klass['name']} {klass['weekday']} {klass['start']}"

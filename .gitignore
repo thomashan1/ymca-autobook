@@ -16,3 +16,6 @@ venv/
 # Playwright
 playwright-report/
 test-results/
+
+# APNs auth keys — never commit
+*.p8

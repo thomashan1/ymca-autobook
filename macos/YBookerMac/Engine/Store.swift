@@ -27,6 +27,16 @@ enum Store {
     static func classes() -> [RecurringClass] { seeded("classes.json", as: [RecurringClass].self) ?? [] }
     static func pauses() -> [Pause] { seeded("pauses.json", as: [Pause].self) ?? [] }
 
+    static func save(classes: [RecurringClass]) { write(classes, to: "classes.json") }
+    static func save(pauses: [Pause]) { write(pauses.sorted { $0.start < $1.start }, to: "pauses.json") }
+
+    private static func write<T: Encodable>(_ value: T, to name: String) {
+        let e = JSONEncoder()
+        e.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? e.encode(value) else { return }
+        try? data.write(to: url(name), options: .atomic)
+    }
+
     private static var encoder: JSONEncoder {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601

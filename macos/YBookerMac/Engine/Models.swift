@@ -31,10 +31,21 @@ struct RecurringClass: Codable, Identifiable, Hashable, Sendable {
 }
 
 /// An away range; `except` keeps specific classes bookable on those days.
-struct Pause: Codable, Sendable {
+struct Pause: Codable, Hashable, Identifiable, Sendable {
     let start: String        // yyyy-MM-dd
     let end: String
     let except: [String]?
+    var id: String { "\(start)…\(end)…\((except ?? []).joined(separator: ","))" }
+
+    static func day(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.timeZone = FisikalClient.zone
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
+    }
+
+    var isPast: Bool { end < Pause.day(Date()) }
 
     func covers(_ date: Date, key: String) -> Bool {
         let f = DateFormatter()

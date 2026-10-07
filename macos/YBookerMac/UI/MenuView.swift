@@ -22,6 +22,7 @@ struct MenuView: View {
                 if engine.signedInAs != nil {
                     Button("Re-plan") { Task { await engine.plan() } }
                     Button("Shadow log…") { openWindow(id: "log"); NSApp.activate(ignoringOtherApps: true) }
+                    Button("Settings…") { openWindow(id: "settings"); NSApp.activate(ignoringOtherApps: true) }
                 }
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }

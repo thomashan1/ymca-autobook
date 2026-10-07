@@ -12,10 +12,13 @@ final class Engine: ObservableObject {
     @Published private(set) var status = "Starting…"
     @Published private(set) var lastPlanned: Date?
 
-    let classes = Store.classes()
-    let pauses = Store.pauses()
+    @Published private(set) var classes = Store.classes()
+    @Published private(set) var pauses = Store.pauses()
 
     private var loop: Task<Void, Never>?
+    /// True from warm-up through the follow-up reads; edits must not cancel that.
+    private var isFiring = false
+    private var lastFailureNotice: Date?
     /// Keeps App Nap off and the Mac out of idle sleep for as long as the app runs
     /// (the display can still sleep). A Mac that's asleep at an opening can't wake
     /// itself in time — the process is frozen — so holding this only around each
@@ -31,6 +34,8 @@ final class Engine: ObservableObject {
     private let warmup: TimeInterval = 90
 
     init() {
+        Notifier.requestPermission()
+        LoginItem.enableOnFirstLaunch()
         if signedInAs != nil { start() }
     }
 
@@ -54,6 +59,31 @@ final class Engine: ObservableObject {
         log = []
         Store.save(shadowLog: log)
     }
+
+    // MARK: Editing
+
+    func update(classes: [RecurringClass]) {
+        self.classes = classes
+        Store.save(classes: classes)
+        replanSoon()
+    }
+
+    func update(pauses: [Pause]) {
+        self.pauses = pauses
+        Store.save(pauses: pauses)
+        replanSoon()
+    }
+
+    /// Re-plan right away — unless an opening is in progress, in which case the
+    /// loop re-plans as soon as it finishes (cancelling it mid-opening would lose it).
+    private func replanSoon() {
+        lastPlanned = nil
+        if !isFiring, signedInAs != nil { start() }
+    }
+
+    /// Has the latest plan found an upcoming opening for this class? Catches typos
+    /// in a class name or time — a class that matches nothing is never booked.
+    func isOnSchedule(_ k: RecurringClass) -> Bool { openings.contains { $0.klass.key == k.key } }
 
     // MARK: Main loop
 
@@ -108,6 +138,11 @@ final class Engine: ObservableObject {
             status = "Planned \(openings.count) upcoming openings"
         } catch {
             status = "Planning failed: \(error.localizedDescription)"
+            // Once an hour at most: a flaky YMCA server shouldn't spam the Mac.
+            if lastFailureNotice.map({ Date().timeIntervalSince($0) > 3600 }) ?? true {
+                lastFailureNotice = Date()
+                Notifier.post("Y Booker can't reach the YMCA", error.localizedDescription)
+            }
         }
     }
 
@@ -118,7 +153,11 @@ final class Engine: ObservableObject {
         let urgent = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiated, .idleSystemSleepDisabled, .latencyCritical],
             reason: "Class booking window opening")
-        defer { ProcessInfo.processInfo.endActivity(urgent) }
+        isFiring = true
+        defer {
+            ProcessInfo.processInfo.endActivity(urgent)
+            isFiring = false
+        }
 
         var entries = group.map {
             ShadowEntry(classKey: $0.klass.key, className: $0.klass.name, occurrenceId: $0.occurrence.id,
@@ -170,6 +209,7 @@ final class Engine: ObservableObject {
             }
             record(entries)
         }
+        for e in entries { Notifier.post("\(e.className) · \(e.occursAt.formatted(.dateTime.weekday().month().day()))", summary(e)) }
         lastPlanned = nil   // re-plan to pick up next week's occurrence of these classes
     }
 

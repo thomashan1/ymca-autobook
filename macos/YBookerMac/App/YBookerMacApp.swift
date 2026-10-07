@@ -16,5 +16,10 @@ struct YBookerMacApp: App {
             LogView(engine: engine)
         }
         .defaultSize(width: 900, height: 520)
+
+        Window("Y Booker — Settings", id: "settings") {
+            SettingsView(engine: engine)
+        }
+        .windowResizability(.contentMinSize)
     }
 }

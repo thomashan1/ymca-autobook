@@ -38,7 +38,7 @@ _Screenshots use sample data._
 ## Architecture
 
 Three moving parts: an **external clock** (cron-job.org), a **booking engine**
-(GitHub Actions running Playwright against the YMCA's Fisikal API), and **state**
+(GitHub Actions making plain HTTP calls to the YMCA's Fisikal API), and **state**
 kept as files in two GitHub repos. The iOS app is a window onto that state — it
 never talks to the YMCA directly.
 
@@ -54,7 +54,7 @@ flowchart TB
 
     api["GitHub REST API<br/>workflow_dispatch · repo contents"]
 
-    subgraph engine["⚙️ Booking engine — book.yml on a GitHub Actions runner (Playwright)"]
+    subgraph engine["⚙️ Booking engine — book.yml on a GitHub Actions runner"]
         direction LR
         route{"dispatch<br/>inputs?"}
         cls["src.main --class KEY<br/>book one class"]
@@ -106,7 +106,7 @@ sequenceDiagram
     participant M as Gmail
 
     C->>G: 11:00 AM — POST workflow_dispatch {class_key: cycle-sculpt-thu}
-    G->>Y: headless Playwright login, read CSRF token
+    G->>Y: egym SSO login over plain HTTP, read CSRF token
     G->>Y: list occurrences, match name + weekday + start + branch
     G->>P: read pauses.yml
     alt class date is paused (and not in except:)
@@ -143,7 +143,7 @@ Key properties:
   local, git-ignored `.env`.
 
 ## How it works
-1. **Login** (`src/login.py`) — headless Playwright completes the egym SSO flow and reads
+1. **Login** (`src/login.py`) — completes the egym SSO flow over plain HTTP (no browser) and reads
    the Fisikal CSRF token. Session cookies are reused for all API calls.
 2. **Find** (`src/fisikal.py`) — lists occurrences for the target branch and matches by
    **name + weekday + start time** (room and instructor ignored — they vary week to week).
@@ -235,7 +235,6 @@ late across 100 runs.
 ```bash
 /usr/bin/python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m playwright install chromium
 
 cp .env.example .env    # fill in EGYM_USERNAME / EGYM_PASSWORD
 set -a; . ./.env; set +a

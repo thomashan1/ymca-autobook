@@ -186,7 +186,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - run: python -m playwright install --with-deps chromium
       - name: Book
         env:
           EGYM_USERNAME: ${{{{ secrets.EGYM_USERNAME }}}}

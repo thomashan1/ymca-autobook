@@ -3,7 +3,6 @@
 Usage:
     python -m src.main --class <key>            # book the configured class
     python -m src.main --class <key> --dry-run  # do everything except the join
-    python -m src.main --class <key> --headed   # show the browser (debug login)
     python -m src.main --class <key> --book-now  # skip the wait (test in an open window)
     python -m src.main --list [name]            # print upcoming occurrences (debug filters)
 
@@ -21,11 +20,11 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import yaml
-from playwright.sync_api import sync_playwright
 
 from . import fisikal
 from . import full_log
 from . import pauses
+from .http_context import HttpContext
 from .login import login
 from .notify import notify
 from .schedule import open_instant, wait_until
@@ -455,7 +454,6 @@ def main(argv=None) -> int:
                     help="show all Mon-Fri 9:30–15:00 classes (both branches, no dance/fee)")
     ap.add_argument("--list", nargs="?", const="", help="list upcoming occurrences (optional name filter)")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--headed", action="store_true")
     ap.add_argument("--book-now", action="store_true", help="skip the wait; book immediately")
     ap.add_argument("--cancel-id", type=int, help="cancel a booking by occurrence id")
     ap.add_argument("--cancel-class", help="cancel the next booked occurrence of this class key")
@@ -473,9 +471,7 @@ def main(argv=None) -> int:
     if not username or not password:
         raise SystemExit("Set EGYM_USERNAME and EGYM_PASSWORD environment variables.")
 
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=not args.headed)
-        context = browser.new_context()
+    with HttpContext() as context:
         try:
             _, csrf = login(context, username, password)
             print("Logged in; csrf acquired.")
@@ -596,7 +592,6 @@ def main(argv=None) -> int:
             return 0 if success else 1
         finally:
             context.close()
-            browser.close()
 
 
 if __name__ == "__main__":

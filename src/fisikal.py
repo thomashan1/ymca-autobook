@@ -1,6 +1,6 @@
 """Fisikal schedule/booking API client.
 
-All calls go through the logged-in BrowserContext's request context so the
+All calls go through the logged-in HttpContext's `request` helper so the
 session cookies set during egym login are sent automatically. Every call echoes
 the page's CSRF token as X-CSRF-Token (required by the Rails backend).
 
@@ -16,7 +16,7 @@ import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from playwright.sync_api import BrowserContext
+from .http_context import HttpContext
 
 BASE = "https://ymca-silicon-valley.fisikal.com/api/web/schedule/occurrences"
 
@@ -36,7 +36,7 @@ def _headers(csrf: str) -> dict:
     }
 
 
-def list_occurrences(context: BrowserContext, csrf: str,
+def list_occurrences(context: HttpContext, csrf: str,
                      since: datetime, till: datetime,
                      location_ids: list[int] | None = None) -> list[dict]:
     """Return the list of occurrence dicts in [since, till] (UTC datetimes)."""
@@ -87,8 +87,8 @@ def find_matches(occs: list[dict], name: str, weekday: str, start_hhmm: str,
     return out
 
 
-def join(context: BrowserContext, csrf: str, occurrence_id: int, lock_version: int):
-    """POST a booking. Returns the Playwright APIResponse."""
+def join(context: HttpContext, csrf: str, occurrence_id: int, lock_version: int):
+    """POST a booking. Returns an http_context.Response."""
     return context.request.post(
         f"{BASE}/{occurrence_id}/join",
         form={"json": json.dumps({"lock_version": lock_version})},
@@ -96,8 +96,8 @@ def join(context: BrowserContext, csrf: str, occurrence_id: int, lock_version: i
     )
 
 
-def cancel(context: BrowserContext, csrf: str, occurrence_id: int):
-    """Cancel a booking (DELETE .../cancel with body json={}). Returns APIResponse."""
+def cancel(context: HttpContext, csrf: str, occurrence_id: int):
+    """Cancel a booking (DELETE .../cancel with body json={}). Returns an http_context.Response."""
     return context.request.delete(
         f"{BASE}/{occurrence_id}/cancel",
         form={"json": json.dumps({})},

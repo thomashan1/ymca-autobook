@@ -22,12 +22,12 @@ import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import fisikal              # noqa: E402
 from src import private_store        # noqa: E402
+from src.http_context import HttpContext  # noqa: E402
 from src.login import login          # noqa: E402
 from src.main import load_config     # noqa: E402
 
@@ -56,9 +56,7 @@ def run() -> int:
     horizon_end = now + timedelta(days=HORIZON_DAYS)
     nowiso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
+    with HttpContext() as context:
         try:
             _, csrf = login(context, user, pw)
             print("Logged in; csrf acquired.")
@@ -68,7 +66,6 @@ def run() -> int:
             )
         finally:
             context.close()
-            browser.close()
 
     joined = [o for o in occs if o.get("is_joined")]
 

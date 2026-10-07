@@ -37,16 +37,33 @@ enum Store {
         try? data.write(to: url(name), options: .atomic)
     }
 
+    // Milliseconds matter here: "landed at 10:00:00" says nothing about whether the
+    // read beat a class that fills in 30 s. Plain .iso8601 drops fractional seconds.
+    private static let isoMillis: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
     private static var encoder: JSONEncoder {
         let e = JSONEncoder()
-        e.dateEncodingStrategy = .iso8601
+        e.dateEncodingStrategy = .custom { date, enc in
+            var c = enc.singleValueContainer()
+            try c.encode(isoMillis.string(from: date))
+        }
         e.outputFormatting = [.prettyPrinted, .sortedKeys]
         return e
     }
 
     private static var decoder: JSONDecoder {
         let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
+        d.dateDecodingStrategy = .custom { dec in
+            let s = try dec.singleValueContainer().decode(String.self)
+            guard let date = FisikalDate.parse(s) else {
+                throw DecodingError.dataCorrupted(.init(codingPath: dec.codingPath, debugDescription: "bad date \(s)"))
+            }
+            return date
+        }
         return d
     }
 

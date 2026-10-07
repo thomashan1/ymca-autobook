@@ -57,6 +57,30 @@ struct Pause: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
+/// One weekly slot in the YMCA's schedule — a class at the same day, time and
+/// branch — summarised from the occurrences in the next two weeks.
+struct CatalogSlot: Identifiable, Hashable, Sendable {
+    let name: String
+    let weekday: String
+    let start: String            // "HH:mm"
+    let end: String
+    let branchId: Int
+    let rooms: [String]
+    let trainers: [String]
+    let capacity: Int
+    /// Quickest observed fill, seconds after its booking window opened.
+    let fastestFill: Double?
+    let nextSession: Date
+    var id: String { "\(name.lowercased())|\(weekday)|\(start)|\(branchId)" }
+    var branch: String { branchId == 1392 ? "Southwest" : branchId == 1388 ? "Northwest" : "?" }
+    var hour: Int { Int(start.prefix(2)) ?? 0 }
+
+    func isSame(as k: RecurringClass) -> Bool {
+        k.name.lowercased() == name.lowercased() && k.weekday == weekday && k.start == start
+            && k.locationIds.contains(branchId)
+    }
+}
+
 /// A specific upcoming booking moment: this class, this occurrence, opening at this instant.
 struct Opening: Identifiable, Hashable, Sendable {
     let klass: RecurringClass

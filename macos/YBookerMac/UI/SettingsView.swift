@@ -6,12 +6,13 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
-            ClassesEditor(engine: engine).tabItem { Label("Classes", systemImage: "list.bullet") }
+            CatalogView(engine: engine).tabItem { Label("Browse", systemImage: "magnifyingglass") }
+            ClassesEditor(engine: engine).tabItem { Label("My classes", systemImage: "list.bullet") }
             PausesEditor(engine: engine).tabItem { Label("Pauses", systemImage: "pause.circle") }
             GeneralSettings(engine: engine).tabItem { Label("General", systemImage: "gearshape") }
         }
         .padding()
-        .frame(minWidth: 620, minHeight: 460)
+        .frame(minWidth: 960, minHeight: 560)
     }
 }
 
@@ -66,13 +67,8 @@ struct ClassesEditor: View {
 
     private func add() {
         let c = Calendar.current.dateComponents([.hour, .minute], from: time)
-        let start = String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        let slug = trimmed.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }.joined(separator: "-")
-        var key = "\(slug)-\(weekday.lowercased())"
-        var n = 2
-        while engine.classes.contains(where: { $0.key == key }) { key = "\(slug)-\(weekday.lowercased())-\(n)"; n += 1 }
-        engine.update(classes: engine.classes + [RecurringClass(key: key, name: trimmed, weekday: weekday, start: start, locationIds: [branch])])
+        engine.addClass(name: name.trimmingCharacters(in: .whitespaces), weekday: weekday,
+                        start: String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0), branchId: branch)
         name = ""
     }
 }
@@ -92,7 +88,8 @@ struct PausesEditor: View {
             List {
                 ForEach(engine.pauses.filter { showPast || !$0.isPast }.sorted { $0.start < $1.start }) { p in
                     HStack {
-                        Text(p.start == p.end ? p.start : "\(p.start) → \(p.end)").monospacedDigit()
+                        Text(p.start == p.end ? withWeekday(p.start) : "\(withWeekday(p.start)) → \(withWeekday(p.end))")
+                            .monospacedDigit()
                         if let ex = p.except, !ex.isEmpty {
                             Text("keep: \(ex.map(className).joined(separator: ", "))").font(.caption).foregroundStyle(.secondary)
                         }
@@ -132,6 +129,17 @@ struct PausesEditor: View {
                 }
             }
         }
+    }
+
+    /// "2026-10-23" -> "Fri 10/23/2026"
+    private func withWeekday(_ day: String) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.timeZone = FisikalClient.zone
+        f.dateFormat = "yyyy-MM-dd"
+        guard let d = f.date(from: day) else { return day }
+        f.dateFormat = "EEE M/d/yyyy"
+        return f.string(from: d)
     }
 
     private func className(_ key: String) -> String {

@@ -196,6 +196,7 @@ struct Occurrence: Identifiable, Hashable, Sendable {
     let lockVersion: Int
     let capacity: Int
     let waitlist: Int
+    let durationMinutes: Int
 
     init?(_ d: [String: Any]) {
         guard let id = d["id"] as? Int, let at = (d["occurs_at"] as? String).flatMap(FisikalDate.parse)
@@ -215,6 +216,7 @@ struct Occurrence: Identifiable, Hashable, Sendable {
         lockVersion = d["lock_version"] as? Int ?? 0
         capacity = d["service_group_size"] as? Int ?? 0
         waitlist = d["total_on_waiting_list"] as? Int ?? 0
+        durationMinutes = (d["duration_in_hours"] as? Int ?? 0) * 60 + (d["duration_in_minutes"] as? Int ?? 0)
     }
 }
 

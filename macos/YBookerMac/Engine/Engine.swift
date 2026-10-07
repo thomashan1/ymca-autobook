@@ -16,9 +16,12 @@ final class Engine: ObservableObject {
     let pauses = Store.pauses()
 
     private var loop: Task<Void, Never>?
-    /// Keeps App Nap from stretching our timers while we sit in the menu bar.
+    /// Keeps App Nap off and the Mac out of idle sleep for as long as the app runs
+    /// (the display can still sleep). A Mac that's asleep at an opening can't wake
+    /// itself in time — the process is frozen — so holding this only around each
+    /// opening isn't enough. Quitting the app releases it.
     private let background = ProcessInfo.processInfo.beginActivity(
-        options: .userInitiatedAllowingIdleSystemSleep, reason: "Waiting for class booking windows")
+        options: [.userInitiated, .idleSystemSleepDisabled], reason: "Waiting for class booking windows")
 
     /// Look ahead this far for occurrences (the Python engine uses 16 days).
     private let horizon: TimeInterval = 16 * 86400

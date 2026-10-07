@@ -40,7 +40,7 @@ struct MenuView: View {
                 Text("\(next.klass.name) · \(next.occurrence.occursAt.formatted(.dateTime.weekday().month().day().hour().minute()))")
                     .font(.title3.bold())
                 TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                    Text("opens in \(countdown(to: next.openAt, from: ctx.date)) · \(next.openAt.formatted(date: .omitted, time: .standard))")
+                    Text("opens in \(countdown(to: next.openAt, from: ctx.date)) · \(dayLabel(next.openAt)) \(next.openAt.formatted(date: .omitted, time: .standard))")
                         .monospacedDigit()
                 }
             }
@@ -74,6 +74,13 @@ struct MenuView: View {
         }
 
         Text("Signed in as \(engine.signedInAs ?? "")").font(.caption2).foregroundStyle(.tertiary)
+    }
+
+    private func dayLabel(_ date: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) { return "today" }
+        if cal.isDateInTomorrow(date) { return "tomorrow" }
+        return date.formatted(.dateTime.weekday(.wide))
     }
 
     private func countdown(to date: Date, from now: Date) -> String {

@@ -19,11 +19,10 @@ import os
 import sys
 from datetime import datetime, timezone
 
-from playwright.sync_api import sync_playwright
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import private_store              # noqa: E402
+from src.http_context import HttpContext  # noqa: E402
 from src.login import login                # noqa: E402
 from src.main import collect_schedule, load_config  # noqa: E402
 
@@ -43,16 +42,13 @@ def run() -> int:
 
     nowiso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
+    with HttpContext() as context:
         try:
             _, csrf = login(context, user, pw)
             print("Logged in; csrf acquired.")
             rows = collect_schedule(context, csrf, cfg)
         finally:
             context.close()
-            browser.close()
 
     # Drop the sort-only helper fields before writing.
     classes = [{k: v for k, v in r.items() if k not in ("start_min", "dow")} for r in rows]

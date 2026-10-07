@@ -32,7 +32,6 @@ import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from playwright.sync_api import sync_playwright
 
 # Allow running as `python scripts/run_due.py` from the repo root.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -42,6 +41,7 @@ from src import fisikal            # noqa: E402
 from src import main as m          # noqa: E402
 from src import pauses             # noqa: E402
 from src import swaps              # noqa: E402
+from src.http_context import HttpContext  # noqa: E402
 from src.login import login        # noqa: E402
 from src.notify import notify      # noqa: E402
 from gen_workflow import cron_lines  # noqa: E402
@@ -169,9 +169,7 @@ def run() -> int:
     booked_any = False
     failed_any = False
     swap_missed = False
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
+    with HttpContext() as context:
         try:
             _, csrf = login(context, user, pw)
             print("Logged in; csrf acquired.")
@@ -238,7 +236,6 @@ def run() -> int:
                 failed_any = failed_any or not ok
         finally:
             context.close()
-            browser.close()
 
     # A missed swap always fails the run, even alongside successful bookings: a
     # recurring class that doesn't book shows up in the weekly summary, but a

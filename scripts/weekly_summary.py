@@ -12,13 +12,13 @@ import sys
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import email_theme         # noqa: E402
 from src import fisikal              # noqa: E402
 from src import pauses              # noqa: E402
+from src.http_context import HttpContext  # noqa: E402
 from src.login import login         # noqa: E402
 from src.main import load_config    # noqa: E402
 from src.notify_email import send_email  # noqa: E402
@@ -376,9 +376,7 @@ def run() -> int:
     win_start    = datetime(this_mon.year, this_mon.month, this_mon.day, tzinfo=tz)
     win_end      = win_start + timedelta(days=14)
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
+    with HttpContext() as context:
         try:
             _, csrf = login(context, user, pw)
             occs = fisikal.list_occurrences(
@@ -387,10 +385,8 @@ def run() -> int:
             )
         finally:
             context.close()
-            browser.close()
 
     all_booked = sorted([o for o in occs if o.get("is_joined")], key=lambda o: o["occurs_at"])
-
 
 
     def _rows_for(mon: date) -> list[dict]:

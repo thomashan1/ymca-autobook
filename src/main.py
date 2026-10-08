@@ -419,10 +419,15 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
     lock = target.get("lock_version")
     last = "no attempt"
     for attempt in range(1, MAX_RETRY_ATTEMPTS + 1):
+        sent = datetime.now(timezone.utc)
         resp = fisikal.join(context, csrf, target["id"], lock)
+        replied = datetime.now(timezone.utc)
         ok, msg, errors = fisikal.parse_join_result(resp)
         last = f"attempt {attempt}: {msg}"
-        print(f"  {last}")
+        # Classes like BODYPUMP fill in ~37 s and stay empty for the first half
+        # second, so the race is decided in milliseconds — log them.
+        ms = lambda t: (t - open_dt).total_seconds() * 1000
+        print(f"  {last}  [sent {ms(sent):+.0f} ms, reply {ms(replied):+.0f} ms vs open]")
         if ok:
             return True, f"{label}\n{last}\nopened {_fmt(open_dt, tz)}"
         types = {e.get("type") for e in errors}

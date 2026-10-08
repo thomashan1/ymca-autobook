@@ -188,6 +188,9 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Book
         env:
+          # Without this Python buffers stdout when it isn't a terminal, so every
+          # log line gets the run's end time and booking timing can't be read.
+          PYTHONUNBUFFERED: "1"
           EGYM_USERNAME: ${{{{ secrets.EGYM_USERNAME }}}}
           EGYM_PASSWORD: ${{{{ secrets.EGYM_PASSWORD }}}}
           PRIVATE_REPO_TOKEN: ${{{{ secrets.PRIVATE_REPO_TOKEN }}}}

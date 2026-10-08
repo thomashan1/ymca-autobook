@@ -274,13 +274,14 @@ final class Engine: ObservableObject {
         async -> (Int, ShadowEntry.Sample?, Date?, String?) {
         do {
             let around = o.occurrence.occursAt
+            let sent = Date()
             let occs = try await FisikalClient.shared.occurrences(
                 locationIds: o.klass.locationIds,
                 since: around.addingTimeInterval(-60), till: around.addingTimeInterval(60))
             guard let fresh = occs.first(where: { $0.id == o.occurrence.id }) else {
                 return (index, nil, nil, "occurrence \(o.occurrence.id) not found at the opening")
             }
-            let s = ShadowEntry.Sample(at: Date(), isFull: fresh.isFull, isJoined: fresh.isJoined,
+            let s = ShadowEntry.Sample(at: Date(), sentAt: sent, isFull: fresh.isFull, isJoined: fresh.isJoined,
                                        lockVersion: fresh.lockVersion, waitlist: fresh.waitlist)
             return (index, s, fresh.fullGroupAt, nil)
         } catch {

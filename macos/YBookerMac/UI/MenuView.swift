@@ -93,7 +93,8 @@ struct MenuView: View {
 
 func summary(_ e: ShadowEntry) -> String {
     var parts = [e.verdict]
-    if let lag = e.fireLag { parts.append(String(format: "read %.2fs after opening", lag)) }
+    if let s = e.sendLag { parts.append(String(format: "sent %+.0f ms", s * 1000)) }
+    if let lag = e.fireLag { parts.append(String(format: "reply %+.0f ms", lag * 1000)) }
     if let f = e.fillSeconds { parts.append(String(format: "filled after %.0fs", f)) }
     return parts.joined(separator: " · ")
 }

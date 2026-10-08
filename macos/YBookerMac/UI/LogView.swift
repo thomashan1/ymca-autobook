@@ -21,10 +21,11 @@ struct LogView: View {
             .width(min: 140, ideal: 160)
             TableColumn("Verdict at the opening second") { e in Text(e.verdict) }
                 .width(min: 200, ideal: 240)
-            TableColumn("Read lag") { e in
-                Text(e.fireLag.map { String(format: "%.2fs", $0) } ?? "—").monospacedDigit()
+            TableColumn("Sent / reply") { e in
+                Text([e.sendLag, e.fireLag].map { $0.map { String(format: "%+.0f", $0 * 1000) } ?? "—" }
+                    .joined(separator: " / ") + " ms").monospacedDigit()
             }
-            .width(70)
+            .width(110)
             TableColumn("Session") { e in Text(e.sessionPath?.rawValue ?? "—") }
                 .width(70)
             TableColumn("Filled after") { e in

@@ -93,7 +93,8 @@ struct Opening: Identifiable, Hashable, Sendable {
 /// What shadow mode saw at one opening — everything except the final join.
 struct ShadowEntry: Codable, Identifiable, Sendable {
     struct Sample: Codable, Sendable {
-        let at: Date
+        let at: Date          // when the reply arrived
+        var sentAt: Date?     // when the request went out (absent in entries before 10/8)
         let isFull: Bool
         let isJoined: Bool
         let lockVersion: Int
@@ -129,6 +130,8 @@ struct ShadowEntry: Codable, Identifiable, Sendable {
 
     /// Seconds from the window opening to the class filling, if it filled.
     var fillSeconds: Double? { fullGroupAt.map { $0.timeIntervalSince(openAt) } }
-    /// How late the shadow read landed after the true opening instant.
+    /// When the reply to the opening-second read arrived, relative to the opening.
     var fireLag: Double? { firedAt.map { $0.timeIntervalSince(openAt) } }
+    /// When that read was sent — the moment a real join would have gone out.
+    var sendLag: Double? { atOpen?.sentAt.map { $0.timeIntervalSince(openAt) } }
 }

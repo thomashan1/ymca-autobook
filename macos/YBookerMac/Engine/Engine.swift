@@ -13,6 +13,7 @@ final class Engine: ObservableObject {
     @Published private(set) var lastPlanned: Date?
 
     @Published private(set) var classes = Store.classes()
+    @Published private(set) var history: [FillRecord] = Store.fillHistory()
     @Published private(set) var pauses = Store.pauses()
 
     private var loop: Task<Void, Never>?
@@ -137,6 +138,70 @@ final class Engine: ObservableObject {
         }
     }
 
+    // MARK: Fill history
+
+    /// Upsert every group class whose booking window has opened. `full_group_at`
+    /// arrives for free with the schedule, so history costs no extra requests.
+    private func recordHistory(_ occs: [Occurrence], branchId: Int) {
+        let now = Date()
+        var byId = Dictionary(uniqueKeysWithValues: history.map { ($0.id, $0) })
+        for o in occs where o.capacity >= 5 && o.openAt <= now {
+            if var r = byId[o.id] {
+                r.fullGroupAt = o.fullGroupAt ?? r.fullGroupAt
+                r.waitlist = max(r.waitlist, o.waitlist)
+                r.lastSeen = now
+                byId[o.id] = r
+            } else {
+                byId[o.id] = FillRecord(id: o.id, name: o.title, weekday: Slot.weekday(o.occursAt),
+                                        start: Slot.hhmm(o.occursAt), branchId: branchId,
+                                        occursAt: o.occursAt, openAt: o.openAt, capacity: o.capacity,
+                                        fullGroupAt: o.fullGroupAt, waitlist: o.waitlist, lastSeen: now)
+            }
+        }
+        history = Array(byId.values)
+    }
+
+    /// One-time: the API still serves the past few weeks (status Completed), so
+    /// start with ~4 weeks of history instead of an empty table.
+    private func backfillHistory() async {
+        status = "Backfilling 4 weeks of class history…"
+        let now = Date()
+        for branch in [1392, 1388] {
+            for week in 1...4 {
+                let till = now.addingTimeInterval(-Double(week - 1) * 7 * 86400)
+                if let occs = try? await FisikalClient.shared.occurrences(
+                    locationIds: [branch], since: till.addingTimeInterval(-7 * 86400), till: till) {
+                    recordHistory(occs, branchId: branch)
+                }
+            }
+        }
+        Store.save(fillHistory: history)
+        UserDefaults.standard.set(true, forKey: "historyBackfilled")
+    }
+
+    /// Per weekly slot: how often it fills, how fast, waitlists, and — for your
+    /// own classes the Mac has sampled — signups by 10 / 20 / 30 / 60 seconds.
+    func slotStats() -> [SlotStats] {
+        let curvesBySlot = Dictionary(grouping: log.filter { $0.atOpen != nil && !$0.followUps.isEmpty }) { e in
+            classes.first { $0.key == e.classKey }?.slotKey ?? ""
+        }
+        return Dictionary(grouping: history, by: \.slotKey).map { key, recs in
+            let fills = recs.compactMap(\.fillSeconds)
+            let curves = curvesBySlot[key] ?? []
+            var signups: [Int: Int] = [:]
+            for t in [10, 20, 30, 60] {
+                let xs = curves.compactMap { $0.signups(by: Double(t)) }.map(Double.init)
+                if let m = median(xs) { signups[t] = Int(m.rounded()) }
+            }
+            let r = recs[0]
+            return SlotStats(id: key, name: r.name, weekday: r.weekday, start: r.start, branchId: r.branchId,
+                             weeks: recs.count, filledWeeks: fills.count, medianFill: median(fills),
+                             fastestFill: fills.min(), filledWithinMinute: fills.filter { $0 <= 60 }.count,
+                             medianWaitlist: median(recs.map { Double($0.waitlist) }).map { Int($0.rounded()) },
+                             signupsBy: signups, curveWeeks: curves.count)
+        }
+    }
+
     /// Has the latest plan found an upcoming opening for this class? Catches typos
     /// in a class name or time — a class that matches nothing is never booked.
     func isOnSchedule(_ k: RecurringClass) -> Bool { openings.contains { $0.klass.key == k.key } }
@@ -179,9 +244,13 @@ final class Engine: ObservableObject {
             _ = try await FisikalClient.shared.ensureSession()
             let now = Date()
             var found: [Opening] = []
-            for branch in Set(classes.flatMap(\.locationIds)).sorted() {
+            if !UserDefaults.standard.bool(forKey: "historyBackfilled") { await backfillHistory() }
+            // Both branches every time, not just the ones in your lineup: the same
+            // fetch feeds fill history for every class.
+            for branch in [1392, 1388] {
                 let occs = try await FisikalClient.shared.occurrences(
                     locationIds: [branch], since: now, till: now.addingTimeInterval(horizon))
+                recordHistory(occs, branchId: branch)
                 for k in classes where k.locationIds.contains(branch) {
                     for o in occs where k.matches(o) && o.openAt > now {
                         let paused = pauses.contains { $0.covers(o.occursAt, key: k.key) }
@@ -190,6 +259,7 @@ final class Engine: ObservableObject {
                 }
             }
             openings = found.sorted { $0.openAt < $1.openAt }
+            Store.save(fillHistory: history)
             lastPlanned = Date()
             status = "Planned \(openings.count) upcoming openings"
         } catch {
@@ -255,15 +325,24 @@ final class Engine: ObservableObject {
         }
         record(entries)
 
-        // Watch how fast it fills: these reads only measure, they never book.
-        for delay in [30.0, 120, 300] {
+        // Watch it fill: every 3 s for the first minute, then +2 m and +5 m. These
+        // reads only measure. They start 2 s after the opening so they never
+        // compete with the booking itself, which is decided in the first second.
+        let dense = Array(stride(from: 2.0, through: 59.0, by: 3.0))
+        for delay in dense + [120, 300] {
+            let live = group.indices.filter { i in
+                !group[i].paused && entries[i].error == nil
+                    // Once full, stop the 3 s polling; the +2 m / +5 m checks still track the waitlist.
+                    && (delay > 60 || !(entries[i].followUps.last?.isFull ?? entries[i].atOpen?.isFull ?? false))
+            }
+            if live.isEmpty { continue }
             await sleep(until: openAt.addingTimeInterval(delay))
-            for (i, o) in group.enumerated() where !o.paused {
-                let (_, s, fullAt, _) = await Self.sample(o, index: i)
+            for i in live {
+                let (_, s, fullAt, _) = await Self.sample(group[i], index: i)
                 if let s { entries[i].followUps.append(s) }
                 if let fullAt { entries[i].fullGroupAt = fullAt }
             }
-            record(entries)
+            if delay > 60 || delay == dense.last { record(entries) }
         }
         for e in entries { Notifier.post("\(e.className) · \(e.occursAt.formatted(.dateTime.weekday().month().day()))", summary(e)) }
         lastPlanned = nil   // re-plan to pick up next week's occurrence of these classes

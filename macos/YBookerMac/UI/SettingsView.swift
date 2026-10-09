@@ -8,6 +8,7 @@ struct SettingsView: View {
         TabView {
             CatalogView(engine: engine).tabItem { Label("Browse", systemImage: "magnifyingglass") }
             ClassesEditor(engine: engine).tabItem { Label("My classes", systemImage: "list.bullet") }
+            StatsView(engine: engine).tabItem { Label("Stats", systemImage: "chart.bar") }
             PausesEditor(engine: engine).tabItem { Label("Pauses", systemImage: "pause.circle") }
             GeneralSettings(engine: engine).tabItem { Label("General", systemImage: "gearshape") }
         }

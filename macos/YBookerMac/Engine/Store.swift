@@ -67,6 +67,16 @@ enum Store {
         return d
     }
 
+    static func fillHistory() -> [FillRecord] {
+        guard let data = try? Data(contentsOf: url("fill-history.json")) else { return [] }
+        return (try? decoder.decode([FillRecord].self, from: data)) ?? []
+    }
+
+    static func save(fillHistory: [FillRecord]) {
+        guard let data = try? encoder.encode(fillHistory.sorted { $0.openAt < $1.openAt }) else { return }
+        try? data.write(to: url("fill-history.json"), options: .atomic)
+    }
+
     static func shadowLog() -> [ShadowEntry] {
         guard let data = try? Data(contentsOf: url("shadow-log.json")) else { return [] }
         return (try? decoder.decode([ShadowEntry].self, from: data)) ?? []

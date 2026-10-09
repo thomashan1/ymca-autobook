@@ -43,12 +43,17 @@ struct CatalogView: View {
                 TableColumn("Instructor") { s in Text(s.trainers.joined(separator: ", ")).foregroundStyle(.secondary) }
                     .width(min: 80, ideal: 110)
                 TableColumn("Spots") { s in Text("\(s.capacity)").monospacedDigit() }.width(45)
-                TableColumn("Fills in") { s in
+                TableColumn("Fastest fill") { s in
                     Text(fill(s.fastestFill)).monospacedDigit()
                         .foregroundStyle((s.fastestFill ?? .infinity) < 300 ? .red : .primary)
                         .help("Quickest fill seen in the last two weeks, after its booking window opened")
                 }
-                .width(70)
+                .width(75)
+                TableColumn("Typical") { s in
+                    Text(fill(typical[s.id] ?? nil)).monospacedDigit()
+                        .help("Median fill time across all the history the Mac has collected for this slot")
+                }
+                .width(60)
             }
             .overlay {
                 if loading { ProgressView("Reading the YMCA schedule…") }
@@ -100,6 +105,10 @@ struct CatalogView: View {
         case "Evening": return s.hour >= 17
         default: return true
         }
+    }
+
+    private var typical: [String: Double?] {
+        Dictionary(uniqueKeysWithValues: engine.slotStats().map { ($0.id, $0.medianFill) })
     }
 
     private func isMine(_ s: CatalogSlot) -> Bool { engine.classes.contains { s.isSame(as: $0) } }

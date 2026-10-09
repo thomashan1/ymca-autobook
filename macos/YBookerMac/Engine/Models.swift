@@ -135,3 +135,90 @@ struct ShadowEntry: Codable, Identifiable, Sendable {
     /// When that read was sent — the moment a real join would have gone out.
     var sendLag: Double? { atOpen?.sentAt.map { $0.timeIntervalSince(openAt) } }
 }
+
+// MARK: - Fill statistics
+
+/// Identifies a weekly class slot (same class, weekday, start time and branch).
+enum Slot {
+    static let calendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = FisikalClient.zone
+        return c
+    }()
+    static let days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+    static func weekday(_ d: Date) -> String { days[calendar.component(.weekday, from: d) - 1] }
+    static func hhmm(_ d: Date) -> String {
+        let c = calendar.dateComponents([.hour, .minute], from: d)
+        return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
+    }
+    static func key(name: String, weekday: String, start: String, branchId: Int) -> String {
+        "\(name.lowercased())|\(weekday)|\(start)|\(branchId)"
+    }
+    static func branchName(_ id: Int) -> String { id == 1392 ? "Southwest" : id == 1388 ? "Northwest" : "?" }
+}
+
+extension RecurringClass {
+    var slotKey: String { Slot.key(name: name, weekday: weekday, start: start, branchId: locationIds.first ?? 0) }
+}
+
+/// One past or open occurrence of any class, kept to build fill history.
+/// Fisikal stamps `full_group_at` when a class fills, so this costs no extra requests.
+struct FillRecord: Codable, Identifiable, Sendable {
+    let id: Int                 // occurrence id
+    let name: String
+    let weekday: String
+    let start: String
+    let branchId: Int
+    let occursAt: Date
+    let openAt: Date
+    let capacity: Int
+    var fullGroupAt: Date?
+    var waitlist: Int
+    var lastSeen: Date
+
+    var slotKey: String { Slot.key(name: name, weekday: weekday, start: start, branchId: branchId) }
+    /// Seconds from the booking window opening to the class filling.
+    var fillSeconds: Double? { fullGroupAt.map { $0.timeIntervalSince(openAt) }.flatMap { $0 >= 0 ? $0 : nil } }
+}
+
+/// Aggregated history for one weekly slot.
+struct SlotStats: Identifiable, Sendable {
+    let id: String
+    let name: String
+    let weekday: String
+    let start: String
+    let branchId: Int
+    let weeks: Int              // occurrences whose window has opened
+    let filledWeeks: Int
+    let medianFill: Double?
+    let fastestFill: Double?
+    let filledWithinMinute: Int
+    let medianWaitlist: Int?
+    /// From the Mac's own sampling of your classes: median signups by 10/20/30/60 s.
+    let signupsBy: [Int: Int]
+    let curveWeeks: Int
+    var branch: String { Slot.branchName(branchId) }
+}
+
+func median(_ xs: [Double]) -> Double? {
+    guard !xs.isEmpty else { return nil }
+    let s = xs.sorted()
+    return s.count % 2 == 1 ? s[s.count / 2] : (s[s.count / 2 - 1] + s[s.count / 2]) / 2
+}
+
+extension ShadowEntry {
+    /// Signups since the opening, as of `seconds` after it — from the sampled
+    /// signup counter (`lock_version` goes up by one per booking).
+    func signups(by seconds: Double) -> Int? {
+        guard let first = atOpen else { return nil }
+        let all = [first] + followUps
+        guard let last = all.filter({ $0.at.timeIntervalSince(openAt) <= seconds }).max(by: { $0.at < $1.at })
+        else { return nil }
+        // Only trust a count if we sampled close to that moment — or the class
+        // was already full, in which case nothing changes after.
+        let sampledNear = all.contains { $0.at.timeIntervalSince(openAt) >= seconds - 3 }
+        guard sampledNear || last.isFull else { return nil }
+        return max(0, last.lockVersion - first.lockVersion)
+    }
+}

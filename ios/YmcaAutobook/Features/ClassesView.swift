@@ -6,6 +6,7 @@ import SwiftUI
 struct ClassesView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var snapshot: SnapshotRepository
+    @EnvironmentObject var fillStats: FillStatsRepository
 
     private let weekdays: [Weekday] = [.mon, .tue, .wed, .thu, .fri]
 
@@ -40,7 +41,8 @@ struct ClassesView: View {
                                 } label: {
                                     ClassInfoRow(gymClass: c,
                                                  endTime: snapshot.endTime(for: c),
-                                                 minutes: snapshot.minutes(for: c))
+                                                 minutes: snapshot.minutes(for: c),
+                                                 fill: fillStats.stats(for: c))
                                 }
                                 .buttonStyle(.plain)
                                 .swipeActions(edge: .trailing) {
@@ -56,6 +58,11 @@ struct ClassesView: View {
                 }
             }
             .navigationTitle("My Classes")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { FillStatsView() } label: { Label("Fill speed", systemImage: "chart.bar.xaxis") }
+                }
+            }
             .overlay { if classes.isLoading || deleting { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
             .refreshable { await classes.load() }
             .confirmationDialog(
@@ -112,6 +119,7 @@ private struct ClassInfoRow: View {
     let gymClass: GymClass
     let endTime: String?
     let minutes: Int?
+    let fill: FillStatsRepository.Slot?
 
     private var title: String {
         if let m = minutes { return "\(gymClass.name) (\(m)m)" }
@@ -136,6 +144,12 @@ private struct ClassInfoRow: View {
             HStack(spacing: 6) {
                 Text(timeRange).font(.caption).foregroundStyle(.secondary).monospacedDigit()
                 BranchChip(branch: gymClass.branch)
+                if let fill {
+                    Text(fill.filled == 0 ? "never fills"
+                         : "fills in ~\(FillStatsRepository.duration(fill.median_fill_s))")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(fill.fillsFast ? .red : .secondary)
+                }
             }
         }
     }

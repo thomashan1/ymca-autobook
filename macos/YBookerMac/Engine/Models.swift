@@ -7,7 +7,10 @@ struct RecurringClass: Codable, Identifiable, Hashable, Sendable {
     let weekday: String      // "Mon" … "Sun"
     let start: String        // local "HH:mm"
     let locationIds: [Int]   // branch: Southwest 1392, Northwest 1388
+    /// Off (nil/false) = shadow only. On = the Mac sends a real booking at the opening second.
+    var liveBooking: Bool? = nil
     var id: String { key }
+    var booksForReal: Bool { liveBooking ?? false }
 
     var branch: String {
         switch locationIds.first {
@@ -117,9 +120,23 @@ struct ShadowEntry: Codable, Identifiable, Sendable {
     var fullGroupAt: Date?
     var capacity: Int?
     var error: String?
+    /// Present when this opening was booked for real, not just shadowed.
+    var booking: BookingLog?
+
+    struct BookingLog: Codable, Sendable {
+        struct Attempt: Codable, Sendable {
+            let sentAt: Date
+            let repliedAt: Date?
+            let result: String
+        }
+        var attempts: [Attempt] = []
+        var outcome = "pending"
+        var booked = false
+    }
 
     /// Would a real booking have gone out at the opening second?
     var verdict: String {
+        if let b = booking { return b.outcome }
         if paused { return "paused — would skip" }
         if let error { return "error — \(error)" }
         guard let s = atOpen else { return "pending" }
@@ -133,7 +150,9 @@ struct ShadowEntry: Codable, Identifiable, Sendable {
     /// When the reply to the opening-second read arrived, relative to the opening.
     var fireLag: Double? { firedAt.map { $0.timeIntervalSince(openAt) } }
     /// When that read was sent — the moment a real join would have gone out.
-    var sendLag: Double? { atOpen?.sentAt.map { $0.timeIntervalSince(openAt) } }
+    var sendLag: Double? {
+        (booking?.attempts.first?.sentAt ?? atOpen?.sentAt).map { $0.timeIntervalSince(openAt) }
+    }
 }
 
 // MARK: - Fill statistics

@@ -202,6 +202,15 @@ final class Engine: ObservableObject {
         }
     }
 
+    func setBooksForReal(_ key: String, _ on: Bool) {
+        update(classes: classes.map { k in
+            guard k.key == key else { return k }
+            var c = k
+            c.liveBooking = on
+            return c
+        })
+    }
+
     /// Has the latest plan found an upcoming opening for this class? Catches typos
     /// in a class name or time — a class that matches nothing is never booked.
     func isOnSchedule(_ k: RecurringClass) -> Bool { openings.contains { $0.klass.key == k.key } }
@@ -311,7 +320,14 @@ final class Engine: ObservableObject {
         while Date() < openAt.addingTimeInterval(-1) { try? await Task.sleep(nanoseconds: 200_000_000) }
         while Date() < openAt { try? await Task.sleep(nanoseconds: 5_000_000) }
 
-        // This is where a real booking would send the join.
+        // The opening second. Classes switched to "book for real" send the join
+        // first, then read back; shadow-only classes just take the read.
+        await withTaskGroup(of: (Int, ShadowEntry.BookingLog?).self) { tg in
+            for (i, o) in group.enumerated() where !o.paused && entries[i].error == nil && o.klass.booksForReal {
+                tg.addTask { (i, await Self.book(o)) }
+            }
+            for await (i, log) in tg { entries[i].booking = log }
+        }
         await withTaskGroup(of: (Int, ShadowEntry.Sample?, Date?, String?).self) { tg in
             for (i, o) in group.enumerated() where !o.paused && entries[i].error == nil {
                 tg.addTask { await Self.sample(o, index: i) }
@@ -320,10 +336,14 @@ final class Engine: ObservableObject {
                 entries[i].firedAt = s?.at ?? Date()
                 entries[i].atOpen = s
                 entries[i].fullGroupAt = fullAt
-                entries[i].error = err
+                entries[i].error = entries[i].booking == nil ? err : nil
             }
         }
         record(entries)
+        for e in entries where e.booking != nil {
+            Notifier.post("\(e.booking!.booked ? "✅" : "❌") \(e.className) · \(e.occursAt.formatted(.dateTime.weekday().month().day()))",
+                          e.booking!.outcome)
+        }
 
         // Watch it fill: every 3 s for the first minute, then +2 m and +5 m. These
         // reads only measure. They start 2 s after the opening so they never
@@ -346,6 +366,58 @@ final class Engine: ObservableObject {
         }
         for e in entries { Notifier.post("\(e.className) · \(e.occursAt.formatted(.dateTime.weekday().month().day()))", summary(e)) }
         lastPlanned = nil   // re-plan to pick up next week's occurrence of these classes
+    }
+
+    /// A real booking attempt at the opening second, mirroring src/main.py's book():
+    /// retry "not open yet" (clock skew) and lock conflicts (with a fresh
+    /// lock_version), stop on full/terminal errors, and treat "taken" as success
+    /// only if a re-read shows the seat is ours (another trigger won the race).
+    private nonisolated static func book(_ o: Opening) async -> ShadowEntry.BookingLog {
+        var log = ShadowEntry.BookingLog()
+        var lock = o.occurrence.lockVersion
+        let retryable: Set<String> = ["advance_time_restriction", "lock_version_conflict", "stale_object", "optimistic_lock"]
+        let lockConflict: Set<String> = ["lock_version_conflict", "stale_object", "optimistic_lock"]
+        let race: Set<String> = ["taken", "already_joined"]
+        let terminal: Set<String> = ["spare_schedule_violation", "already_joined", "full", "no_spaces", "group_is_full", "taken"]
+
+        for attempt in 1...6 {
+            let r: FisikalClient.JoinResult
+            do {
+                r = try await FisikalClient.shared.join(occurrenceId: o.occurrence.id, lockVersion: lock)
+            } catch {
+                log.attempts.append(.init(sentAt: Date(), repliedAt: nil, result: error.localizedDescription))
+                if case FisikalClient.Failure.sessionExpired = error { _ = try? await FisikalClient.shared.ensureSession() }
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                continue
+            }
+            log.attempts.append(.init(sentAt: r.sentAt, repliedAt: r.repliedAt, result: r.message))
+            let types = Set(r.errorTypes)
+            if r.ok {
+                log.booked = true
+                log.outcome = "BOOKED by the Mac (attempt \(attempt))"
+                return log
+            }
+            if !types.isDisjoint(with: race) {
+                let (_, s, _, _) = await sample(o, index: 0)
+                log.booked = s?.isJoined ?? false
+                log.outcome = log.booked ? "already booked — another trigger got there first"
+                                         : "taken by someone else (\(r.message))"
+                return log
+            }
+            if !types.isDisjoint(with: terminal) {
+                log.outcome = "not booked — \(r.message)"
+                return log
+            }
+            if !types.isDisjoint(with: lockConflict) {
+                let (_, s, _, _) = await sample(o, index: 0)
+                if let v = s?.lockVersion { lock = v }
+                continue
+            }
+            // "Not open yet" (our clock a hair ahead of theirs) or something unknown: brief pause, retry.
+            try? await Task.sleep(nanoseconds: types.isDisjoint(with: retryable) ? 1_000_000_000 : 250_000_000)
+        }
+        log.outcome = "not booked — gave up after \(log.attempts.count) attempts (last: \(log.attempts.last?.result ?? "?"))"
+        return log
     }
 
     /// One fresh read of a single occurrence, the way a booking would read it first.

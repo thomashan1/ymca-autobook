@@ -119,6 +119,45 @@ actor FisikalClient {
         return (obj?["data"] as? [[String: Any]] ?? []).compactMap(Occurrence.init)
     }
 
+    // MARK: Booking (the only write the app ever makes; there is no cancel)
+
+    struct JoinResult: Sendable {
+        let ok: Bool
+        let errorTypes: [String]
+        let message: String
+        let sentAt: Date
+        let repliedAt: Date
+    }
+
+    /// POST .../occurrences/{id}/join with form `json={"lock_version":N}` — the same
+    /// request the Python engine (src/fisikal.py) has been booking with all along.
+    func join(occurrenceId: Int, lockVersion: Int) async throws -> JoinResult {
+        guard let csrf else { throw Failure.sessionExpired }
+        var req = URLRequest(url: Self.fisikal.appendingPathComponent("api/web/schedule/occurrences/\(occurrenceId)/join"))
+        req.httpMethod = "POST"
+        req.setValue("application/x-www-form-urlencoded; charset=UTF-8", forHTTPHeaderField: "Content-Type")
+        req.setValue(csrf, forHTTPHeaderField: "X-CSRF-Token")
+        req.setValue("XMLHttpRequest", forHTTPHeaderField: "X-Requested-With")
+        req.setValue(Self.fisikal.absoluteString + "/", forHTTPHeaderField: "Referer")
+        req.httpBody = Self.formEncode([("json", #"{"lock_version": \#(lockVersion)}"#)])
+        let sent = Date()
+        let (data, resp) = try await session.data(for: req)
+        let replied = Date()
+        let http = resp as? HTTPURLResponse
+        guard (http?.value(forHTTPHeaderField: "Content-Type") ?? "").contains("json") else {
+            if let code = http?.statusCode, code == 503 { throw Failure.http(code) }
+            self.csrf = nil
+            throw Failure.sessionExpired
+        }
+        let body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        let oc = body?["occurrence_client"] as? [String: Any]
+        let errors = (oc?["errors"] as? [[String: Any]] ?? []).compactMap { $0["type"] as? String }
+        let ok = (200..<300).contains(http?.statusCode ?? 0) && errors.isEmpty
+        let message = ok ? "booked (occurrence_client id=\(oc?["id"] ?? "?"))"
+                         : (errors.isEmpty ? "HTTP \(http?.statusCode ?? 0)" : errors.joined(separator: ", "))
+        return JoinResult(ok: ok, errorTypes: errors, message: message, sentAt: sent, repliedAt: replied)
+    }
+
     // MARK: Login
 
     private func login(username: String, password: String) async throws {

@@ -41,6 +41,11 @@ struct ClassesEditor: View {
                         Text(k.name).bold()
                         Text("\(k.weekday) \(k.start) · \(k.branch)").foregroundStyle(.secondary)
                         Spacer()
+                        Toggle("Book for real", isOn: Binding(
+                            get: { k.booksForReal },
+                            set: { engine.setBooksForReal(k.key, $0) }))
+                            .toggleStyle(.switch).controlSize(.mini)
+                            .help("Off: shadow only (reads at the opening second, never books). On: the Mac sends a real booking at the opening second, alongside GitHub.")
                         Button(role: .destructive) {
                             engine.update(classes: engine.classes.filter { $0.key != k.key })
                         } label: { Image(systemName: "trash") }

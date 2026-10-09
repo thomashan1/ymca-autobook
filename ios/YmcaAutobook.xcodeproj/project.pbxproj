@@ -32,6 +32,8 @@
 		F6C9CF8EAAEA29F44D049320 /* BookingJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = C967227A3CC15BD679874DA9 /* BookingJob.swift */; };
 		FAD100000000000000000A2 /* FullRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD100000000000000000A1 /* FullRepository.swift */; };
 		FE64799E77614F4CCE9BFB6E /* Pause.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507C91C32844C2CD6CF1BC71 /* Pause.swift */; };
+		F1110000000000000000FEF2 /* FillStatsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1110000000000000000FEF1 /* FillStatsRepository.swift */; };
+		F1120000000000000000FEF2 /* FillStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1120000000000000000FEF1 /* FillStatsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,6 +63,8 @@
 		DE7A0000000000000000FEF1 /* ClassDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassDetailSheet.swift; sourceTree = "<group>"; };
 		E84BC5DC28E6909F6E747D03 /* YmcaAutobookApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YmcaAutobookApp.swift; sourceTree = "<group>"; };
 		FAD100000000000000000A1 /* FullRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullRepository.swift; sourceTree = "<group>"; };
+		F1110000000000000000FEF1 /* FillStatsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillStatsRepository.swift; sourceTree = "<group>"; };
+		F1120000000000000000FEF1 /* FillStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillStatsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -134,6 +138,7 @@
 		A21EDFE20E0C98EC4976C247 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				F1110000000000000000FEF1 /* FillStatsRepository.swift */,
 				A0710000000000000000FEF1 /* AuthStore.swift */,
 				3601D07AE2FA1B1E0558AE78 /* ClassesRepository.swift */,
 				4103662AB1A49043869B0F98 /* GitHubClient.swift */,
@@ -150,6 +155,7 @@
 		D0471E65CA87C21F11FAFFB7 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				F1120000000000000000FEF1 /* FillStatsView.swift */,
 				17EAF3BCB3CE279BF3A649BC /* AwayView.swift */,
 				63809AD92BC77587BCEAF8C2 /* ClassesView.swift */,
 				1283377295DE4115EEE110FF /* JobsView.swift */,
@@ -225,6 +231,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F1120000000000000000FEF2 /* FillStatsView.swift in Sources */,
+				F1110000000000000000FEF2 /* FillStatsRepository.swift in Sources */,
 				E2CE652DB03517F70F81ACF8 /* AwayView.swift in Sources */,
 				F6C9CF8EAAEA29F44D049320 /* BookingJob.swift in Sources */,
 				AEDE050E0481FBD2815B736F /* ClassesRepository.swift in Sources */,

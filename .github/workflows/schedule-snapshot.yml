@@ -24,3 +24,9 @@ jobs:
           EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
           PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
         run: python scripts/snapshot_schedule.py
+      - name: Update class fill history and stats
+        env:
+          EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
+          EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: python scripts/update_fill_history.py

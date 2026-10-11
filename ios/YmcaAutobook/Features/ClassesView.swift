@@ -15,6 +15,8 @@ struct ClassesView: View {
     @State private var deleting = false
     @State private var resultMessage: String?
     @State private var detail: ClassDetail?
+    // Opens Fill speed at launch via `-screenshotFillStats YES` (for screenshots).
+    @State private var showFillStats = UserDefaults.standard.bool(forKey: "screenshotFillStats")
 
     private func items(on day: Weekday) -> [GymClass] {
         classes.classes.filter { $0.weekday == day }.sorted { $0.start < $1.start }
@@ -60,9 +62,10 @@ struct ClassesView: View {
             .navigationTitle("My Classes")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { FillStatsView() } label: { Label("Fill speed", systemImage: "chart.bar.xaxis") }
+                    Button { showFillStats = true } label: { Label("Fill speed", systemImage: "chart.bar.xaxis") }
                 }
             }
+            .navigationDestination(isPresented: $showFillStats) { FillStatsView() }
             .overlay { if classes.isLoading || deleting { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
             .refreshable { await classes.load() }
             .confirmationDialog(

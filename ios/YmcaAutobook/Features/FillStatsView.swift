@@ -11,7 +11,8 @@ struct FillStatsView: View {
         var id: String { rawValue }
     }
 
-    @State private var filter: Filter = .mine
+    // Initial filter, overridable via launch arg `-screenshotStatsFilter "Fill fast"` (for screenshots).
+    @State private var filter = UserDefaults.standard.string(forKey: "screenshotStatsFilter").flatMap(Filter.init) ?? .mine
     @State private var search = ""
 
     private let order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]

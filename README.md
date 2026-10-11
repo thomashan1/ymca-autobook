@@ -25,15 +25,31 @@ iPhone and iPad. See [`ios/README.md`](ios/README.md).
   schedule with your **real bookings** (green ✓ = actually booked); tap a class
   for room/instructor. Pause days are struck through, and a **⇅ badge** marks a
   day with a one-off swap.
-- **Classes** — your recurring lineup by weekday; swipe to remove a class (opens
-  an auto-merging PR against `classes.yml`).
+- **Classes** — your recurring lineup by weekday, each with how fast it
+  typically fills (red when it's within 5 minutes); swipe to remove a class
+  (opens an auto-merging PR against `classes.yml`).
 - **Jobs** — live countdowns to each class's 167h booking-open, **grouped by the
   week they book**, with a **Book now** swipe; pause-skipped jobs are flagged.
 - **Away** — the `pauses.yml` away-dates with their notes, plus upcoming one-off
   swaps from `swaps.yml` (read-only — securing a swap stays the Actions engine's
   job). Past pauses collapse behind a disclosure row.
 
-_Screenshots use sample data._
+### Fill speed
+
+| Mine | Fill fast |
+|:---:|:---:|
+| <img src="ios/screenshots/fill-speed-mine.png" width="200"> | <img src="ios/screenshots/fill-speed-fast.png" width="200"> |
+
+The 📊 button on **Classes** shows how long every class at both branches takes
+to fill once its booking window opens, over the last 12 weeks — median,
+fastest, how many weeks it filled, and the typical waitlist. **Mine** is your
+lineup, **Fill fast** ranks everything that fills within 5 minutes, **All** is
+searchable. It comes from the YMCA's own "filled at" timestamps, collected daily
+by `scripts/update_fill_history.py` into `fill_stats.json` in the private repo.
+That's where the lineup's one real race shows up: BODYPUMP fills in ~37 s every
+week, while the rest take hours or never fill.
+
+_Screenshots use sample data (the Fill speed numbers are real, as of 10/10)._
 
 ## Architecture
 

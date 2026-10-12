@@ -27,6 +27,11 @@ enum Store {
     static func classes() -> [RecurringClass] { seeded("classes.json", as: [RecurringClass].self) ?? [] }
     static func pauses() -> [Pause] { seeded("pauses.json", as: [Pause].self) ?? [] }
 
+    static func swaps() -> [Swap] {
+        (try? Data(contentsOf: url("swaps.json"))).flatMap { try? JSONDecoder().decode([Swap].self, from: $0) } ?? []
+    }
+    static func save(swaps: [Swap]) { write(swaps.sorted { $0.date < $1.date }, to: "swaps.json") }
+
     static func save(classes: [RecurringClass]) { write(classes, to: "classes.json") }
     static func save(pauses: [Pause]) { write(pauses.sorted { $0.start < $1.start }, to: "pauses.json") }
 

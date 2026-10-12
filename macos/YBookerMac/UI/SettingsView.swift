@@ -9,7 +9,7 @@ struct SettingsView: View {
             CatalogView(engine: engine).tabItem { Label("Browse", systemImage: "magnifyingglass") }
             ClassesEditor(engine: engine).tabItem { Label("My classes", systemImage: "list.bullet") }
             StatsView(engine: engine).tabItem { Label("Stats", systemImage: "chart.bar") }
-            PausesEditor(engine: engine).tabItem { Label("Pauses", systemImage: "pause.circle") }
+            PausesView(engine: engine).tabItem { Label("Away & swaps", systemImage: "pause.circle") }
             GeneralSettings(engine: engine).tabItem { Label("General", systemImage: "gearshape") }
         }
         .padding()
@@ -79,62 +79,71 @@ struct ClassesEditor: View {
     }
 }
 
-// MARK: Pauses
+// MARK: Away dates and swaps (read-only — they live in the private repo)
 
-struct PausesEditor: View {
+struct PausesView: View {
     @ObservedObject var engine: Engine
-    @State private var from = Date()
-    @State private var to = Date()
-    @State private var keep: Set<String> = []
     @State private var showPast = false
+    @State private var syncing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle("Show past pauses", isOn: $showPast)
-            List {
-                ForEach(engine.pauses.filter { showPast || !$0.isPast }.sorted { $0.start < $1.start }) { p in
-                    HStack {
-                        Text(p.start == p.end ? withWeekday(p.start) : "\(withWeekday(p.start)) → \(withWeekday(p.end))")
-                            .monospacedDigit()
-                        if let ex = p.except, !ex.isEmpty {
-                            Text("keep: \(ex.map(className).joined(separator: ", "))").font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button(role: .destructive) {
-                            engine.update(pauses: engine.pauses.filter { $0.id != p.id })
-                        } label: { Image(systemName: "trash") }
-                        .buttonStyle(.borderless)
-                    }
-                    .foregroundStyle(p.isPast ? .secondary : .primary)
+            HStack {
+                SyncStatus(engine: engine)
+                Spacer()
+                Toggle("Show past", isOn: $showPast)
+                Button(syncing ? "Syncing…" : "Sync now") {
+                    syncing = true
+                    Task { await engine.syncNow(); syncing = false }
                 }
+                .disabled(syncing)
             }
-            GroupBox("Add a pause (no auto-booking on these days)") {
-                VStack(alignment: .leading) {
-                    HStack {
-                        DatePicker("From", selection: $from, displayedComponents: .date)
-                        DatePicker("To", selection: $to, in: from..., displayedComponents: .date)
-                        Spacer()
-                        Button("Add") {
-                            engine.update(pauses: engine.pauses + [Pause(start: Pause.day(from), end: Pause.day(max(from, to)),
-                                                                          except: keep.isEmpty ? nil : keep.sorted())])
-                            keep = []
-                        }
-                    }
-                    DisclosureGroup("Still book these classes on those days (optional)") {
-                        ScrollView {
-                            VStack(alignment: .leading) {
-                                ForEach(engine.classes) { k in
-                                    Toggle("\(k.name) — \(k.weekday) \(k.start)", isOn: Binding(
-                                        get: { keep.contains(k.key) },
-                                        set: { if $0 { keep.insert(k.key) } else { keep.remove(k.key) } }))
+            List {
+                Section("Away dates — no booking on these days") {
+                    let pauses = engine.pauses.filter { showPast || !$0.isPast }.sorted { $0.start < $1.start }
+                    if pauses.isEmpty { Text("None").foregroundStyle(.secondary) }
+                    ForEach(pauses) { p in
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(p.start == p.end ? withWeekday(p.start) : "\(withWeekday(p.start)) → \(withWeekday(p.end))")
+                                .monospacedDigit()
+                                .frame(minWidth: 230, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                if let note = p.note { Text(note) }
+                                if let ex = p.except, !ex.isEmpty {
+                                    Text("still booking: \(ex.map(className).joined(separator: ", "))")
+                                        .font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                         }
-                        .frame(maxHeight: 120)
+                        .foregroundStyle(p.isPast ? .secondary : .primary)
+                    }
+                }
+                Section("One-off swaps") {
+                    let swaps = engine.swaps.filter { showPast || !$0.isPast }
+                    if swaps.isEmpty { Text("None").foregroundStyle(.secondary) }
+                    ForEach(swaps) { w in
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(withWeekday(w.date)).monospacedDigit().frame(minWidth: 230, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(describe(w))
+                                if let note = w.note { Text(note).font(.caption).foregroundStyle(.secondary) }
+                            }
+                        }
+                        .foregroundStyle(w.isPast ? .secondary : .primary)
                     }
                 }
             }
+            Text("Edited in \(RepoSync.repo) (pauses.yml, swaps.yml), the same files GitHub books from. The Mac checks for changes every 10 minutes and right before each opening; if GitHub can't be reached it uses the last copy it saw. Swaps are carried out by GitHub's swap-check — the Mac only skips a class when a swap drops it with no replacement.")
+                .font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    private func describe(_ w: Swap) -> String {
+        let skip = w.skip.map { "skip \(className($0))" }
+        let book = w.bookName.map { name in
+            "take \(name)\(w.bookStart.map { " \($0)" } ?? "")\(w.bookLocationIds?.first.map { " · \(Slot.branchName($0))" } ?? "")"
+        }
+        return [skip, book].compactMap { $0 }.joined(separator: ", ")
     }
 
     /// "2026-10-23" -> "Fri 10/23/2026"
@@ -153,6 +162,26 @@ struct PausesEditor: View {
     }
 }
 
+/// "Synced 3 min ago" — or why it isn't syncing.
+struct SyncStatus: View {
+    @ObservedObject var engine: Engine
+
+    var body: some View {
+        if let err = engine.syncError {
+            Label(err + (engine.lastSynced.map { " · using the copy from \($0.formatted(.relative(presentation: .named)))" } ?? ""),
+                  systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+        } else if let t = engine.lastSynced {
+            TimelineView(.periodic(from: .now, by: 30)) { _ in
+                Label("Synced from GitHub \(t.formatted(.relative(presentation: .named)))", systemImage: "checkmark.icloud")
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            Label("Not synced yet", systemImage: "icloud.slash").foregroundStyle(.secondary)
+        }
+    }
+}
+
 // MARK: General
 
 struct GeneralSettings: View {
@@ -160,6 +189,13 @@ struct GeneralSettings: View {
     @State private var launchAtLogin = LoginItem.isEnabled
     @State private var loginError: String?
     @State private var notifications = "…"
+    @State private var token = ""
+
+    private func saveToken() {
+        let t = token
+        token = ""
+        Task { await engine.setGitHubToken(t) }
+    }
 
     var body: some View {
         Form {
@@ -176,6 +212,17 @@ struct GeneralSettings: View {
             Section("Notifications") {
                 LabeledContent("Status", value: notifications)
                 Text("One notification per opening with what shadow mode saw, plus a warning if the YMCA can't be reached.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("GitHub (away dates and swaps)") {
+                SecureField("Token", text: $token, prompt: Text(RepoSync.token == nil ? "Paste a token" : "Saved — paste to replace"))
+                    .onSubmit(saveToken)
+                HStack {
+                    SyncStatus(engine: engine)
+                    Spacer()
+                    Button("Save") { saveToken() }.disabled(token.isEmpty)
+                }
+                Text("A fine-grained token for \(RepoSync.repo) only, with Contents: Read-only. Stored in this Mac's Keychain.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Account") {

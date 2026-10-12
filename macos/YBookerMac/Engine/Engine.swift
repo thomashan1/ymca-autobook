@@ -14,7 +14,13 @@ final class Engine: ObservableObject {
 
     @Published private(set) var classes = Store.classes()
     @Published private(set) var history: [FillRecord] = Store.fillHistory()
+    /// Away dates and swaps: synced from the private repo, cached locally so a
+    /// GitHub outage never stops a booking (the cached copy is used instead).
     @Published private(set) var pauses = Store.pauses()
+    @Published private(set) var swaps = Store.swaps()
+    @Published private(set) var lastSynced = UserDefaults.standard.object(forKey: "lastSynced") as? Date
+    @Published private(set) var syncError: String?
+    private var lastSyncAttempt: Date?
 
     private var loop: Task<Void, Never>?
     /// True from warm-up through the follow-up reads; edits must not cancel that.
@@ -33,6 +39,8 @@ final class Engine: ObservableObject {
     private let replanEvery: TimeInterval = 3 * 3600
     /// Start waking up and warming the session this long before an opening.
     private let warmup: TimeInterval = 90
+    /// Pick up pauses.yml / swaps.yml changes this often (and right before every opening).
+    private let syncEvery: TimeInterval = 600
 
     init() {
         Notifier.requestPermission()
@@ -69,10 +77,54 @@ final class Engine: ObservableObject {
         replanSoon()
     }
 
-    func update(pauses: [Pause]) {
-        self.pauses = pauses
-        Store.save(pauses: pauses)
-        replanSoon()
+    // MARK: Away dates and swaps (from the private repo)
+
+    /// Fetch pauses.yml and swaps.yml. Returns true if either changed. On any
+    /// failure the cached copy stays in force — same fail-open rule as the
+    /// Python engine, so a bad token can't silently stop bookings.
+    @discardableResult
+    func syncFromRepo() async -> Bool {
+        lastSyncAttempt = Date()
+        do {
+            async let p = RepoSync.fetch("pauses.yml")
+            async let w = RepoSync.fetch("swaps.yml")
+            let (pText, wText) = try await (p, w)
+            guard let pText else { throw RepoSync.Failure.http(404, "pauses.yml") }
+            let newPauses = RepoSync.parsePauses(pText)
+            let newSwaps = wText.map(RepoSync.parseSwaps) ?? []   // no swaps.yml = no swaps
+            let changed = newPauses != pauses || newSwaps != swaps
+            if changed {
+                pauses = newPauses
+                swaps = newSwaps
+                Store.save(pauses: newPauses)
+                Store.save(swaps: newSwaps)
+            }
+            lastSynced = Date()
+            UserDefaults.standard.set(lastSynced, forKey: "lastSynced")
+            syncError = nil
+            return changed
+        } catch {
+            syncError = error.localizedDescription
+            return false
+        }
+    }
+
+    func syncNow() async {
+        if await syncFromRepo() { replanSoon() }
+    }
+
+    func setGitHubToken(_ token: String) async {
+        RepoSync.setToken(token)
+        await syncNow()
+    }
+
+    /// Why this class won't be booked on this date, if it won't: an away date
+    /// (unless the class is in its `except:`), or a skip-only swap.
+    func skipReason(_ k: RecurringClass, on date: Date) -> String? {
+        if pauses.contains(where: { $0.covers(date, key: k.key) }) { return "away" }
+        let day = Pause.day(date)
+        if swaps.contains(where: { $0.date == day && $0.skip == k.key && $0.isSkipOnly }) { return "swap: skip" }
+        return nil
     }
 
     /// Re-plan right away — unless an opening is in progress, in which case the
@@ -224,6 +276,9 @@ final class Engine: ObservableObject {
 
     private func run() async {
         while !Task.isCancelled {
+            if lastSyncAttempt.map({ Date().timeIntervalSince($0) >= syncEvery }) ?? true, !isFiring {
+                if await syncFromRepo() { lastPlanned = nil }
+            }
             if lastPlanned.map({ Date().timeIntervalSince($0) > replanEvery }) ?? true || openings.isEmpty {
                 await plan()
             }
@@ -238,7 +293,8 @@ final class Engine: ObservableObject {
             let replanAt = (lastPlanned ?? Date()).addingTimeInterval(replanEvery)
             if Date() < wakeAt {
                 status = "Next: \(group.map(\.klass.name).joined(separator: " + ")) opens \(next.openAt.formatted(date: .abbreviated, time: .standard))"
-                await sleep(until: min(wakeAt, replanAt))
+                let syncAt = (lastSyncAttempt ?? Date()).addingTimeInterval(syncEvery)
+                await sleep(until: min(wakeAt, replanAt, syncAt))
                 continue
             }
             await fire(group)
@@ -262,8 +318,7 @@ final class Engine: ObservableObject {
                 recordHistory(occs, branchId: branch)
                 for k in classes where k.locationIds.contains(branch) {
                     for o in occs where k.matches(o) && o.openAt > now {
-                        let paused = pauses.contains { $0.covers(o.occursAt, key: k.key) }
-                        found.append(Opening(klass: k, occurrence: o, paused: paused))
+                        found.append(Opening(klass: k, occurrence: o, paused: skipReason(k, on: o.occursAt) != nil))
                     }
                 }
             }
@@ -283,7 +338,7 @@ final class Engine: ObservableObject {
 
     // MARK: The opening second
 
-    private func fire(_ group: [Opening]) async {
+    private func fire(_ planned: [Opening]) async {
         // Hold off App Nap and idle sleep from warm-up until the follow-ups are done.
         let urgent = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiated, .idleSystemSleepDisabled, .latencyCritical],
@@ -292,6 +347,13 @@ final class Engine: ObservableObject {
         defer {
             ProcessInfo.processInfo.endActivity(urgent)
             isFiring = false
+        }
+
+        // Last look at the away dates and swaps, so a change made minutes ago
+        // counts. Bounded by RepoSync's short timeout; on failure the cached copy stands.
+        await syncFromRepo()
+        let group = planned.map {
+            Opening(klass: $0.klass, occurrence: $0.occurrence, paused: skipReason($0.klass, on: $0.occurrence.occursAt) != nil)
         }
 
         var entries = group.map {

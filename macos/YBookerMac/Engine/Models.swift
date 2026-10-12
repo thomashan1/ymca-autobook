@@ -38,6 +38,8 @@ struct Pause: Codable, Hashable, Identifiable, Sendable {
     let start: String        // yyyy-MM-dd
     let end: String
     let except: [String]?
+    /// The inline `# comment` from pauses.yml, if any.
+    var note: String? = nil
     var id: String { "\(start)…\(end)…\((except ?? []).joined(separator: ","))" }
 
     static func day(_ date: Date) -> String {
@@ -58,6 +60,24 @@ struct Pause: Codable, Hashable, Identifiable, Sendable {
         let day = f.string(from: date)
         return start <= day && day <= end && !(except ?? []).contains(key)
     }
+}
+
+/// A one-off swap from swaps.yml: on `date`, skip a recurring class and/or book
+/// a different one. GitHub's swap-check carries it out; the Mac only reads it.
+struct Swap: Codable, Hashable, Identifiable, Sendable {
+    var date: String             // yyyy-MM-dd, the class date
+    var skip: String? = nil      // a class key
+    var bookName: String? = nil
+    var bookStart: String? = nil
+    var bookLocationIds: [Int]? = nil
+    var note: String? = nil
+    var id: String { "\(date)|\(skip ?? "")|\(bookName ?? "")" }
+
+    var isPast: Bool { date < Pause.day(Date()) }
+    /// A skip with no replacement: nothing to wait for, so the class just isn't booked.
+    /// With a replacement the original stays booked until GitHub's swap-check has
+    /// secured the replacement and released it — never an empty slot.
+    var isSkipOnly: Bool { skip != nil && bookName == nil }
 }
 
 /// One weekly slot in the YMCA's schedule — a class at the same day, time and

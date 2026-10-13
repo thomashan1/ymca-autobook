@@ -305,6 +305,9 @@ final class Engine: ObservableObject {
             cloudError = nil
         } catch {
             cloudError = error.localizedDescription
+            // Try again later: iCloud being briefly unavailable (or a brand-new
+            // container not yet known to the server) shouldn't wait for the next plan.
+            pushToCloudSoon(after: 300)
         }
     }
 

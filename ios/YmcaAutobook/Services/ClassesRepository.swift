@@ -21,6 +21,12 @@ final class ClassesRepository: ObservableObject {
             classes = SampleData.classes.sorted { ($0.weekday, $0.start) < ($1.weekday, $1.start) }
             return
         }
+        if DataSource.isCloud {
+            await CloudSource.shared.ensureFresh()
+            classes = CloudSource.shared.classes
+            error = CloudSource.shared.error
+            return
+        }
         isLoading = true; error = nil
         defer { isLoading = false }
         do {

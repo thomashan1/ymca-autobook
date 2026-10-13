@@ -25,14 +25,20 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                if !auth.hasToken {
-                    tokenEntrySection
-                } else {
-                    connectionSection
+                if auth.isCloud {
+                    cloudSection
                     diagnosticsSection
+                } else {
+                    if !auth.hasToken {
+                        tokenEntrySection
+                    } else {
+                        connectionSection
+                        diagnosticsSection
+                    }
+                    useCloudSection
+                    whySection
+                    howToSection
                 }
-                whySection
-                howToSection
             }
             .navigationTitle(onboarding ? "Connect" : "Settings")
         }
@@ -61,6 +67,44 @@ struct SettingsView: View {
             Text("GitHub token")
         } footer: {
             Text("Paste the token you created below. It's stored only in this device's Keychain — never sent anywhere but GitHub.")
+        }
+    }
+
+    /// Reading from the Mac app instead: nothing to sign in to but iCloud.
+    private var cloudSection: some View {
+        Section {
+            Label("Reading from your Mac via iCloud", systemImage: "icloud.fill")
+                .foregroundStyle(Theme.booked)
+            MacStatusRow()
+            Button {
+                reload()
+            } label: {
+                HStack {
+                    Text("Reload data")
+                    if reloading { Spacer(); ProgressView() }
+                }
+            }
+            .disabled(reloading)
+            Button("Switch to GitHub") { auth.use(.github) }
+        } header: {
+            Text("Data source")
+        } footer: {
+            Text("The Y Booker app on your Mac books your classes and publishes your schedule, away dates and results to your iCloud. This app shows them, and alerts you when a booking window opens. Change classes and away dates on the Mac.")
+        }
+    }
+
+    private var useCloudSection: some View {
+        Section {
+            Button {
+                auth.use(.icloud)
+                if onboarding { dismiss() }
+            } label: {
+                Label("Use iCloud from my Mac", systemImage: "icloud")
+            }
+        } header: {
+            Text("Or")
+        } footer: {
+            Text("If the Y Booker Mac app does your booking, this app can read everything from your iCloud instead — no GitHub token needed.")
         }
     }
 
@@ -235,6 +279,7 @@ struct SettingsView: View {
     private func reload() {
         reloading = true
         Task {
+            if auth.isCloud { await CloudSource.shared.refresh() }
             await classes.load()
             await pauses.load()
             await snapshot.load()

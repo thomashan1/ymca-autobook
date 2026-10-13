@@ -5,6 +5,7 @@ import SwiftUI
 struct AwayView: View {
     @EnvironmentObject var pauses: PausesRepository
     @EnvironmentObject var swaps: SwapsRepository
+    @EnvironmentObject var auth: AuthStore
     @State private var showAdd = false
     @State private var showPast = false
     @State private var busy = false
@@ -51,7 +52,8 @@ struct AwayView: View {
                 } header: {
                     Text("Upcoming pauses")
                 } footer: {
-                    Text("Synced to ymca-private/pauses.yml — swipe to delete.")
+                    Text(auth.isCloud ? "From your Mac — change away dates there."
+                                      : "Synced to ymca-private/pauses.yml — swipe to delete.")
                 }
 
                 // One-off swaps are the other kind of schedule exception, so they
@@ -66,7 +68,8 @@ struct AwayView: View {
                     } header: {
                         Text("One-off swaps")
                     } footer: {
-                        Text("From ymca-private/swaps.yml. Booked by Actions — the original class is kept until its replacement is secured.")
+                        Text(auth.isCloud ? "From your Mac."
+                                          : "From ymca-private/swaps.yml. Booked by Actions — the original class is kept until its replacement is secured.")
                     }
                 }
 
@@ -88,9 +91,12 @@ struct AwayView: View {
             }
             .navigationTitle("Away Dates")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showAdd = true } label: { Image(systemName: "plus") }
-                        .disabled(busy)
+                // Read-only from iCloud: the Mac is the only writer.
+                if !auth.isCloud {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showAdd = true } label: { Image(systemName: "plus") }
+                            .disabled(busy)
+                    }
                 }
             }
             .overlay { if busy { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
@@ -107,8 +113,10 @@ struct AwayView: View {
 
     @ViewBuilder
     private func deleteButton(_ pause: Pause) -> some View {
-        Button(role: .destructive) { remove(pause) } label: {
-            Label("Delete", systemImage: "trash")
+        if !auth.isCloud {
+            Button(role: .destructive) { remove(pause) } label: {
+                Label("Delete", systemImage: "trash")
+            }
         }
     }
 

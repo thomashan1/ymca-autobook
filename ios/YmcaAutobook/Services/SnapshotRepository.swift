@@ -32,6 +32,7 @@ final class SnapshotRepository: ObservableObject {
             error = nil
             return
         }
+        if DataSource.isCloud { index = [:]; error = nil; return }
         do {
             let (text, _) = try await client.readFile(repo: Config.privateRepo,
                                                       path: "schedule_snapshot.json")

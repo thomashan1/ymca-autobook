@@ -32,6 +32,12 @@ final class PausesRepository: ObservableObject {
             error = nil
             return
         }
+        if DataSource.isCloud {
+            await CloudSource.shared.ensureFresh()
+            pauses = CloudSource.shared.pauses
+            error = CloudSource.shared.error
+            return
+        }
         isLoading = true; error = nil
         defer { isLoading = false }
         do {

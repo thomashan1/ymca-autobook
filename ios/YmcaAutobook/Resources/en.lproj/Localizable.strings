@@ -1,0 +1,3 @@
+/* Booking alerts from the Mac app (CloudKit subscription): the class name, then the result. */
+"OPENING_TITLE" = "%@";
+"OPENING_BODY" = "%@";

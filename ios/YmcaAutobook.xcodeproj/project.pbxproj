@@ -34,6 +34,8 @@
 		FE64799E77614F4CCE9BFB6E /* Pause.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507C91C32844C2CD6CF1BC71 /* Pause.swift */; };
 		F1110000000000000000FEF2 /* FillStatsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1110000000000000000FEF1 /* FillStatsRepository.swift */; };
 		F1120000000000000000FEF2 /* FillStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1120000000000000000FEF1 /* FillStatsView.swift */; };
+		5A0400000000000000000CS2 /* CloudSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0400000000000000000CS1 /* CloudSource.swift */; };
+		5A0400000000000000000LS3 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 5A0400000000000000000LS1 /* Localizable.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,6 +67,8 @@
 		FAD100000000000000000A1 /* FullRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullRepository.swift; sourceTree = "<group>"; };
 		F1110000000000000000FEF1 /* FillStatsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillStatsRepository.swift; sourceTree = "<group>"; };
 		F1120000000000000000FEF1 /* FillStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillStatsView.swift; sourceTree = "<group>"; };
+		5A0400000000000000000CS1 /* CloudSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSource.swift; sourceTree = "<group>"; };
+		5A0400000000000000000LS2 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -118,6 +122,7 @@
 			isa = PBXGroup;
 			children = (
 				AC219AD76C76267D6D35E0B9 /* Assets.xcassets */,
+				5A0400000000000000000LS1 /* Localizable.strings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -147,6 +152,7 @@
 				5A140000000000000000FEF1 /* SnapshotRepository.swift */,
 				B00C0000000000000000FEF1 /* BookingsRepository.swift */,
 				FAD100000000000000000A1 /* FullRepository.swift */,
+				5A0400000000000000000CS1 /* CloudSource.swift */,
 				5A030000000000000000FEF1 /* SwapsRepository.swift */,
 			);
 			path = Services;
@@ -167,6 +173,17 @@
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXVariantGroup section */
+		5A0400000000000000000LS1 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				5A0400000000000000000LS2 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin PBXNativeTarget section */
 		E36A379E0F637197D4010FAD /* YmcaAutobook */ = {
@@ -221,6 +238,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DC1F86A72F7FF21A0838C304 /* Assets.xcassets in Resources */,
+				5A0400000000000000000LS3 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -246,6 +264,7 @@
 				485E52EADF5F74731E242C87 /* KeychainStore.swift in Sources */,
 				FE64799E77614F4CCE9BFB6E /* Pause.swift in Sources */,
 				5A020000000000000000FEF2 /* Swap.swift in Sources */,
+				5A0400000000000000000CS2 /* CloudSource.swift in Sources */,
 				5A030000000000000000FEF2 /* SwapsRepository.swift in Sources */,
 				2CD77DA8959112C6D3A62EFF /* PausesRepository.swift in Sources */,
 				5A140000000000000000FEF2 /* SnapshotRepository.swift in Sources */,
@@ -267,6 +286,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = YmcaAutobook/YmcaAutobook.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GYW462KLR5;
@@ -290,6 +310,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = YmcaAutobook/YmcaAutobook.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GYW462KLR5;

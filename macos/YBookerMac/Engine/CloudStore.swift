@@ -1,6 +1,7 @@
 import CloudKit
 import CryptoKit
 import Foundation
+import os
 
 /// Mirrors the Mac's state into the user's own iCloud (CloudKit private
 /// database), for the iPhone/iPad companion to read (#147, #149).
@@ -38,14 +39,18 @@ actor CloudStore {
         var syncError: String?
     }
 
+    private let logger = Logger(subsystem: "com.thomashan.ybooker.mac", category: "cloud")
+
     enum Failure: LocalizedError {
         case account(CKAccountStatus)
+        case records(Int, String)
         var errorDescription: String? {
             switch self {
             case .account(.noAccount): return "Not signed in to iCloud on this Mac"
             case .account(.restricted): return "iCloud is restricted on this Mac"
             case .account(.temporarilyUnavailable): return "iCloud is temporarily unavailable"
             case .account: return "iCloud account status unknown"
+            case .records(let n, let first): return "iCloud rejected \(n) record(s): \(first)"
             }
         }
     }
@@ -75,12 +80,19 @@ actor CloudStore {
         let toDelete = pushed.keys.filter { wanted[$0] == nil }
 
         var saved = 0, deleted = 0
+        var failures: [String] = []
         // CloudKit takes at most 400 records per request.
         for chunk in toSave.chunked(400) {
             let (results, _) = try await database.modifyRecords(
                 saving: chunk.map(\.record), deleting: [], savePolicy: .allKeys, atomically: false)
             for (id, r) in results {
-                if case .success = r, let h = wanted[id.recordName]?.hash { pushed[id.recordName] = h; saved += 1 }
+                switch r {
+                case .success:
+                    if let h = wanted[id.recordName]?.hash { pushed[id.recordName] = h; saved += 1 }
+                case .failure(let e):
+                    failures.append("\(id.recordName): \(e)")
+                    logger.error("save \(id.recordName, privacy: .public) failed: \(String(describing: e), privacy: .public)")
+                }
             }
             savePushed()
         }
@@ -98,6 +110,8 @@ actor CloudStore {
             }
             savePushed()
         }
+        logger.info("push: saved \(saved), deleted \(deleted), failed \(failures.count)")
+        if let first = failures.first { throw Failure.records(failures.count, first) }
         return (saved, deleted)
     }
 
@@ -124,6 +138,8 @@ actor CloudStore {
             let rec = CKRecord(recordType: type, recordID: CKRecord.ID(recordName: recordName, zoneID: zoneID))
             var digest = type
             for (k, v) in fields.sorted(by: { $0.key < $1.key }) {
+                // Leave empty lists out: iCloud can't infer a new field's type from one.
+                let v = (v as? NSArray)?.count == 0 ? nil : v
                 rec[k] = v
                 digest += "|\(k)=\(v.map { "\($0)" } ?? "nil")"
             }

@@ -8,6 +8,9 @@ import Foundation
 final class Engine: ObservableObject {
     @Published private(set) var signedInAs: String? = FisikalClient.username
     @Published private(set) var openings: [Opening] = []
+    /// What the YMCA has us booked into, refreshed with every plan (and so right
+    /// after each opening, which clears lastPlanned).
+    private(set) var bookings: [CloudStore.Booking]?
     @Published private(set) var log: [ShadowEntry] = Store.shadowLog()
     @Published private(set) var status = "Starting…"
     @Published private(set) var lastPlanned: Date?
@@ -292,7 +295,7 @@ final class Engine: ObservableObject {
 
     func pushToCloud() async {
         let snap = CloudStore.Snapshot(
-            classes: classes, pauses: pauses, swaps: swaps, log: log, stats: slotStats(),
+            classes: classes, pauses: pauses, swaps: swaps, log: log, stats: slotStats(), bookings: bookings,
             status: .init(updatedAt: Date(), status: status, signedInAs: signedInAs,
                           liveClasses: classes.filter(\.booksForReal).count,
                           nextOpening: openings.first?.openAt,
@@ -353,6 +356,7 @@ final class Engine: ObservableObject {
             _ = try await FisikalClient.shared.ensureSession()
             let now = Date()
             var found: [Opening] = []
+            var joined: [CloudStore.Booking] = []
             if !UserDefaults.standard.bool(forKey: "historyBackfilled") { await backfillHistory() }
             // Both branches every time, not just the ones in your lineup: the same
             // fetch feeds fill history for every class.
@@ -360,6 +364,10 @@ final class Engine: ObservableObject {
                 let occs = try await FisikalClient.shared.occurrences(
                     locationIds: [branch], since: now, till: now.addingTimeInterval(horizon))
                 recordHistory(occs, branchId: branch)
+                joined += occs.filter(\.isJoined).map {
+                    .init(occurrenceId: $0.id, name: $0.title, occursAt: $0.occursAt, minutes: $0.durationMinutes,
+                          branchId: branch, room: $0.room, trainer: $0.trainer)
+                }
                 for k in classes where k.locationIds.contains(branch) {
                     for o in occs where k.matches(o) && o.openAt > now {
                         found.append(Opening(klass: k, occurrence: o, paused: skipReason(k, on: o.occursAt) != nil))
@@ -367,6 +375,7 @@ final class Engine: ObservableObject {
                 }
             }
             openings = found.sorted { $0.openAt < $1.openAt }
+            bookings = joined.sorted { $0.occursAt < $1.occursAt }
             Store.save(fillHistory: history)
             lastPlanned = Date()
             status = "Planned \(openings.count) upcoming openings"

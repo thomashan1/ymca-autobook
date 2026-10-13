@@ -24,7 +24,21 @@ actor CloudStore {
         var swaps: [Swap]
         var log: [ShadowEntry]
         var stats: [SlotStats]
+        /// nil until the first plan since launch: keep what iCloud has rather than wipe it.
+        var bookings: [Booking]?
         var status: MacStatus
+    }
+
+    /// A class the YMCA has us joined to, as of the last plan — the real list,
+    /// so the phone shows bookings made by any trigger and drops cancelled ones.
+    struct Booking: Sendable {
+        var occurrenceId: Int
+        var name: String
+        var occursAt: Date
+        var minutes: Int
+        var branchId: Int
+        var room: String
+        var trainer: String
     }
 
     /// A heartbeat so the companion can tell whether the Mac is up.
@@ -77,7 +91,7 @@ actor CloudStore {
         let records = build(s)
         let wanted = Dictionary(records.map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
         let toSave = wanted.values.filter { pushed[$0.name] != $0.hash }
-        let toDelete = pushed.keys.filter { wanted[$0] == nil }
+        let toDelete = pushed.keys.filter { wanted[$0] == nil && (s.bookings != nil || !$0.hasPrefix("Booking.")) }
 
         var saved = 0, deleted = 0
         var failures: [String] = []
@@ -202,6 +216,15 @@ actor CloudStore {
             f["signupsBy"] = Self.json(curve).map { $0 as NSString }
             f["curveWeeks"] = NSNumber(value: st.curveWeeks)
             add("SlotStat", st.id, f)
+        }
+        for b in s.bookings ?? [] {
+            add("Booking", "\(b.occurrenceId)", [
+                "occurrenceId": NSNumber(value: b.occurrenceId), "name": b.name as NSString,
+                "occursAt": b.occursAt as NSDate, "minutes": NSNumber(value: b.minutes),
+                "branchId": NSNumber(value: b.branchId),
+                "room": b.room.isEmpty ? nil : b.room as NSString,
+                "trainer": b.trainer.isEmpty ? nil : b.trainer as NSString,
+            ])
         }
         let m = s.status
         add("MacStatus", "current", [

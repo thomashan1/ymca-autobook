@@ -211,7 +211,7 @@ struct GeneralSettings: View {
             }
             Section("Notifications") {
                 LabeledContent("Status", value: notifications)
-                Text("One notification per opening with what shadow mode saw, plus a warning if the YMCA can't be reached.")
+                Text("A notification per opening with the booking result (or, for shadow-only classes, what the Mac saw), plus a warning if the YMCA can't be reached.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("GitHub (away dates and swaps)") {

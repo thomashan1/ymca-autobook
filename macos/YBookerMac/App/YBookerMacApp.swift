@@ -12,7 +12,7 @@ struct YBookerMacApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("Y Booker — Shadow log", id: "log") {
+        Window("Y Booker — Booking log", id: "log") {
             LogView(engine: engine)
         }
         .defaultSize(width: 900, height: 520)

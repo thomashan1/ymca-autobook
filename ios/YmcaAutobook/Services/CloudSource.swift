@@ -129,6 +129,7 @@ final class CloudSource: ObservableObject {
         case "Swap": cache.swaps[name] = CloudSwap(r)
         case "Opening": cache.openings[name] = Opening(r)
         case "SlotStat": cache.stats[name] = CloudSlot(r)
+        case "Booking": cache.bookings[name] = CloudBooking(r)
         case "MacStatus": cache.mac = MacStatus(r) ?? cache.mac
         default: break
         }
@@ -136,7 +137,7 @@ final class CloudSource: ObservableObject {
 
     private func remove(_ name: String) {
         cache.classes[name] = nil; cache.pauses[name] = nil; cache.swaps[name] = nil
-        cache.openings[name] = nil; cache.stats[name] = nil
+        cache.openings[name] = nil; cache.stats[name] = nil; cache.bookings[name] = nil
     }
 
     private static var cacheURL: URL {
@@ -184,11 +185,22 @@ final class CloudSource: ObservableObject {
         }
     }
 
-    /// Classes the Mac saw booked for us at their opening, from today on. The Mac
-    /// only looks around the opening, so a booking cancelled afterwards still
-    /// shows here until its date passes.
+    /// What the YMCA has us booked into, as of the Mac's last plan (every few
+    /// hours, and right after each opening) — whichever trigger made the booking.
     var bookings: [BookingsRepository.Booking] {
         let today = Self.day.string(from: Date())
+        if !cache.bookings.isEmpty {
+            return cache.bookings.values.compactMap { b in
+                let date = Self.day.string(from: b.occursAt)
+                guard date >= today else { return nil }
+                return BookingsRepository.Booking(
+                    date: date, start: Self.time.string(from: b.occursAt),
+                    end: Self.time.string(from: b.occursAt.addingTimeInterval(Double(b.minutes) * 60)),
+                    name: b.name, location_id: b.branchId, room: b.room, instructor: b.trainer)
+            }
+        }
+        // Older Mac builds publish no Booking records: fall back to what each
+        // opening saw, which misses bookings made after it and cancellations.
         let branchOf = Dictionary(cache.classes.values.map { ($0.key, $0.locationIds.first) }, uniquingKeysWith: { a, _ in a })
         return cache.openings.values.compactMap { o in
             let date = Self.day.string(from: o.occursAt)
@@ -269,6 +281,7 @@ final class CloudSource: ObservableObject {
         var swaps: [String: CloudSwap] = [:]
         var openings: [String: Opening] = [:]
         var stats: [String: CloudSlot] = [:]
+        var bookings: [String: CloudBooking] = [:]
         var mac: MacStatus?
         var token: Data?
         var lastRefresh: Date?
@@ -309,6 +322,21 @@ final class CloudSource: ObservableObject {
             bookStart = r["bookStart"] as? String
             bookLocationIds = (r["bookLocationIds"] as? [Int]) ?? []
             note = r["note"] as? String
+        }
+    }
+
+    private struct CloudBooking: Codable {
+        let name: String
+        let occursAt: Date
+        let minutes, branchId: Int
+        let room, trainer: String?
+        init?(_ r: CKRecord) {
+            guard let name = r["name"] as? String, let at = r["occursAt"] as? Date else { return nil }
+            self.name = name; occursAt = at
+            minutes = (r["minutes"] as? Int) ?? 60
+            branchId = (r["branchId"] as? Int) ?? 0
+            room = r["room"] as? String
+            trainer = r["trainer"] as? String
         }
     }
 

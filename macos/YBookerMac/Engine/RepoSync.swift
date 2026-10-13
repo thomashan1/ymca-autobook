@@ -8,8 +8,20 @@ import Foundation
 /// just enough YAML for the two files' fixed shapes. The Python engine uses a
 /// real YAML parser and stays the authority on what the files mean.
 enum RepoSync {
-    static let repo = "thomashan1/ymca-private"
     private static let tokenKey = "githubToken"
+    private static let repoKey = "githubRepo"
+
+    /// "owner/name" of a private repo holding pauses.yml / swaps.yml. Optional:
+    /// unset means the GitHub source is off and away dates/swaps are kept in the
+    /// app. Only people who also run the GitHub booker (Option A) need it.
+    static var repo: String? {
+        UserDefaults.standard.string(forKey: repoKey).flatMap {
+            let t = $0.trimmingCharacters(in: .whitespaces)
+            return t.isEmpty ? nil : t
+        }
+    }
+    static var isEnabled: Bool { repo != nil }
+    static func setRepo(_ r: String) { UserDefaults.standard.set(r.trimmingCharacters(in: .whitespaces), forKey: repoKey) }
 
     /// A fine-grained token with Contents: Read-only on the private repo.
     static var token: String? { Keychain.string(tokenKey).flatMap { $0.isEmpty ? nil : $0 } }
@@ -19,11 +31,12 @@ enum RepoSync {
     }
 
     enum Failure: LocalizedError {
-        case noToken, http(Int, String)
+        case noRepo, noToken, http(Int, String)
         var errorDescription: String? {
             switch self {
+            case .noRepo: return "No GitHub repo set"
             case .noToken: return "No GitHub token — add one in Settings → General"
-            case .http(401, _), .http(403, _): return "GitHub refused the token (expired, or no access to \(RepoSync.repo))"
+            case .http(401, _), .http(403, _): return "GitHub refused the token (expired, or no access to \(RepoSync.repo ?? "the repo"))"
             case .http(let code, let path): return "GitHub returned \(code) for \(path)"
             }
         }
@@ -31,6 +44,7 @@ enum RepoSync {
 
     /// The file's text, or nil if it doesn't exist.
     static func fetch(_ path: String) async throws -> String? {
+        guard let repo else { throw Failure.noRepo }
         guard let token else { throw Failure.noToken }
         var req = URLRequest(url: URL(string: "https://api.github.com/repos/\(repo)/contents/\(path)")!)
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

@@ -13,19 +13,12 @@ enum Store {
 
     private static func url(_ name: String) -> URL { dir.appendingPathComponent(name) }
 
-    private static func seeded<T: Decodable>(_ name: String, as: T.Type) -> T? {
-        let local = url(name)
-        if !FileManager.default.fileExists(atPath: local.path),
-           let bundled = Bundle.main.url(forResource: name.replacingOccurrences(of: ".json", with: ""),
-                                         withExtension: "json", subdirectory: nil) {
-            try? FileManager.default.copyItem(at: bundled, to: local)
-        }
-        guard let data = try? Data(contentsOf: local) else { return nil }
-        return try? JSONDecoder().decode(T.self, from: data)
+    private static func load<T: Decodable>(_ name: String, as: T.Type) -> T? {
+        (try? Data(contentsOf: url(name))).flatMap { try? JSONDecoder().decode(T.self, from: $0) }
     }
 
-    static func classes() -> [RecurringClass] { seeded("classes.json", as: [RecurringClass].self) ?? [] }
-    static func pauses() -> [Pause] { seeded("pauses.json", as: [Pause].self) ?? [] }
+    static func classes() -> [RecurringClass] { load("classes.json", as: [RecurringClass].self) ?? [] }
+    static func pauses() -> [Pause] { load("pauses.json", as: [Pause].self) ?? [] }
 
     static func swaps() -> [Swap] {
         (try? Data(contentsOf: url("swaps.json"))).flatMap { try? JSONDecoder().decode([Swap].self, from: $0) } ?? []

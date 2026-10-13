@@ -133,7 +133,8 @@ struct PausesView: View {
                     }
                 }
             }
-            Text("Edited in \(RepoSync.repo) (pauses.yml, swaps.yml), the same files GitHub books from. The Mac checks for changes every 10 minutes and right before each opening; if GitHub can't be reached it uses the last copy it saw. Swaps are carried out by GitHub's swap-check — the Mac only skips a class when a swap drops it with no replacement.")
+            (Text(RepoSync.repo.map { "Edited in \($0) (pauses.yml, swaps.yml), the same files GitHub books from." } ?? "No GitHub source set (Settings → General).")
+            + Text("  The Mac checks for changes every 10 minutes and right before each opening; if GitHub can't be reached it uses the last copy it saw. Swaps are carried out by GitHub's swap-check — the Mac only skips a class when a swap drops it with no replacement."))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -167,7 +168,9 @@ struct SyncStatus: View {
     @ObservedObject var engine: Engine
 
     var body: some View {
-        if let err = engine.syncError {
+        if !RepoSync.isEnabled {
+            Label("GitHub source off", systemImage: "icloud.slash").foregroundStyle(.secondary)
+        } else if let err = engine.syncError {
             Label(err + (engine.lastSynced.map { " · using the copy from \($0.formatted(.relative(presentation: .named)))" } ?? ""),
                   systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
@@ -190,11 +193,12 @@ struct GeneralSettings: View {
     @State private var loginError: String?
     @State private var notifications = "…"
     @State private var token = ""
+    @State private var repo = RepoSync.repo ?? ""
 
-    private func saveToken() {
+    private func saveGitHub() {
         let t = token
         token = ""
-        Task { await engine.setGitHubToken(t) }
+        Task { await engine.setGitHub(repo: repo, token: t) }
     }
 
     var body: some View {
@@ -214,15 +218,18 @@ struct GeneralSettings: View {
                 Text("A notification per opening with the booking result (or, for shadow-only classes, what the Mac saw), plus a warning if the YMCA can't be reached.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("GitHub (away dates and swaps)") {
+            Section("GitHub source (optional)") {
+                TextField("Private repo", text: $repo, prompt: Text("owner/repo — leave empty if you don't use GitHub"))
+                    .onSubmit(saveGitHub)
                 SecureField("Token", text: $token, prompt: Text(RepoSync.token == nil ? "Paste a token" : "Saved — paste to replace"))
-                    .onSubmit(saveToken)
+                    .onSubmit(saveGitHub)
                 HStack {
                     SyncStatus(engine: engine)
                     Spacer()
-                    Button("Save") { saveToken() }.disabled(token.isEmpty)
+                    Button("Save") { saveGitHub() }
+                        .disabled(repo.trimmingCharacters(in: .whitespaces) == (RepoSync.repo ?? "") && token.isEmpty)
                 }
-                Text("A fine-grained token for \(RepoSync.repo) only, with Contents: Read-only. Stored in this Mac's Keychain.")
+                Text("Only if you also run the GitHub booker: the Mac then reads away dates and swaps from that repo's pauses.yml and swaps.yml, so both bookers share them. Use a fine-grained token for that repo only, with Contents: Read-only. It's stored in this Mac's Keychain.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("iCloud (for the iPhone app)") {

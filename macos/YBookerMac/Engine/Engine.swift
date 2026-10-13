@@ -91,6 +91,7 @@ final class Engine: ObservableObject {
     @discardableResult
     func syncFromRepo() async -> Bool {
         lastSyncAttempt = Date()
+        guard RepoSync.isEnabled else { syncError = nil; return false }
         do {
             async let p = RepoSync.fetch("pauses.yml")
             async let w = RepoSync.fetch("swaps.yml")
@@ -120,8 +121,9 @@ final class Engine: ObservableObject {
         if await syncFromRepo() { replanSoon() }
     }
 
-    func setGitHubToken(_ token: String) async {
-        RepoSync.setToken(token)
+    func setGitHub(repo: String, token: String?) async {
+        RepoSync.setRepo(repo)
+        if let token, !token.isEmpty { RepoSync.setToken(token) }
         await syncNow()
     }
 

@@ -25,8 +25,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                      didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
-        app.registerForRemoteNotifications()
-        Task { await CloudData.shared.ensureSubscriptions() }
+        app.registerForRemoteNotifications()   // subscriptions follow the first successful refresh
         return true
     }
 

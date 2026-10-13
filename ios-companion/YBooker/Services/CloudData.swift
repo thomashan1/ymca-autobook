@@ -27,6 +27,9 @@ final class CloudData: ObservableObject {
 
     // Records by name, so changes and deletions apply in place.
     private var cache = Cache()
+    /// Subscriptions are saved once per launch, after iCloud has answered a fetch
+    /// (on a brand-new install the container can take minutes to accept the app).
+    private var subscribed = false
 
     private struct Cache: Codable {
         var classes: [String: GymClass] = [:]
@@ -58,6 +61,7 @@ final class CloudData: ObservableObject {
             }
             try await fetchChanges()
             error = nil
+            if !subscribed { await ensureSubscriptions() }
         } catch let e as CKError where e.code == .changeTokenExpired {
             cache = Cache()          // start over with a full fetch
             await refresh()
@@ -170,6 +174,7 @@ final class CloudData: ObservableObject {
 
         do {
             _ = try await database.modifySubscriptions(saving: [silent, alerts], deleting: [])
+            subscribed = true
         } catch {
             self.error = "Couldn't set up notifications: \(error.localizedDescription)"
         }

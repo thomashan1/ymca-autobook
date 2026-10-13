@@ -1,0 +1,3 @@
+/* Push alerts from the iCloud subscription on new booking results (CloudData.ensureSubscriptions). */
+"OPENING_TITLE" = "%@";
+"OPENING_BODY" = "%@";

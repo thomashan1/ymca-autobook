@@ -447,6 +447,9 @@ final class Engine: ObservableObject {
             }
         }
         record(entries)
+        // The booking is decided; send the result to iCloud now (the phone's alert
+        // comes from it) rather than after the follow-up reads ~5 minutes later.
+        Task { await pushToCloud() }
         for e in entries where e.booking != nil {
             Notifier.post("\(e.booking!.booked ? "✅" : "❌") \(e.className) · \(e.occursAt.formatted(.dateTime.weekday().month().day()))",
                           e.booking!.outcome)

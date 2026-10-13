@@ -225,6 +225,24 @@ struct GeneralSettings: View {
                 Text("A fine-grained token for \(RepoSync.repo) only, with Contents: Read-only. Stored in this Mac's Keychain.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("iCloud (for the iPhone app)") {
+                if let err = engine.cloudError {
+                    Label(err, systemImage: "exclamationmark.icloud").foregroundStyle(.orange)
+                } else if let t = engine.lastCloudPush {
+                    TimelineView(.periodic(from: .now, by: 30)) { _ in
+                        Label("Up to date \(t.formatted(.relative(presentation: .named)))", systemImage: "checkmark.icloud")
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Label("Not sent yet", systemImage: "icloud").foregroundStyle(.secondary)
+                }
+                HStack {
+                    Spacer()
+                    Button("Send now") { Task { await engine.pushToCloud() } }
+                }
+                Text("Your classes, away dates, swaps, booking results and fill stats go to your own iCloud so the iPhone app can show them. Booking never waits on iCloud.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Account") {
                 LabeledContent("Signed in as", value: engine.signedInAs ?? "—")
                 Button("Sign out", role: .destructive) { Task { await engine.signOut() } }

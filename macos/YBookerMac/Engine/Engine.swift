@@ -22,6 +22,11 @@ final class Engine: ObservableObject {
     @Published private(set) var syncError: String?
     private var lastSyncAttempt: Date?
 
+    /// iCloud mirror for the companion app (#147). Never on the booking path.
+    @Published private(set) var lastCloudPush = UserDefaults.standard.object(forKey: "lastCloudPush") as? Date
+    @Published private(set) var cloudError: String?
+    private var cloudPush: Task<Void, Never>?
+
     private var loop: Task<Void, Never>?
     /// True from warm-up through the follow-up reads; edits must not cancel that.
     private var isFiring = false
@@ -75,6 +80,7 @@ final class Engine: ObservableObject {
         self.classes = classes
         Store.save(classes: classes)
         replanSoon()
+        pushToCloudSoon()
     }
 
     // MARK: Away dates and swaps (from the private repo)
@@ -102,6 +108,7 @@ final class Engine: ObservableObject {
             lastSynced = Date()
             UserDefaults.standard.set(lastSynced, forKey: "lastSynced")
             syncError = nil
+            if changed { pushToCloudSoon() }
             return changed
         } catch {
             syncError = error.localizedDescription
@@ -267,6 +274,38 @@ final class Engine: ObservableObject {
     /// in a class name or time — a class that matches nothing is never booked.
     func isOnSchedule(_ k: RecurringClass) -> Bool { openings.contains { $0.klass.key == k.key } }
 
+    // MARK: iCloud
+
+    /// Push to iCloud a few seconds from now, coalescing bursts of changes. Waits
+    /// out an opening in progress: the opening second never shares the network.
+    func pushToCloudSoon(after delay: TimeInterval = 5) {
+        cloudPush?.cancel()
+        cloudPush = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard let self, !Task.isCancelled else { return }
+            if self.isFiring { self.pushToCloudSoon(after: 30); return }
+            await self.pushToCloud()
+        }
+    }
+
+    func pushToCloud() async {
+        let snap = CloudStore.Snapshot(
+            classes: classes, pauses: pauses, swaps: swaps, log: log, stats: slotStats(),
+            status: .init(updatedAt: Date(), status: status, signedInAs: signedInAs,
+                          liveClasses: classes.filter(\.booksForReal).count,
+                          nextOpening: openings.first?.openAt,
+                          nextOpeningClasses: openings.filter { $0.openAt == openings.first?.openAt }.map(\.klass.name),
+                          lastSynced: lastSynced, syncError: syncError))
+        do {
+            _ = try await CloudStore.shared.push(snap)
+            lastCloudPush = Date()
+            UserDefaults.standard.set(lastCloudPush, forKey: "lastCloudPush")
+            cloudError = nil
+        } catch {
+            cloudError = error.localizedDescription
+        }
+    }
+
     // MARK: Main loop
 
     func start() {
@@ -326,6 +365,7 @@ final class Engine: ObservableObject {
             Store.save(fillHistory: history)
             lastPlanned = Date()
             status = "Planned \(openings.count) upcoming openings"
+            pushToCloudSoon()   // fresh stats, next opening, heartbeat
         } catch {
             status = "Planning failed: \(error.localizedDescription)"
             // Once an hour at most: a flaky YMCA server shouldn't spam the Mac.
@@ -428,6 +468,7 @@ final class Engine: ObservableObject {
         }
         for e in entries { Notifier.post("\(e.className) · \(e.occursAt.formatted(.dateTime.weekday().month().day()))", summary(e)) }
         lastPlanned = nil   // re-plan to pick up next week's occurrence of these classes
+        pushToCloudSoon()
     }
 
     /// A real booking attempt at the opening second, mirroring src/main.py's book():

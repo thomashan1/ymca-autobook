@@ -254,13 +254,17 @@ final class CloudSource: ObservableObject {
 
     /// Every upcoming session the Mac last saw at both branches (nil before
     /// a Mac that publishes it has run).
-    var schedule: [ScheduleItem]? { cache.schedule.map { $0.filter { $0.occursAt > Date() } } }
+    var schedule: [ScheduleItem]? {
+        if SampleMode.active { return SampleData.schedule }
+        return cache.schedule.map { $0.filter { $0.occursAt > Date() } }
+    }
 
     /// Requests sent from here (or another device) that the Mac hasn't picked up yet.
     var pending: [Cloud.Request] { cache.requests.values.sorted { $0.requestedAt < $1.requestedAt } }
 
     /// Where a session stands, counting requests still on their way to the Mac.
     func state(of i: ScheduleItem) -> SessionState {
+        if SampleMode.active { return SessionState(i, picked: SampleData.pickedIds.contains(i.id), skipped: false) }
         let last = cache.requests.values.filter { $0.pick.id == i.id }.max { $0.requestedAt < $1.requestedAt }
         let picked = cache.picks.values.contains { $0.id == i.id }
         let skipped = cache.skips.values.contains { $0.id == i.id }
@@ -277,6 +281,7 @@ final class CloudSource: ObservableObject {
     /// Ask the Mac to do something to one session. It acts within about half a
     /// minute; the change comes back through the usual records.
     func send(_ action: Cloud.Request.Action, _ pick: ClassPick) async throws {
+        if SampleMode.active { return }
         let q = Cloud.Request(action: action, pick: pick)
         _ = try await database.save(q.record())
         cache.requests[q.id] = q

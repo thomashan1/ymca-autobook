@@ -42,6 +42,13 @@ final class FillStatsRepository: ObservableObject {
 
     func load() async {
         if SampleMode.active { apply(Self.sample, updated: Date()); return }
+        if DataSource.isCloud {
+            await CloudSource.shared.ensureFresh()
+            let s = CloudSource.shared.fillSlots
+            windowWeeks = s.map(\.weeks).max() ?? windowWeeks
+            apply(s, updated: CloudSource.shared.lastRefresh)
+            return
+        }
         do {
             let (text, _) = try await client.readFile(repo: Config.privateRepo, path: "fill_stats.json")
             let p = try JSONDecoder().decode(Payload.self, from: Data(text.utf8))

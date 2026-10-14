@@ -38,6 +38,13 @@ final class FullRepository: ObservableObject {
 
     func load() async {
         if SampleMode.active { byKey = [:]; loaded = true; return }
+        if DataSource.isCloud {
+            await CloudSource.shared.ensureFresh()
+            byKey = Dictionary(CloudSource.shared.full.map { (Self.key(date: $0.date, start: $0.start, name: $0.name), $0) },
+                               uniquingKeysWith: { a, _ in a })
+            loaded = true
+            return
+        }
         do {
             let (text, _) = try await client.readFile(repo: Config.privateRepo, path: "full.json")
             let payload = try JSONDecoder().decode(Payload.self, from: Data(text.utf8))

@@ -26,11 +26,11 @@ struct RootView: View {
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }.tag(4)
         }
-        .task(id: auth.hasToken) {
+        .task(id: "\(auth.hasToken)|\(auth.source.rawValue)") {
             // SampleMode (simulator, no token) serves canned data from the
             // repositories, so the tabs are worth loading without a token —
             // otherwise the sample lineup could never actually be seen.
-            guard auth.hasToken || SampleMode.active else { return }
+            guard auth.isConnected || SampleMode.active else { return }
             await classes.load()
             await pauses.load()
             await swaps.load()
@@ -39,7 +39,16 @@ struct RootView: View {
             await fullClasses.load()
             await fillStats.load()
         }
-        .sheet(isPresented: .constant(!auth.hasToken && !SampleMode.active)) {
+        // A booking alert from the Mac means there's something new to show.
+        .onReceive(NotificationCenter.default.publisher(for: .cloudChanged)) { _ in
+            guard auth.isCloud else { return }
+            Task {
+                await CloudSource.shared.refresh()
+                await classes.load(); await pauses.load(); await swaps.load()
+                await bookings.load(); await fullClasses.load(); await fillStats.load()
+            }
+        }
+        .sheet(isPresented: .constant(!auth.isConnected && !SampleMode.active)) {
             SettingsView(onboarding: true)
                 .interactiveDismissDisabled()
         }

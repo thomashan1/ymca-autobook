@@ -8,6 +8,8 @@ import Combine
 struct JobsView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var auth: AuthStore
+    @ObservedObject private var cloud = CloudSource.shared
     @State private var now = Date()
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -52,11 +54,17 @@ struct JobsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "info.circle.fill").foregroundStyle(Theme.accent)
-                        Text("Each row counts down to when next week's booking **opens** (167h before class) — that's when the bot books it automatically. Swipe a row to book it now instead.")
-                            .font(.footnote).foregroundStyle(.secondary)
+                if auth.isCloud {
+                    Section { MacStatusRow() } footer: {
+                        if let e = cloud.error { Text(e).foregroundStyle(Theme.accent) }
+                    }
+                } else {
+                    Section {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "info.circle.fill").foregroundStyle(Theme.accent)
+                            Text("Each row counts down to when next week's booking **opens** (167h before class) — that's when the bot books it automatically. Swipe a row to book it now instead.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
                     }
                 }
                 ForEach(jobsByWeek, id: \.weekIndex) { group in
@@ -66,12 +74,14 @@ struct JobsView: View {
                             JobRow(job: job, now: now,
                                    paused: pauses.isAway(job.classDate, classKey: job.classKey))
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    if !auth.isCloud {
                                     Button {
                                         bookTarget = job
                                     } label: {
                                         Label("Book now", systemImage: "bolt.fill")
                                     }
                                     .tint(Theme.accent)
+                                    }
                                 }
                         }
                     }
@@ -79,10 +89,20 @@ struct JobsView: View {
                 if jobsByWeek.isEmpty {
                     Text("No scheduled bookings.").foregroundStyle(.secondary)
                 }
+                if auth.isCloud {
+                    let recent = cloud.openings.filter { $0.openAt > Date().addingTimeInterval(-14 * 86400) }
+                    Section("Results · last two weeks") {
+                        if recent.isEmpty { Text("None yet").foregroundStyle(.secondary) }
+                        ForEach(recent) { OpeningRow(o: $0) }
+                    }
+                }
             }
             .navigationTitle("Scheduled Jobs")
             .onReceive(tick) { now = $0 }
-            .refreshable { await classes.load() }
+            .refreshable {
+                if auth.isCloud { await cloud.refresh() }
+                await classes.load(); await pauses.load()
+            }
             .overlay { if booking { ProgressView("Booking…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
             .confirmationDialog(
                 bookTarget.map { "Book \($0.className) (\($0.weekday.fullName)) now?" } ?? "",
@@ -174,5 +194,62 @@ private struct JobRow: View {
         if d > 0 { return "\(d)d \(h)h" }
         if h > 0 { return "\(h)h \(m)m" }
         return "\(m)m"
+    }
+}
+
+/// The Mac app's heartbeat from iCloud: is it up, and which window opens next.
+struct MacStatusRow: View {
+    @ObservedObject private var cloud = CloudSource.shared
+
+    var body: some View {
+        if let m = cloud.mac {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: m.looksDown ? "desktopcomputer.trianglebadge.exclamationmark" : "desktopcomputer")
+                        .foregroundStyle(m.looksDown ? Theme.accent : Theme.booked)
+                    Text(m.looksDown ? "Mac hasn't checked in" : "Mac is booking").font(.body.weight(.medium))
+                    Spacer()
+                    Text(m.liveClasses > 0 ? "LIVE · \(m.liveClasses)" : "SHADOW")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background((m.liveClasses > 0 ? Theme.booked : Theme.queued).opacity(0.18), in: Capsule())
+                        .foregroundStyle(m.liveClasses > 0 ? Theme.booked : Theme.queued)
+                }
+                Text("Last heard from \(m.updatedAt.formatted(.relative(presentation: .named)))")
+                    .font(.caption).foregroundStyle(m.looksDown ? Theme.accent : .secondary)
+                if let next = m.nextOpening, next > Date() {
+                    Text("Next: \(m.nextOpeningClasses.joined(separator: " + ")) opens \(next.formatted(.dateTime.weekday().hour().minute()))")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if let e = m.syncError {
+                    Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(Theme.queued)
+                }
+            }
+        } else {
+            Text(cloud.error ?? "Waiting for your Mac — open Y Booker on it, signed in to the same iCloud account.")
+                .font(.callout).foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// One booking window the Mac handled.
+private struct OpeningRow: View {
+    let o: CloudSource.Opening
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: o.paused ? "pause.circle" : o.booked ? "checkmark.circle.fill" : o.live ? "xmark.circle.fill" : "eye")
+                .foregroundStyle(o.paused ? Color.secondary : o.booked ? Theme.booked : o.live ? Theme.accent : .secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(o.className).font(.body.weight(.medium))
+                Text("for \(o.occursAt.formatted(.dateTime.weekday().month().day().hour().minute()))")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text(o.verdict).font(.caption).foregroundStyle(o.failed ? Theme.accent : .secondary)
+            }
+            Spacer()
+            if let ms = o.sendLagMs {
+                Text("+\(ms) ms").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            }
+        }
     }
 }

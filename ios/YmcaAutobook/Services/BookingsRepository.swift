@@ -58,6 +58,14 @@ final class BookingsRepository: ObservableObject {
             byDate = map; updatedAt = "sample"; loaded = true; error = nil
             return
         }
+        if DataSource.isCloud {
+            await CloudSource.shared.ensureFresh()
+            byDate = Dictionary(grouping: CloudSource.shared.bookings, by: { $0.date })
+            updatedAt = CloudSource.shared.lastRefresh.map { ISO8601DateFormatter().string(from: $0) }
+            loaded = true
+            error = nil
+            return
+        }
         do {
             let (text, _) = try await client.readFile(repo: Config.privateRepo, path: "bookings.json")
             let snap = try JSONDecoder().decode(Snapshot.self, from: Data(text.utf8))

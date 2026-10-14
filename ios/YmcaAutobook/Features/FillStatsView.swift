@@ -46,11 +46,12 @@ struct FillStatsView: View {
                 }
                 .pickerStyle(.segmented)
             } footer: {
-                Text("How long each class takes to fill after its booking window opens (167 h before class), over the last \(stats.windowWeeks) weeks. From the YMCA's own \"filled at\" times, refreshed daily."
+                Text("How long each class takes to fill after its booking window opens (167 h before class), over the last \(stats.windowWeeks) weeks. From the YMCA's own \"filled at\" times, \(DataSource.isCloud ? "collected by your Mac" : "refreshed daily")."
                      + (stats.updatedAt.map { " Updated \($0.formatted(.relative(presentation: .named)))." } ?? ""))
             }
             if rows.isEmpty {
-                Text(stats.slots.isEmpty ? "No stats yet — they appear after the next daily schedule snapshot."
+                Text(stats.slots.isEmpty ? (DataSource.isCloud ? "No stats yet — your Mac publishes them after its next plan."
+                                                     : "No stats yet — they appear after the next daily schedule snapshot.")
                                          : "No classes match.")
                     .foregroundStyle(.secondary)
             }

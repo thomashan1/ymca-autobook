@@ -11,6 +11,7 @@ struct ClassesView: View {
     private let weekdays: [Weekday] = [.mon, .tue, .wed, .thu, .fri]
 
     @EnvironmentObject var bookings: BookingsRepository
+    @EnvironmentObject var auth: AuthStore
     @State private var deleteTarget: GymClass?
     @State private var deleting = false
     @State private var resultMessage: String?
@@ -25,6 +26,12 @@ struct ClassesView: View {
     var body: some View {
         NavigationStack {
             List {
+                if auth.isCloud {
+                    Section {
+                        Label("Your Mac's lineup — change classes on the Mac.", systemImage: "desktopcomputer")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                } else {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
                         Label("Edits here change classes.yml", systemImage: "doc.text.fill")
@@ -32,6 +39,7 @@ struct ClassesView: View {
                         Text("This is your recurring auto-book schedule, stored in **classes.yml** in the public repo **thomashan1/ymca-autobook**. Swiping a class to remove it opens a pull request against that file (main is protected) which merges automatically. Away dates live separately in **pauses.yml** (private repo) — edit those on the Away tab.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
+                }
                 }
                 ForEach(weekdays, id: \.self) { day in
                     let dayItems = items(on: day)
@@ -48,10 +56,12 @@ struct ClassesView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        deleteTarget = c
-                                    } label: {
-                                        Label("Remove", systemImage: "trash")
+                                    if !auth.isCloud {
+                                        Button(role: .destructive) {
+                                            deleteTarget = c
+                                        } label: {
+                                            Label("Remove", systemImage: "trash")
+                                        }
                                     }
                                 }
                             }

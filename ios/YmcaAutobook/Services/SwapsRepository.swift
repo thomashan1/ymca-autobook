@@ -28,6 +28,11 @@ final class SwapsRepository: ObservableObject {
             error = nil
             return
         }
+        if DataSource.isCloud {
+            await CloudSource.shared.ensureFresh()
+            swaps = CloudSource.shared.swaps
+            return
+        }
         isLoading = true; error = nil
         defer { isLoading = false }
         do {

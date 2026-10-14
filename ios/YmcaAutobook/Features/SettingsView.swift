@@ -25,14 +25,20 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                if !auth.hasToken {
-                    tokenEntrySection
-                } else {
-                    connectionSection
+                sourceSection
+                if auth.isCloud {
+                    cloudSection
                     diagnosticsSection
+                } else {
+                    if !auth.hasToken {
+                        tokenEntrySection
+                    } else {
+                        connectionSection
+                        diagnosticsSection
+                    }
+                    whySection
+                    howToSection
                 }
-                whySection
-                howToSection
             }
             .navigationTitle(onboarding ? "Connect" : "Settings")
         }
@@ -61,6 +67,57 @@ struct SettingsView: View {
             Text("GitHub token")
         } footer: {
             Text("Paste the token you created below. It's stored only in this device's Keychain — never sent anywhere but GitHub.")
+        }
+    }
+
+    /// The one choice everything else on this screen depends on: which booker
+    /// this app shows. Each option says what it is and what it needs.
+    private var sourceSection: some View {
+        Section {
+            Picker("Booker", selection: Binding(get: { auth.source }, set: { auth.use($0) })) {
+                Text("GitHub").tag(DataSource.github)
+                Text("Mac").tag(DataSource.icloud)
+            }
+            .pickerStyle(.segmented)
+            .listRowSeparator(.hidden)
+            if auth.source == .icloud {
+                option("desktopcomputer", "Y Booker on your Mac",
+                       "The Mac app books each class the second its window opens, and shares your classes, away dates and results through your iCloud. Nothing to sign in to here. Make changes on the Mac.")
+            } else {
+                option("server.rack", "GitHub Actions",
+                       "A scheduled GitHub workflow books your classes. This app reads and edits your plan in your GitHub repos, and can start a booking. Needs a GitHub token (below).")
+            }
+        } header: {
+            Text("Booker")
+        } footer: {
+            Text("This only changes what the app shows and edits. It doesn't turn either booker on or off.")
+        }
+    }
+
+    private func option(_ icon: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon).font(.title3).foregroundStyle(Theme.accent).frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.callout.weight(.semibold))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// The Mac's status, when it's the source.
+    private var cloudSection: some View {
+        Section("Your Mac") {
+            MacStatusRow()
+            Button {
+                reload()
+            } label: {
+                HStack {
+                    Text("Reload data")
+                    if reloading { Spacer(); ProgressView() }
+                }
+            }
+            .disabled(reloading)
         }
     }
 
@@ -235,6 +292,7 @@ struct SettingsView: View {
     private func reload() {
         reloading = true
         Task {
+            if auth.isCloud { await CloudSource.shared.refresh() }
             await classes.load()
             await pauses.load()
             await snapshot.load()

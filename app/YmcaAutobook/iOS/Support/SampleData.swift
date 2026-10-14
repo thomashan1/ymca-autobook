@@ -93,5 +93,61 @@ enum SampleData {
             Swap(date: day(15), skipKey: "cycle-tue", note: "dentist"),
         ]
     }
+
+    /// The Book screen's directory: a plausible two weeks at both branches, from
+    /// today. The lineup's sessions are booked once their window has opened.
+    static var schedule: [ScheduleItem] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Config.timeZone
+        let today = cal.startOfDay(for: Date())
+        let now = Date()
+        // weekday (1=Sun) | start | minutes | name | branch | room | instructor | lineup | popular
+        let week: [(Int, String, Int, String, Int, String, String, Bool, Bool)] = [
+            (2, "08:30", 45, "Zumba", 1388, "Group Exercise Room", "Lena V.", false, false),
+            (2, "09:45", 30, "Les Mills CORE", 1392, "Rec Room", "Jordan A.", true, false),
+            (2, "10:15", 60, "Vinyasa Yoga", 1392, "Studio 2", "Priya M.", true, true),
+            (2, "11:20", 40, "Lift & H.I.I.T.", 1392, "Group Exercise Room", "Marcus D.", true, false),
+            (2, "12:15", 45, "Pilates", 1388, "Studio 1", "Ana C.", false, false),
+            (3, "09:00", 60, "BODYPUMP", 1392, "Group Exercise Room", "Gini B.", true, true),
+            (3, "09:50", 60, "BODYCOMBAT", 1388, "Group Exercise Room", "Sam R.", false, true),
+            (3, "10:15", 60, "Cycle", 1392, "Rec Room", "Dana K.", true, false),
+            (3, "11:30", 45, "Aqua Fit", 1388, "Pool", "Lena V.", false, false),
+            (4, "09:30", 50, "RPM", 1388, "Group Exercise Room", "Sam R.", true, true),
+            (4, "10:30", 30, "Les Mills CORE", 1388, "Family Pavilion", "Jordan A.", true, false),
+            (4, "10:30", 60, "Gentle Yoga", 1392, "Studio 2", "Priya M.", false, false),
+            (4, "12:00", 45, "TRX for Beginners", 1392, "Rec Room", "Marcus D.", false, false),
+            (5, "09:00", 60, "BODYPUMP", 1392, "Group Exercise Room", "Sophia B.", true, true),
+            (5, "09:15", 45, "Barre", 1388, "Studio 1", "Ana C.", false, false),
+            (5, "10:15", 60, "Cycle Sculpt", 1392, "Group Exercise Room", "Nina T.", true, true),
+            (5, "11:30", 60, "Vinyasa Yoga", 1388, "Studio 1", "Priya M.", false, false),
+            (6, "08:45", 60, "BODYCOMBAT", 1388, "Group Exercise Room", "Eyal B.", false, true),
+            (6, "09:45", 30, "Les Mills CORE", 1388, "Family Pavilion", "Eyal B.", true, false),
+            (6, "10:30", 45, "TRX for Beginners", 1392, "Rec Room", "Marcus D.", false, false),
+            (6, "11:20", 40, "Lift & H.I.I.T.", 1392, "Group Exercise Room", "Marcus D.", true, false),
+            (7, "09:00", 60, "Zumba", 1392, "Group Exercise Room", "Lena V.", false, false),
+        ]
+        var out: [ScheduleItem] = []
+        var id = 900_000
+        for offset in 0..<14 {
+            guard let day = cal.date(byAdding: .day, value: offset, to: today) else { continue }
+            let wd = cal.component(.weekday, from: day)
+            for c in week where c.0 == wd {
+                let hm = c.1.split(separator: ":").compactMap { Int($0) }
+                guard let at = cal.date(bySettingHour: hm[0], minute: hm[1], second: 0, of: day), at > now else { continue }
+                let open = at.addingTimeInterval(-Double(Config.bookOpenLeadHours) * 3600)
+                id += 1
+                out.append(ScheduleItem(id: id, name: c.3, occursAt: at, openAt: open, minutes: c.2, branchId: c.4,
+                                        room: c.5, trainer: c.6, capacity: c.8 ? 40 : 25,
+                                        full: c.8 && open <= now && !c.7, joined: c.7 && open <= now,
+                                        autoBook: c.7))
+            }
+        }
+        return out
+    }
+
+    /// One queued pick so the screenshot shows that state: next week's Friday BODYCOMBAT.
+    static var pickedIds: Set<Int> {
+        Set(schedule.filter { $0.name == "BODYCOMBAT" && $0.openAt > Date() }.suffix(1).map(\.id))
+    }
 }
 #endif

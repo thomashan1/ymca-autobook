@@ -7,8 +7,13 @@ import SwiftUI
 /// open, otherwise at the second it opens.
 struct BookView: View {
     @ObservedObject private var cloud = CloudSource.shared
+    @Environment(\.dismiss) private var dismiss
     @State private var search = ""
     @State private var branch = 0
+    /// nil = every day.
+    @State private var day: Date?
+    /// Screenshots: start filtered to the Nth day (`-screenshotBookDay N`).
+    @State private var startDay: Int? = UserDefaults.standard.object(forKey: "screenshotBookDay") == nil ? nil : UserDefaults.standard.integer(forKey: "screenshotBookDay")
     @State private var onlyMine = false
     @State private var confirm: (ScheduleItem, Cloud.Request.Action)?
     @State private var error: String?
@@ -17,7 +22,7 @@ struct BookView: View {
         NavigationStack {
             List {
                 header
-                ForEach(days, id: \.self) { day in
+                ForEach(shownDays, id: \.self) { day in
                     Section(day.formatted(.dateTime.weekday(.wide).month().day())) {
                         ForEach(items(on: day)) { row($0) }
                     }
@@ -27,7 +32,13 @@ struct BookView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $search, prompt: "Classes, rooms, instructors")
             .refreshable { await cloud.refresh() }
-            .task { await cloud.ensureFresh() }
+            .task {
+                await cloud.ensureFresh()
+                if let n = startDay, days.indices.contains(n) { day = days[n]; startDay = nil }
+            }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
             .confirmationDialog(confirmTitle, isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
                                 titleVisibility: .visible) {
                 if let (i, a) = confirm {
@@ -48,6 +59,7 @@ struct BookView: View {
                 Text("Northwest").tag(1388)
             }
             .pickerStyle(.segmented)
+            dayChips
             Toggle("Only mine", isOn: $onlyMine)
             if let mac = cloud.mac, mac.looksDown {
                 Label("Your Mac hasn't checked in since \(mac.updatedAt.formatted(.relative(presentation: .named))). Requests wait until it's back.",
@@ -61,6 +73,35 @@ struct BookView: View {
         } footer: {
             Text("Booking opens 7 days ahead. Tap Book on any class: your Mac books it now if it's open, or at the second it opens.")
         }
+    }
+
+    private var dayChips: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    chip("All days", selected: day == nil) { day = nil }
+                    ForEach(days, id: \.self) { d in
+                        chip(d.formatted(.dateTime.weekday(.abbreviated).day()), selected: day == d) { day = d }
+                            .id(d)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .onChange(of: day) { _, d in
+                if let d { withAnimation { proxy.scrollTo(d, anchor: .center) } }
+            }
+        }
+    }
+
+    private func chip(_ title: String, selected: Bool, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) {
+            Text(title)
+                .font(.subheadline.weight(selected ? .semibold : .regular))
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(selected ? Theme.accent : Color(.secondarySystemFill), in: Capsule())
+                .foregroundStyle(selected ? .white : .primary)
+        }
+        .buttonStyle(.plain)
     }
 
     private func row(_ i: ScheduleItem) -> some View {
@@ -93,7 +134,8 @@ struct BookView: View {
 
     @ViewBuilder private func status(_ i: ScheduleItem, _ s: SessionState) -> some View {
         switch s {
-        case .booked: Label("Booked", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.booked)
+        case .booked:
+            HStack(spacing: 4) { Image(systemName: "checkmark.circle.fill"); Text("Booked") }.foregroundStyle(Theme.booked)
         case .queued: Text("Books \(opens(i))").foregroundStyle(Theme.queued)
         case .booking: Text("Your Mac is on it…").foregroundStyle(Theme.queued)
         case .lineup: Text("Weekly · books \(opens(i))").foregroundStyle(.secondary)
@@ -123,9 +165,12 @@ struct BookView: View {
         }
     }
 
+    /// Days with any class matching the other filters (the chips).
     private var days: [Date] {
         Array(Set(filtered.map { Self.cal.startOfDay(for: $0.occursAt) })).sorted()
     }
+
+    private var shownDays: [Date] { day.map { d in days.filter { $0 == d } } ?? days }
 
     private func items(on day: Date) -> [ScheduleItem] {
         filtered.filter { Self.cal.isDate($0.occursAt, inSameDayAs: day) }

@@ -207,13 +207,9 @@ struct MacStatusRow: View {
                 HStack {
                     Image(systemName: m.looksDown ? "desktopcomputer.trianglebadge.exclamationmark" : "desktopcomputer")
                         .foregroundStyle(m.looksDown ? Theme.accent : Theme.booked)
-                    Text(m.looksDown ? "Mac hasn't checked in" : "Mac is booking").font(.body.weight(.medium))
-                    Spacer()
-                    Text(m.liveClasses > 0 ? "LIVE · \(m.liveClasses)" : "SHADOW")
-                        .font(.caption2.weight(.bold))
-                        .padding(.horizontal, 7).padding(.vertical, 2)
-                        .background((m.liveClasses > 0 ? Theme.booked : Theme.queued).opacity(0.18), in: Capsule())
-                        .foregroundStyle(m.liveClasses > 0 ? Theme.booked : Theme.queued)
+                    Text(m.looksDown ? "Mac hasn't checked in"
+                         : "Mac is booking \(m.liveClasses) class\(m.liveClasses == 1 ? "" : "es")")
+                        .font(.body.weight(.medium))
                 }
                 Text("Last heard from \(m.updatedAt.formatted(.relative(presentation: .named)))")
                     .font(.caption).foregroundStyle(m.looksDown ? Theme.accent : .secondary)

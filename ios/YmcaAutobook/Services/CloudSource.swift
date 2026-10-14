@@ -5,18 +5,18 @@ import UserNotifications
 
 /// Where the app reads its data from.
 ///
-/// `.github` is the original setup: classes.yml, pauses.yml and the snapshots
-/// in the two repos, with GitHub Actions doing the booking. `.icloud` reads
-/// what the Y Booker Mac app publishes to the user's own iCloud — no GitHub
-/// account or token needed — and is read-only here: the Mac is the booker and
-/// the only writer.
+/// `.icloud` (the default) reads what the Y Booker Mac app publishes to the
+/// user's own iCloud — no GitHub account or token needed — and is read-only
+/// here: the Mac is the booker and the only writer. `.github` is the advanced
+/// setup: classes.yml, pauses.yml and the snapshots in the two repos, with
+/// GitHub Actions doing the booking.
 enum DataSource: String {
     case github, icloud
 
     private static let key = "dataSource"
 
     static var current: DataSource {
-        get { UserDefaults.standard.string(forKey: key).flatMap(DataSource.init(rawValue:)) ?? .github }
+        get { UserDefaults.standard.string(forKey: key).flatMap(DataSource.init(rawValue:)) ?? .icloud }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: key) }
     }
 

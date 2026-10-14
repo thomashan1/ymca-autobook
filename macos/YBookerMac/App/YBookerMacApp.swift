@@ -12,12 +12,12 @@ struct YBookerMacApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("Y Booker — Booking log", id: "log") {
+        Window("YMCA Booker — Booking log", id: "log") {
             LogView(engine: engine)
         }
         .defaultSize(width: 900, height: 520)
 
-        Window("Y Booker — Settings", id: "settings") {
+        Window("YMCA Booker — Settings", id: "settings") {
             SettingsView(engine: engine)
         }
         .windowResizability(.contentMinSize)

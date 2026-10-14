@@ -23,16 +23,18 @@ enum Notifier {
 enum LoginItem {
     static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
 
-    /// Turn it on once, the first time the app runs; after that the user's
-    /// choice in Settings sticks, including turning it off.
-    static func enableOnFirstLaunch() {
-        let key = "loginItemDefaulted"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
-        UserDefaults.standard.set(true, forKey: key)
+    private static let wantedKey = "loginItemWanted"
+
+    /// On unless the user turned it off in Settings. Registered again on every
+    /// launch, so it follows the app if it moves or is renamed (the system keeps
+    /// the old location otherwise).
+    static func registerIfWanted() {
+        guard UserDefaults.standard.object(forKey: wantedKey) as? Bool ?? true else { return }
         try? SMAppService.mainApp.register()
     }
 
     static func set(_ on: Bool) throws {
         if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+        UserDefaults.standard.set(on, forKey: wantedKey)
     }
 }

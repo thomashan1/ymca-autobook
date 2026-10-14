@@ -52,7 +52,7 @@ final class Engine: ObservableObject {
 
     init() {
         Notifier.requestPermission()
-        LoginItem.enableOnFirstLaunch()
+        LoginItem.registerIfWanted()
         if signedInAs != nil { start() }
     }
 
@@ -376,7 +376,7 @@ final class Engine: ObservableObject {
             // Once an hour at most: a flaky YMCA server shouldn't spam the Mac.
             if lastFailureNotice.map({ Date().timeIntervalSince($0) > 3600 }) ?? true {
                 lastFailureNotice = Date()
-                Notifier.post("Y Booker can't reach the YMCA", error.localizedDescription)
+                Notifier.post("YMCA Booker can't reach the YMCA", error.localizedDescription)
             }
         }
     }

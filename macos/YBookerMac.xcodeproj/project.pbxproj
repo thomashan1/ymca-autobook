@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		C0000000000000000000A001 /* Y Booker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Y Booker.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0000000000000000000A001 /* YMCA Booker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "YMCA Booker.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -46,7 +46,7 @@
 		C0000000000000000000A005 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C0000000000000000000A001 /* Y Booker.app */,
+				C0000000000000000000A001 /* YMCA Booker.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -74,7 +74,7 @@
 			packageProductDependencies = (
 			);
 			productName = YBookerMac;
-			productReference = C0000000000000000000A001 /* Y Booker.app */;
+			productReference = C0000000000000000000A001 /* YMCA Booker.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -171,7 +171,7 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Y Booker";
+				INFOPLIST_KEY_CFBundleDisplayName = "YMCA Booker";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -180,7 +180,7 @@
 				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.thomashan.ybooker.mac;
-				PRODUCT_NAME = "Y Booker";
+				PRODUCT_NAME = "YMCA Booker";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -196,7 +196,7 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Y Booker";
+				INFOPLIST_KEY_CFBundleDisplayName = "YMCA Booker";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -205,7 +205,7 @@
 				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.thomashan.ybooker.mac;
-				PRODUCT_NAME = "Y Booker";
+				PRODUCT_NAME = "YMCA Booker";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

@@ -7,7 +7,7 @@ struct MenuView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Y Booker").font(.headline)
+                Text("YMCA Booker").font(.headline)
                 Spacer()
             }
             if engine.signedInAs == nil {

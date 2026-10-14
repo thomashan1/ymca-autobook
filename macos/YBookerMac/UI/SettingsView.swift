@@ -199,7 +199,7 @@ struct GeneralSettings: View {
     var body: some View {
         Form {
             Section("Startup") {
-                Toggle("Open Y Booker at login", isOn: $launchAtLogin)
+                Toggle("Open YMCA Booker at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, on in
                         do { try LoginItem.set(on); loginError = nil }
                         catch { loginError = error.localizedDescription; launchAtLogin = LoginItem.isEnabled }
@@ -254,7 +254,7 @@ struct GeneralSettings: View {
         .task {
             let s = await UNUserNotificationCenter.current().notificationSettings()
             notifications = s.authorizationStatus == .authorized ? "allowed"
-                : s.authorizationStatus == .denied ? "off — turn on in System Settings → Notifications → Y Booker"
+                : s.authorizationStatus == .denied ? "off — turn on in System Settings → Notifications → YMCA Booker"
                 : "not decided yet"
         }
     }

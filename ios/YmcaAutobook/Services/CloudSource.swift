@@ -5,7 +5,7 @@ import UserNotifications
 
 /// Where the app reads its data from.
 ///
-/// `.icloud` (the default) reads what the Y Booker Mac app publishes to the
+/// `.icloud` (the default) reads what the YMCA Booker Mac app publishes to the
 /// user's own iCloud — no GitHub account or token needed — and is read-only
 /// here: the Mac is the booker and the only writer. `.github` is the advanced
 /// setup: classes.yml, pauses.yml and the snapshots in the two repos, with
@@ -88,7 +88,7 @@ final class CloudSource: ObservableObject {
             cache = Cache()   // start over with a full fetch
             await fetch()
         } catch let e as CKError where e.code == .zoneNotFound {
-            error = "Nothing from your Mac yet — open Y Booker on the Mac, signed in to the same iCloud account."
+            error = "Nothing from your Mac yet — open YMCA Booker on the Mac, signed in to the same iCloud account."
         } catch let e as CKError where e.code == .badContainer || e.code == .notAuthenticated
                     || "\(e)".contains("Invalid bundle ID") {
             // New installs: Apple's servers take a few minutes to learn the app may use the container.

@@ -222,7 +222,7 @@ struct MacStatusRow: View {
                 }
             }
         } else {
-            Text(cloud.error ?? "Waiting for your Mac — open Y Booker on it, signed in to the same iCloud account.")
+            Text(cloud.error ?? "Waiting for your Mac — open YMCA Booker on it, signed in to the same iCloud account.")
                 .font(.callout).foregroundStyle(.secondary)
         }
     }

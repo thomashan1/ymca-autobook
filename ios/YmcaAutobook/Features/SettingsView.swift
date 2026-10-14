@@ -81,7 +81,7 @@ struct SettingsView: View {
         } header: {
             Text("Advanced")
         } footer: {
-            Text("For the GitHub Actions setup (see the project README): this app then reads and edits your plan in your GitHub repos and needs a GitHub token. Leave it off to use the Y Booker app on your Mac.")
+            Text("For the GitHub Actions setup (see the project README): this app then reads and edits your plan in your GitHub repos and needs a GitHub token. Leave it off to use YMCA Booker on your Mac.")
         }
     }
 

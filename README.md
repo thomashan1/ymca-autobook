@@ -10,7 +10,7 @@ The booker logs in just before, waits for that exact second, and books it.
 
 | | **Option A: Mac + iPhone** | **Option B: GitHub (advanced)** |
 |---|---|---|
-| Who books | The **Y Booker** app on your Mac | GitHub Actions, started by cron-job.org |
+| Who books | **YMCA Booker** on your Mac | GitHub Actions, started by cron-job.org |
 | Your data | Your own iCloud | Files in two GitHub repos |
 | Accounts | iCloud, the YMCA | GitHub, cron-job.org, the YMCA |
 | Setup | Install two apps and log in | Repos, secrets, a token and cron jobs |
@@ -50,14 +50,15 @@ _Screenshots use sample data; the Fill speed numbers are real (10/10)._
 
 ## Option A: Mac + iPhone
 
-The **Y Booker** Mac app does the booking itself. It lives on the
+**YMCA Booker** comes as two apps that share your iCloud: the Mac app does the
+booking, and the iPhone/iPad app shows it. The Mac app lives on the
 [`explore/macos-app`](https://github.com/thomashan1/ymca-autobook/tree/explore/macos-app)
 branch for now.
 
 ### Setting it up
 
-1. **On the Mac:** install **Y Booker** and sign in to iCloud in System Settings.
-2. In Y Booker's Settings, **log in with your YMCA (egym) account**.
+1. **On the Mac:** install **YMCA Booker** and sign in to iCloud in System Settings.
+2. In its Settings, **log in with your YMCA (egym) account**.
 3. Under **Browse**, add your classes. Each one books every week from then on.
 4. **On the iPhone or iPad:** install **YMCA Booker**, signed in to the **same iCloud
    account**, and allow notifications.
@@ -68,9 +69,9 @@ That's it. There's no GitHub, no cron-job.org and no token.
 
 ```mermaid
 flowchart LR
-    mac["💻 Y Booker on your Mac<br/>wakes 90 s before · books at the second"] --> ymca["🏋️ YMCA"]
+    mac["💻 YMCA Booker on your Mac<br/>wakes 90 s before · books at the second"] --> ymca["🏋️ YMCA"]
     mac --> icloud[("☁️ your iCloud<br/>classes · away dates · bookings · results")]
-    icloud --> phone["📱 YMCA Booker<br/>views + an alert per booking"]
+    icloud --> phone["📱 YMCA Booker on iPhone<br/>views + an alert per booking"]
 ```
 
 - The Mac plans every 3 hours, wakes just before each window opens, and books at

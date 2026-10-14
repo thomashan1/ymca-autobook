@@ -14,7 +14,7 @@ state through the GitHub REST API:
 
 ## Two data sources: your Mac (default) or GitHub
 
-- **Mac** (the default) reads what the **Y Booker** Mac app (branch
+- **Mac** (the default) reads what the **YMCA Booker** Mac app (branch
   `explore/macos-app`, epic #146) publishes to the user's own iCloud (container
   `iCloud.com.thomashan.ybooker`, private database, zone `YBooker`): classes, away
   dates, swaps, fill speed, the real booking list (refreshed on every Mac plan) and

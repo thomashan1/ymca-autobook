@@ -1,7 +1,17 @@
+import ServiceManagement
 import SwiftUI
 
 @main
 struct YBookerMacApp: App {
+    init() {
+        // Replaced by the combined YMCA Booker app (main, app/). Once retired, this
+        // copy takes itself out of Login Items and quits whenever it's started.
+        if UserDefaults.standard.bool(forKey: "retired") {
+            try? SMAppService.mainApp.unregister()
+            exit(0)
+        }
+    }
+
     @StateObject private var engine = Engine()
 
     var body: some Scene {

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Every opening shadow mode has watched: what a real booking would have done at
-/// that second, how late the read landed, and how fast the class filled.
+/// Every opening the Mac has handled: the booking at that second, how late the
+/// read landed, and how fast the class filled.
 struct LogView: View {
     @ObservedObject var engine: Engine
 

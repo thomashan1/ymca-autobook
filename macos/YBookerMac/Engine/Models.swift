@@ -7,10 +7,7 @@ struct RecurringClass: Codable, Identifiable, Hashable, Sendable {
     let weekday: String      // "Mon" … "Sun"
     let start: String        // local "HH:mm"
     let locationIds: [Int]   // branch: Southwest 1392, Northwest 1388
-    /// Off (nil/false) = shadow only. On = the Mac sends a real booking at the opening second.
-    var liveBooking: Bool? = nil
     var id: String { key }
-    var booksForReal: Bool { liveBooking ?? false }
 
     var branch: String {
         switch locationIds.first {

@@ -164,7 +164,6 @@ actor CloudStore {
             add("Class", c.key, [
                 "key": c.key as NSString, "name": c.name as NSString, "weekday": c.weekday as NSString,
                 "start": c.start as NSString, "locationIds": c.locationIds.map { NSNumber(value: $0) } as NSArray,
-                "liveBooking": NSNumber(value: c.booksForReal),
             ])
         }
         for p in s.pauses {

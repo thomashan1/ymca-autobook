@@ -266,15 +266,6 @@ final class Engine: ObservableObject {
         }
     }
 
-    func setBooksForReal(_ key: String, _ on: Bool) {
-        update(classes: classes.map { k in
-            guard k.key == key else { return k }
-            var c = k
-            c.liveBooking = on
-            return c
-        })
-    }
-
     /// Has the latest plan found an upcoming opening for this class? Catches typos
     /// in a class name or time — a class that matches nothing is never booked.
     func isOnSchedule(_ k: RecurringClass) -> Bool { openings.contains { $0.klass.key == k.key } }
@@ -297,7 +288,7 @@ final class Engine: ObservableObject {
         let snap = CloudStore.Snapshot(
             classes: classes, pauses: pauses, swaps: swaps, log: log, stats: slotStats(), bookings: bookings,
             status: .init(updatedAt: Date(), status: status, signedInAs: signedInAs,
-                          liveClasses: classes.filter(\.booksForReal).count,
+                          liveClasses: classes.count,
                           nextOpening: openings.first?.openAt,
                           nextOpeningClasses: openings.filter { $0.openAt == openings.first?.openAt }.map(\.klass.name),
                           lastSynced: lastSynced, syncError: syncError))
@@ -436,10 +427,9 @@ final class Engine: ObservableObject {
         while Date() < openAt.addingTimeInterval(-1) { try? await Task.sleep(nanoseconds: 200_000_000) }
         while Date() < openAt { try? await Task.sleep(nanoseconds: 5_000_000) }
 
-        // The opening second. Classes switched to "book for real" send the join
-        // first, then read back; shadow-only classes just take the read.
+        // The opening second: send the join first, then read back.
         await withTaskGroup(of: (Int, ShadowEntry.BookingLog?).self) { tg in
-            for (i, o) in group.enumerated() where !o.paused && entries[i].error == nil && o.klass.booksForReal {
+            for (i, o) in group.enumerated() where !o.paused && entries[i].error == nil {
                 tg.addTask { (i, await Self.book(o)) }
             }
             for await (i, log) in tg { entries[i].booking = log }

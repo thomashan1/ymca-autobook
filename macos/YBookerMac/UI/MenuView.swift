@@ -4,21 +4,10 @@ struct MenuView: View {
     @ObservedObject var engine: Engine
     @Environment(\.openWindow) private var openWindow
 
-    /// LIVE when every class books for real, SHADOW when none do, otherwise how many.
-    private var modeBadge: (text: String, color: Color) {
-        let live = engine.classes.filter(\.booksForReal).count
-        if live == 0 { return ("SHADOW MODE", .orange) }
-        if live == engine.classes.count { return ("LIVE", .green) }
-        return ("LIVE · \(live) of \(engine.classes.count)", .green)
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Y Booker").font(.headline)
-                Text(modeBadge.text).font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(modeBadge.color.opacity(0.2), in: Capsule())
-                    .help("LIVE: the Mac books at the opening second, alongside GitHub. SHADOW: it only watches.")
                 Spacer()
             }
             if engine.signedInAs == nil {

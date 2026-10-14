@@ -1,7 +1,6 @@
 import Foundation
 
-/// egym SSO -> Fisikal session over plain HTTP (no browser), plus read-only calls.
-/// There is deliberately no join or cancel method: the app is in shadow mode.
+/// egym SSO -> Fisikal session over plain HTTP (no browser), plus schedule reads and joins.
 actor FisikalClient {
     static let shared = FisikalClient()
 

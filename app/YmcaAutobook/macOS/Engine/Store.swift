@@ -26,6 +26,24 @@ enum Store {
     }
     static func save(swaps: [Swap]) { write(swaps.sorted { $0.date < $1.date }, to: "swaps.json") }
 
+    static func picks() -> [ClassPick] {
+        guard let data = try? Data(contentsOf: url("picks.json")) else { return [] }
+        return (try? decoder.decode([ClassPick].self, from: data)) ?? []
+    }
+    static func save(picks: [ClassPick]) {
+        guard let data = try? encoder.encode(picks.sorted { $0.openAt < $1.openAt }) else { return }
+        try? data.write(to: url("picks.json"), options: .atomic)
+    }
+
+    static func skips() -> [ClassPick] {
+        guard let data = try? Data(contentsOf: url("skips.json")) else { return [] }
+        return (try? decoder.decode([ClassPick].self, from: data)) ?? []
+    }
+    static func save(skips: [ClassPick]) {
+        guard let data = try? encoder.encode(skips.sorted { $0.occursAt < $1.occursAt }) else { return }
+        try? data.write(to: url("skips.json"), options: .atomic)
+    }
+
     static func save(classes: [RecurringClass]) { write(classes, to: "classes.json") }
     static func save(pauses: [Pause]) { write(pauses.sorted { $0.start < $1.start }, to: "pauses.json") }
 

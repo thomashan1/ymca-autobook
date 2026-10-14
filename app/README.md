@@ -17,18 +17,41 @@ booking happens on the Mac.
 
 | Screen (iPhone/iPad) | Shows |
 |----------|----------------|
-| **Week**    | Two weeks of classes merged with your real bookings (room, instructor, end time) |
+| **Week**    | Two weeks of classes merged with your real bookings (room, instructor, end time); **Book** button (top right) |
 | **Classes** | Your recurring lineup and how fast each class fills |
 | **Jobs**    | Countdowns to each booking window, the Mac's status and each booking result |
 | **Away**    | Away dates and one-off swaps |
+
+## Booking and cancelling single classes
+
+Besides the weekly lineup, any single upcoming session can be booked or cancelled:
+on the Mac under Settings → **Book**, on iPhone and iPad from the **Book** button on
+the Week screen. One shared rule (`SessionState` in `Shared/ClassPicks.swift`) decides
+what each session offers:
+
+| The session is… | Action |
+|---|---|
+| booked | **Cancel** (asks first; then re-reads to confirm the seat is gone) |
+| open for booking, seats left | **Book** now |
+| not open yet | **Book**: queued, booked at the second its window opens, like the lineup |
+| queued | **Undo** |
+| in the weekly lineup, not open yet | **Skip** this one (Mac only; a GitHub backup still books it) |
+| skipped | **Unskip** |
+
+The Mac does all the booking. The iPhone writes a `BookRequest` record to iCloud; the
+Mac reads the zone's change feed every 30 s, acts and deletes the request. The Mac
+publishes the upcoming schedule (one `Schedule.current` record, refreshed every plan),
+its queue (`OneOff`) and skips (`Skip`). A result shows up as an `Opening` record, so it
+gets the same alert as a lineup booking. Cancelling a lineup session before its window
+opens also skips it, so the Mac doesn't book it back.
 
 ## Two data sources: your Mac (default) or GitHub
 
 - **Mac** (the default) reads iCloud container `iCloud.com.thomashan.ybooker`
   (private database, zone `YBooker`): classes, away dates, swaps, fill speed, the
   real booking list (refreshed on every Mac plan) and each booking window's result.
-  It needs no GitHub token. It's read-only on iOS (the Mac is the only writer), so
-  "Book now", removing classes and away-date edits are hidden. A CloudKit
+  It needs no GitHub token. Booking and cancelling single classes go through the Mac
+  (above); removing lineup classes and away-date edits are hidden. A CloudKit
   subscription sends an alert for every booking result
   (`iOS/Services/CloudSource.swift`; text via `Localizable.strings`).
 - **GitHub** (Settings → Advanced → **Use GitHub instead**) is the advanced setup

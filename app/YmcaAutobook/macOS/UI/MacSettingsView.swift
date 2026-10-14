@@ -7,6 +7,7 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
+            MacBookView(engine: engine).tabItem { Label("Book", systemImage: "calendar.badge.plus") }
             CatalogView(engine: engine).tabItem { Label("Browse", systemImage: "magnifyingglass") }
             ClassesEditor(engine: engine).tabItem { Label("My classes", systemImage: "list.bullet") }
             StatsView(engine: engine).tabItem { Label("Stats", systemImage: "chart.bar") }

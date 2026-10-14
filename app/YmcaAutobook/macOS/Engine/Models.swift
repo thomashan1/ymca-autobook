@@ -31,6 +31,19 @@ struct RecurringClass: Codable, Identifiable, Hashable, Sendable {
     }
 }
 
+extension RecurringClass {
+    static let oneOffPrefix = "oneoff-"
+
+    /// A picked session dressed as a class, so it rides the same opening-second
+    /// path as the weekly lineup. Away dates and swaps never apply to it.
+    static func oneOff(_ p: ClassPick) -> RecurringClass {
+        RecurringClass(key: "\(oneOffPrefix)\(p.occurrenceId)", name: p.name, weekday: Slot.weekday(p.occursAt),
+                       start: Slot.hhmm(p.occursAt), locationIds: [p.branchId])
+    }
+
+    var isOneOff: Bool { key.hasPrefix(Self.oneOffPrefix) }
+}
+
 /// An away range; `except` keeps specific classes bookable on those days.
 struct Pause: Codable, Hashable, Identifiable, Sendable {
     let start: String        // yyyy-MM-dd

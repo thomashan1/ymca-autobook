@@ -119,7 +119,7 @@ actor FisikalClient {
         return (obj?["data"] as? [[String: Any]] ?? []).compactMap(Occurrence.init)
     }
 
-    // MARK: Booking (the only write the app ever makes; there is no cancel)
+    // MARK: Booking and cancelling
 
     struct JoinResult: Sendable {
         let ok: Bool
@@ -156,6 +156,28 @@ actor FisikalClient {
         let message = ok ? "booked (occurrence_client id=\(oc?["id"] ?? "?"))"
                          : (errors.isEmpty ? "HTTP \(http?.statusCode ?? 0)" : errors.joined(separator: ", "))
         return JoinResult(ok: ok, errorTypes: errors, message: message, sentAt: sent, repliedAt: replied)
+    }
+
+    /// DELETE .../occurrences/{id}/cancel with form `json={}` — src/fisikal.py's cancel().
+    /// True on a 2xx; the caller re-reads the occurrence to be sure.
+    func cancel(occurrenceId: Int) async throws -> (ok: Bool, message: String) {
+        guard let csrf else { throw Failure.sessionExpired }
+        var req = URLRequest(url: Self.fisikal.appendingPathComponent("api/web/schedule/occurrences/\(occurrenceId)/cancel"))
+        req.httpMethod = "DELETE"
+        req.setValue("application/x-www-form-urlencoded; charset=UTF-8", forHTTPHeaderField: "Content-Type")
+        req.setValue(csrf, forHTTPHeaderField: "X-CSRF-Token")
+        req.setValue("XMLHttpRequest", forHTTPHeaderField: "X-Requested-With")
+        req.setValue(Self.fisikal.absoluteString + "/", forHTTPHeaderField: "Referer")
+        req.httpBody = Self.formEncode([("json", "{}")])
+        let (data, resp) = try await session.data(for: req)
+        let http = resp as? HTTPURLResponse
+        let isJSON = (http?.value(forHTTPHeaderField: "Content-Type") ?? "").contains("json")
+        if !isJSON, http?.statusCode != 503, !(200..<300).contains(http?.statusCode ?? 0) {
+            self.csrf = nil
+            throw Failure.sessionExpired
+        }
+        let code = http?.statusCode ?? 0
+        return ((200..<300).contains(code), "HTTP \(code): \(String(decoding: data.prefix(160), as: UTF8.self))")
     }
 
     // MARK: Login

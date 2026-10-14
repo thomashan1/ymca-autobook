@@ -26,6 +26,21 @@ final class Engine: ObservableObject {
     @Published private(set) var syncError: String?
     private var lastSyncAttempt: Date?
 
+    /// Sessions picked to book outside the lineup, here or from the iPhone.
+    @Published private(set) var picks = Store.picks()
+    /// Lineup sessions not to book this time ("skip this one").
+    @Published private(set) var skips = Store.skips()
+    /// Bookings being cancelled right now.
+    @Published private(set) var cancelling: Set<Int> = []
+    /// Every upcoming group class at both branches, from the last plan; nil
+    /// until the first plan since launch.
+    @Published private(set) var schedule: [ScheduleItem]?
+    /// Picks being booked right now (their window was already open).
+    @Published private(set) var bookingNow: Set<Int> = []
+    private var inboxLoop: Task<Void, Never>?
+    /// How often to look for requests from the iPhone.
+    private let inboxEvery: TimeInterval = 30
+
     /// iCloud mirror for the companion app (#147). Never on the booking path.
     @Published private(set) var lastCloudPush = UserDefaults.standard.object(forKey: "lastCloudPush") as? Date
     @Published private(set) var cloudError: String?
@@ -54,7 +69,7 @@ final class Engine: ObservableObject {
     init() {
         Notifier.requestPermission()
         LoginItem.registerIfWanted()
-        if signedInAs != nil { start() }
+        if signedInAs != nil { start(); startInbox() }
     }
 
     // MARK: Account
@@ -63,10 +78,12 @@ final class Engine: ObservableObject {
         try await FisikalClient.shared.signIn(username: username, password: password)
         signedInAs = username
         start()
+        startInbox()
     }
 
     func signOut() async {
         loop?.cancel()
+        inboxLoop?.cancel()
         await FisikalClient.shared.signOut()
         signedInAs = nil
         openings = []
@@ -85,6 +102,177 @@ final class Engine: ObservableObject {
         Store.save(classes: classes)
         replanSoon()
         pushToCloudSoon()
+    }
+
+    // MARK: Picked sessions (one-off bookings)
+
+    /// Book this session: now if its window is open, otherwise at the second it opens.
+    func pick(_ p: ClassPick) {
+        guard !picks.contains(where: { $0.id == p.id }) else { return }
+        update(picks: picks + [p])
+    }
+
+    func unpick(_ id: Int) {
+        update(picks: picks.filter { $0.id != id })
+    }
+
+    /// Don't book this session of a lineup class (the Mac only — a GitHub
+    /// backup still books it unless pauses.yml says otherwise).
+    func skip(_ p: ClassPick) {
+        guard !skips.contains(where: { $0.id == p.id }) else { return }
+        setSkips(skips + [p])
+        replanSoon()
+    }
+
+    func unskip(_ id: Int) {
+        setSkips(skips.filter { $0.id != id })
+        replanSoon()
+    }
+
+    private func setSkips(_ new: [ClassPick]) {
+        let kept = new.filter { $0.occursAt > Date() }.sorted { $0.occursAt < $1.occursAt }
+        guard kept != skips else { return }
+        skips = kept
+        Store.save(skips: skips)
+        pushToCloudSoon()
+    }
+
+    func isSkipped(_ occurrenceId: Int) -> Bool { skips.contains { $0.id == occurrenceId } }
+
+    /// What this session is to us: booked, queued, open… and so what can be done.
+    func state(of i: ScheduleItem) -> SessionState {
+        if cancelling.contains(i.id) { return .booking }
+        return SessionState(i, picked: picks.contains { $0.id == i.id } || bookingNow.contains(i.id),
+                            skipped: isSkipped(i.id))
+    }
+
+    /// Do a session's action, from the Mac's own window or from the iPhone.
+    func perform(_ action: Cloud.Request.Action, on p: ClassPick) {
+        switch action {
+        case .book: setSkips(skips.filter { $0.id != p.id }); pick(p)
+        case .withdraw: unpick(p.id)
+        case .skip: skip(p)
+        case .unskip: unskip(p.id)
+        case .cancel: Task { await cancelBooking(p) }
+        }
+    }
+
+    /// Give a booked seat back, then read the session again to be sure.
+    func cancelBooking(_ p: ClassPick) async {
+        guard !cancelling.contains(p.id) else { return }
+        cancelling.insert(p.id)
+        defer { cancelling.remove(p.id) }
+        while isFiring { await sleep(until: Date().addingTimeInterval(5)) }
+        var outcome: String
+        var ok = false
+        do {
+            _ = try await FisikalClient.shared.ensureSession()
+            var r = try await FisikalClient.shared.cancel(occurrenceId: p.occurrenceId)
+            if !r.ok, try await isJoined(p) != false {
+                // One retry with a fresh session: the stored one may have just expired.
+                _ = try await FisikalClient.shared.ensureSession()
+                r = try await FisikalClient.shared.cancel(occurrenceId: p.occurrenceId)
+            }
+            let still = try await isJoined(p)
+            ok = still == false
+            outcome = ok ? "cancelled" : "not cancelled — \(r.message)"
+        } catch {
+            outcome = "not cancelled — \(error.localizedDescription)"
+        }
+        // A lineup class would otherwise be booked again if its window is still ahead.
+        if ok, p.openAt > Date() { setSkips(skips + [p]) }
+        Notifier.post("\(ok ? "🗑" : "❌") \(p.name) · \(p.occursAt.formatted(.dateTime.weekday().month().day()))", outcome)
+        replanSoon()   // refreshes the booking list and pushes it to the phone
+    }
+
+    private func isJoined(_ p: ClassPick) async throws -> Bool? {
+        let occs = try await FisikalClient.shared.occurrences(
+            locationIds: [p.branchId], since: p.occursAt.addingTimeInterval(-60), till: p.occursAt.addingTimeInterval(60))
+        return occs.first { $0.id == p.occurrenceId }?.isJoined
+    }
+
+    private func update(picks new: [ClassPick]) {
+        setPicks(new)
+        // The plan sorts them out: an opening to wait for, or a booking right now.
+        replanSoon()
+    }
+
+    private func setPicks(_ new: [ClassPick]) {
+        guard new != picks else { return }
+        picks = new.sorted { $0.openAt < $1.openAt }
+        Store.save(picks: picks)
+        pushToCloudSoon()
+    }
+
+    private func dropPicks(_ ids: some Collection<Int>) {
+        setPicks(picks.filter { !ids.contains($0.id) })
+    }
+
+    /// Book a picked session whose window is already open: the same join and
+    /// read-back as at an opening, just not timed to the second.
+    func bookNow(_ p: ClassPick) async {
+        guard !bookingNow.contains(p.id) else { return }
+        bookingNow.insert(p.id)
+        defer { bookingNow.remove(p.id) }
+        while isFiring { await sleep(until: Date().addingTimeInterval(5)) }
+
+        let k = RecurringClass.oneOff(p)
+        var entry = ShadowEntry(classKey: k.key, className: p.name, occurrenceId: p.occurrenceId,
+                                occursAt: p.occursAt, openAt: p.openAt, paused: false)
+        do {
+            entry.sessionPath = try await FisikalClient.shared.ensureSession()
+            entry.sessionReadyAt = Date()
+            let occs = try await FisikalClient.shared.occurrences(
+                locationIds: [p.branchId], since: p.occursAt.addingTimeInterval(-60), till: p.occursAt.addingTimeInterval(60))
+            guard let o = occs.first(where: { $0.id == p.occurrenceId }) else {
+                throw PickFailure.notOnSchedule
+            }
+            entry.capacity = o.capacity
+            if o.isJoined {   // booked already, by hand or another trigger
+                dropPicks([p.id])
+                return
+            }
+            let opening = Opening(klass: k, occurrence: o, paused: false)
+            entry.booking = await Self.book(opening)
+            let (_, s, fullAt, _) = await Self.sample(opening, index: 0)
+            entry.firedAt = s?.at ?? Date()
+            entry.atOpen = s
+            entry.fullGroupAt = fullAt ?? o.fullGroupAt
+        } catch {
+            entry.error = error.localizedDescription
+        }
+        record([entry])
+        dropPicks([p.id])
+        Notifier.post("\(entry.booking?.booked == true ? "✅" : "❌") \(p.name) · \(p.occursAt.formatted(.dateTime.weekday().month().day()))",
+                      entry.verdict)
+        replanSoon()   // refreshes the booking list, then pushes it
+        pushToCloudSoon(after: 1)   // the phone's alert comes from this result
+    }
+
+    enum PickFailure: LocalizedError {
+        case notOnSchedule
+        var errorDescription: String? { "That session is no longer on the YMCA schedule" }
+    }
+
+    private func startInbox() {
+        inboxLoop?.cancel()
+        inboxLoop = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.checkInbox()
+                try? await Task.sleep(nanoseconds: UInt64((self?.inboxEvery ?? 30) * 1_000_000_000))
+            }
+        }
+    }
+
+    /// Act on requests from the iPhone: add or remove picks, then delete them.
+    private func checkInbox() async {
+        guard !isFiring, signedInAs != nil else { return }
+        guard let requests = try? await CloudStore.shared.inbox(), !requests.isEmpty else { return }
+        let (newPicks, newSkips) = PickTriage.apply(requests, picks: picks, skips: skips)
+        setSkips(newSkips)
+        update(picks: newPicks)
+        for q in requests where q.action == .cancel { Task { await cancelBooking(q.pick) } }
+        await CloudStore.shared.delete(requests: requests)
     }
 
     // MARK: Away dates and swaps (from the private repo)
@@ -288,6 +476,7 @@ final class Engine: ObservableObject {
     func pushToCloud() async {
         let snap = CloudStore.Snapshot(
             classes: classes, pauses: pauses, swaps: swaps, log: log, stats: slotStats(), bookings: bookings,
+            picks: picks, skips: skips, schedule: schedule,
             status: .init(updatedAt: Date(), status: status, signedInAs: signedInAs,
                           liveClasses: classes.count,
                           nextOpening: openings.first?.openAt,
@@ -349,6 +538,8 @@ final class Engine: ObservableObject {
             let now = Date()
             var found: [Opening] = []
             var joined: [CloudStore.Booking] = []
+            var upcoming: [ScheduleItem] = []
+            var byId: [Int: Occurrence] = [:]
             if !UserDefaults.standard.bool(forKey: "historyBackfilled") { await backfillHistory() }
             // Both branches every time, not just the ones in your lineup: the same
             // fetch feeds fill history for every class.
@@ -362,10 +553,34 @@ final class Engine: ObservableObject {
                 }
                 for k in classes where k.locationIds.contains(branch) {
                     for o in occs where k.matches(o) && o.openAt > now {
-                        found.append(Opening(klass: k, occurrence: o, paused: skipReason(k, on: o.occursAt) != nil))
+                        found.append(Opening(klass: k, occurrence: o,
+                                             paused: skipReason(k, on: o.occursAt) != nil || isSkipped(o.id)))
                     }
                 }
+                for o in occs where o.capacity >= 5 && o.occursAt > now {
+                    byId[o.id] = o
+                    upcoming.append(ScheduleItem(
+                        id: o.id, name: o.title, occursAt: o.occursAt, openAt: o.openAt, minutes: o.durationMinutes,
+                        branchId: branch, room: o.room, trainer: o.trainer, capacity: o.capacity,
+                        full: o.isFull, joined: o.isJoined, autoBook: false))
+                }
             }
+            // Picked sessions: wait for the opening, book now, or let go.
+            let lineup = Set(found.filter { !$0.paused }.map(\.occurrence.id))
+            let triage = PickTriage.run(picks, seen: byId.mapValues { ($0.isJoined, $0.openAt) }, lineup: lineup, now: now)
+            for p in picks where triage.atOpening.contains(p.id) {
+                if let o = byId[p.id] { found.append(Opening(klass: .oneOff(p), occurrence: o, paused: false)) }
+            }
+            dropPicks(triage.drop)
+            setSkips(skips)   // let past ones go
+            for p in picks where triage.now.contains(p.id) { Task { await bookNow(p) } }
+
+            schedule = upcoming
+                .map { i in ScheduleItem(id: i.id, name: i.name, occursAt: i.occursAt, openAt: i.openAt,
+                                         minutes: i.minutes, branchId: i.branchId, room: i.room, trainer: i.trainer,
+                                         capacity: i.capacity, full: i.full, joined: i.joined,
+                                         autoBook: lineup.contains(i.id)) }
+                .sorted { ($0.occursAt, $0.id) < ($1.occursAt, $1.id) }
             openings = found.sorted { $0.openAt < $1.openAt }
             bookings = joined.sorted { $0.occursAt < $1.occursAt }
             Store.save(fillHistory: history)
@@ -399,7 +614,9 @@ final class Engine: ObservableObject {
         // counts. Bounded by RepoSync's short timeout; on failure the cached copy stands.
         await syncFromRepo()
         let group = planned.map {
-            Opening(klass: $0.klass, occurrence: $0.occurrence, paused: skipReason($0.klass, on: $0.occurrence.occursAt) != nil)
+            Opening(klass: $0.klass, occurrence: $0.occurrence,
+                    paused: !$0.klass.isOneOff && (skipReason($0.klass, on: $0.occurrence.occursAt) != nil
+                                                   || isSkipped($0.occurrence.id)))
         }
 
         var entries = group.map {
@@ -447,6 +664,7 @@ final class Engine: ObservableObject {
             }
         }
         record(entries)
+        dropPicks(group.filter(\.klass.isOneOff).map(\.occurrence.id))
         // The booking is decided; send the result to iCloud now (the phone's alert
         // comes from it) rather than after the follow-up reads ~5 minutes later.
         Task { await pushToCloud() }

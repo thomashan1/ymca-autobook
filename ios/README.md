@@ -12,19 +12,18 @@ state through the GitHub REST API:
 | **Jobs**    | Scheduled bookings + live 167h countdowns; recent run feed (Actions API) |
 | **Away**    | `pauses.yml` in the private repo — add/remove away dates, plus a read-only list of upcoming one-off swaps from `swaps.yml` |
 
-## Two data sources: GitHub or your Mac
+## Two data sources: your Mac (default) or GitHub
 
-Settings opens with one choice, **Booker: GitHub | Mac**.
-
-- **GitHub** is everything below: the repos, a token, and GitHub Actions booking.
-- **Mac** reads what the **Y Booker** Mac app (branch `explore/macos-app`, epic
-  #146) publishes to the user's own iCloud (container `iCloud.com.thomashan.ybooker`,
-  private database, zone `YBooker`): classes, away dates, swaps, fill speed, the
-  real booking list (refreshed on every Mac plan) and each booking window's result.
-  It needs no GitHub token. It's read-only (the Mac is the only writer), so
-  "Book now", removing classes and away-date edits are hidden. A CloudKit
-  subscription sends an alert for every booking result
+- **Mac** (the default) reads what the **Y Booker** Mac app (branch
+  `explore/macos-app`, epic #146) publishes to the user's own iCloud (container
+  `iCloud.com.thomashan.ybooker`, private database, zone `YBooker`): classes, away
+  dates, swaps, fill speed, the real booking list (refreshed on every Mac plan) and
+  each booking window's result. It needs no GitHub token. It's read-only (the Mac is
+  the only writer), so "Book now", removing classes and away-date edits are hidden.
+  A CloudKit subscription sends an alert for every booking result
   (`Services/CloudSource.swift`; text via `Localizable.strings`).
+- **GitHub** (Settings → Advanced → **Use GitHub instead**) is everything below: the
+  repos, a token, and GitHub Actions booking.
 
 Switching sources changes only what the app shows. It doesn't turn either booker
 on or off.

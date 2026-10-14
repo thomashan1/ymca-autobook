@@ -25,7 +25,6 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                sourceSection
                 if auth.isCloud {
                     cloudSection
                     diagnosticsSection
@@ -39,6 +38,7 @@ struct SettingsView: View {
                     whySection
                     howToSection
                 }
+                advancedSection
             }
             .navigationTitle(onboarding ? "Connect" : "Settings")
         }
@@ -70,44 +70,24 @@ struct SettingsView: View {
         }
     }
 
-    /// The one choice everything else on this screen depends on: which booker
-    /// this app shows. Each option says what it is and what it needs.
-    private var sourceSection: some View {
+    /// GitHub is for people running the Actions setup themselves; everyone else
+    /// leaves this off and reads from their Mac.
+    private var advancedSection: some View {
         Section {
-            Picker("Booker", selection: Binding(get: { auth.source }, set: { auth.use($0) })) {
-                Text("GitHub").tag(DataSource.github)
-                Text("Mac").tag(DataSource.icloud)
-            }
-            .pickerStyle(.segmented)
-            .listRowSeparator(.hidden)
-            if auth.source == .icloud {
-                option("desktopcomputer", "Y Booker on your Mac",
-                       "The Mac app books each class the second its window opens, and shares your classes, away dates and results through your iCloud. Nothing to sign in to here. Make changes on the Mac.")
-            } else {
-                option("server.rack", "GitHub Actions",
-                       "A scheduled GitHub workflow books your classes. This app reads and edits your plan in your GitHub repos, and can start a booking. Needs a GitHub token (below).")
+            Toggle(isOn: Binding(get: { auth.source == .github },
+                                 set: { auth.use($0 ? .github : .icloud) })) {
+                Label("Use GitHub instead", systemImage: "server.rack")
             }
         } header: {
-            Text("Booker")
+            Text("Advanced")
         } footer: {
-            Text("This only changes what the app shows and edits. It doesn't turn either booker on or off.")
-        }
-    }
-
-    private func option(_ icon: String, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon).font(.title3).foregroundStyle(Theme.accent).frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.callout.weight(.semibold))
-                Text(detail).font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text("For the GitHub Actions setup (see the project README): this app then reads and edits your plan in your GitHub repos and needs a GitHub token. Leave it off to use the Y Booker app on your Mac.")
         }
     }
 
     /// The Mac's status, when it's the source.
     private var cloudSection: some View {
-        Section("Your Mac") {
+        Section {
             MacStatusRow()
             Button {
                 reload()

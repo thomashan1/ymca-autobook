@@ -22,13 +22,13 @@ GitHub setup.
 
 ## 📱 iOS app
 
-**YMCA Booker**, in [`ios/`](ios/), shows your schedule on an iPhone or iPad. It reads
+**YMCA Booker** on an iPhone or iPad shows your schedule ([`app/`](app/) is one app for Mac, iPhone and iPad). It reads
 from your Mac (Option A) out of the box. For Option B, turn on **Settings → Advanced →
-Use GitHub instead**. It doesn't book anything itself. See [`ios/README.md`](ios/README.md).
+Use GitHub instead**. It doesn't book anything itself. See [`app/README.md`](app/README.md).
 
 | This & Next Week | My Classes | Scheduled Jobs | Away Dates |
 |:---:|:---:|:---:|:---:|
-| <img src="ios/screenshots/week.png" width="200"> | <img src="ios/screenshots/classes.png" width="200"> | <img src="ios/screenshots/jobs.png" width="200"> | <img src="ios/screenshots/away.png" width="200"> |
+| <img src="app/screenshots/week.png" width="200"> | <img src="app/screenshots/classes.png" width="200"> | <img src="app/screenshots/jobs.png" width="200"> | <img src="app/screenshots/away.png" width="200"> |
 
 - **Week**: two weeks of classes; green ✓ means actually booked.
 - **Classes**: your recurring lineup and how fast each class fills.
@@ -40,7 +40,7 @@ Use GitHub instead**. It doesn't book anything itself. See [`ios/README.md`](ios
 
 | Mine | Fill fast |
 |:---:|:---:|
-| <img src="ios/screenshots/fill-speed-mine.png" width="200"> | <img src="ios/screenshots/fill-speed-fast.png" width="200"> |
+| <img src="app/screenshots/fill-speed-mine.png" width="200"> | <img src="app/screenshots/fill-speed-fast.png" width="200"> |
 
 How long every class at both branches takes to fill once booking opens, over the
 last 12 weeks. BODYPUMP fills in ~37 seconds every week; most classes take hours or
@@ -50,10 +50,8 @@ _Screenshots use sample data; the Fill speed numbers are real (10/10)._
 
 ## Option A: Mac + iPhone
 
-**YMCA Booker** comes as two apps that share your iCloud: the Mac app does the
-booking, and the iPhone/iPad app shows it. The Mac app lives on the
-[`explore/macos-app`](https://github.com/thomashan1/ymca-autobook/tree/explore/macos-app)
-branch for now.
+**YMCA Booker** is one app for Mac, iPhone and iPad, sharing your iCloud: on the
+Mac it does the booking, and on the iPhone or iPad it shows it. It's in [`app/`](app/).
 
 ### Setting it up
 
@@ -90,7 +88,7 @@ flowchart LR
 - **First-run setup** (choosing your branches) is
   [#150](https://github.com/thomashan1/ymca-autobook/issues/150).
 - **A download** (a signed Mac app, plus TestFlight for the iPhone) is
-  [#151](https://github.com/thomashan1/ymca-autobook/issues/151). Until then, both apps are
+  [#151](https://github.com/thomashan1/ymca-autobook/issues/151). Until then, the app is
   built from source in Xcode.
 
 ## Option B: GitHub (advanced)

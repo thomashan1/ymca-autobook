@@ -28,6 +28,13 @@ actor CloudStore {
         var stats: [SlotStats]
         /// nil until the first plan since launch: keep what iCloud has rather than wipe it.
         var bookings: [Booking]?
+        /// Sessions picked to book outside the lineup, waiting for their window.
+        var picks: [ClassPick] = []
+        /// Lineup sessions not to book this time.
+        var skips: [ClassPick] = []
+        /// Upcoming sessions at both branches, for picking on the iPhone. nil
+        /// until the first plan since launch, like `bookings`.
+        var schedule: [ScheduleItem]? = nil
         var status: MacStatus
     }
 
@@ -93,7 +100,10 @@ actor CloudStore {
         let records = build(s)
         let wanted = Dictionary(records.map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
         let toSave = wanted.values.filter { pushed[$0.name] != $0.hash }
-        let toDelete = pushed.keys.filter { wanted[$0] == nil && (s.bookings != nil || !$0.hasPrefix("Booking.")) }
+        let toDelete = pushed.keys.filter {
+            wanted[$0] == nil && (s.bookings != nil || !$0.hasPrefix("Booking."))
+                && (s.schedule != nil || $0 != Cloud.scheduleRecordName)
+        }
 
         var saved = 0, deleted = 0
         var failures: [String] = []
@@ -131,6 +141,50 @@ actor CloudStore {
         return (saved, deleted)
     }
 
+    // MARK: Requests from the iPhone
+
+    /// New "book this" / "never mind" requests since the last look, read from the
+    /// zone's change feed (no queries, so no indexes to set up). The feed also
+    /// carries this Mac's own writes; only requests are kept.
+    func inbox() async throws -> [Cloud.Request] {
+        let status = try await CKContainer(identifier: Self.containerId).accountStatus()
+        guard status == .available else { throw Failure.account(status) }
+        var token = (try? Data(contentsOf: Self.inboxURL)).flatMap {
+            try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: $0)
+        }
+        var found: [Cloud.Request] = []
+        var more = true
+        do {
+            while more {
+                let changes = try await database.recordZoneChanges(inZoneWith: zoneID, since: token)
+                for (_, result) in changes.modificationResultsByID {
+                    if case .success(let m) = result, let q = Cloud.Request(m.record) { found.append(q) }
+                }
+                token = changes.changeToken
+                more = changes.moreComing
+            }
+        } catch let e as CKError where e.code == .changeTokenExpired {
+            try? FileManager.default.removeItem(at: Self.inboxURL)
+            return try await inbox()
+        } catch let e as CKError where e.code == .zoneNotFound {
+            return []   // nothing pushed yet, so nothing can have been asked for
+        }
+        if let t = token, let d = try? NSKeyedArchiver.archivedData(withRootObject: t, requiringSecureCoding: true) {
+            try? d.write(to: Self.inboxURL, options: .atomic)
+        }
+        return found
+    }
+
+    /// Requests are one-shot: once acted on they're removed, which also tells
+    /// the iPhone the Mac has them.
+    func delete(requests: [Cloud.Request]) async {
+        guard !requests.isEmpty else { return }
+        let ids = requests.map { CKRecord.ID(recordName: $0.id, zoneID: zoneID) }
+        _ = try? await database.modifyRecords(saving: [], deleting: ids, savePolicy: .allKeys, atomically: false)
+    }
+
+    private static var inboxURL: URL { Store.dir.appendingPathComponent("cloud-inbox-token") }
+
     /// Forget what was pushed, so the next push resends everything (e.g. after
     /// records were wiped in the CloudKit console).
     func resetPushState() {
@@ -152,7 +206,7 @@ actor CloudStore {
     nonisolated func build(_ s: Snapshot) -> [Built] {
         var out: [Built] = []
         func add(_ type: String, _ name: String, _ fields: [String: CKRecordValue?]) {
-            let recordName = "\(type).\(Self.safe(name))"
+            let recordName = type == "Schedule" ? Cloud.scheduleRecordName : "\(type).\(Self.safe(name))"
             let rec = CKRecord(recordType: type, recordID: CKRecord.ID(recordName: recordName, zoneID: zoneID))
             var digest = type
             for (k, v) in fields.sorted(by: { $0.key < $1.key }) {
@@ -228,6 +282,15 @@ actor CloudStore {
                 "room": b.room.isEmpty ? nil : b.room as NSString,
                 "trainer": b.trainer.isEmpty ? nil : b.trainer as NSString,
             ])
+        }
+        for p in s.picks {
+            add("OneOff", "\(p.occurrenceId)", Cloud.fields(p))
+        }
+        for p in s.skips {
+            add("Skip", "\(p.occurrenceId)", Cloud.fields(p))
+        }
+        if let items = s.schedule {
+            add("Schedule", "current", ["items": Cloud.encodeSchedule(items) as NSString])
         }
         let m = s.status
         add("MacStatus", "current", [

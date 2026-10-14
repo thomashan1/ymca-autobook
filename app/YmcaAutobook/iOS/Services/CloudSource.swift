@@ -43,6 +43,9 @@ final class CloudSource: ObservableObject {
     @Published private(set) var mac: MacStatus?
     @Published private(set) var lastRefresh: Date?
     @Published private(set) var error: String?
+    /// Bumped whenever the cached records change, so views that read the
+    /// schedule and picks redraw.
+    @Published private(set) var version = 0
 
     private var cache = Cache()
     private var inflight: Task<Void, Never>?
@@ -123,6 +126,7 @@ final class CloudSource: ObservableObject {
         if let d = try? JSONEncoder().encode(cache) { try? d.write(to: Self.cacheURL, options: .atomic) }
         mac = cache.mac
         lastRefresh = cache.lastRefresh
+        version += 1
     }
 
     private func apply(_ r: CKRecord) {
@@ -135,6 +139,10 @@ final class CloudSource: ObservableObject {
         case "SlotStat": cache.stats[name] = Cloud.Slot(r)
         case "Booking": cache.bookings[name] = Cloud.Booking(r)
         case "MacStatus": cache.mac = MacStatus(r) ?? cache.mac
+        case "Schedule": cache.schedule = Cloud.schedule(r) ?? cache.schedule
+        case "OneOff": cache.picks[name] = Cloud.pick(r)
+        case "Skip": cache.skips[name] = Cloud.pick(r)
+        case Cloud.Request.recordType: cache.requests[name] = Cloud.Request(r)
         default: break
         }
     }
@@ -142,6 +150,8 @@ final class CloudSource: ObservableObject {
     private func remove(_ name: String) {
         cache.classes[name] = nil; cache.pauses[name] = nil; cache.swaps[name] = nil
         cache.openings[name] = nil; cache.stats[name] = nil; cache.bookings[name] = nil
+        cache.picks[name] = nil; cache.skips[name] = nil; cache.requests[name] = nil
+        if name == Cloud.scheduleRecordName { cache.schedule = nil }
     }
 
     private static var cacheURL: URL {
@@ -240,6 +250,48 @@ final class CloudSource: ObservableObject {
         return f
     }
 
+    // MARK: Booking and cancelling, via the Mac
+
+    /// Every upcoming session the Mac last saw at both branches (nil before
+    /// a Mac that publishes it has run).
+    var schedule: [ScheduleItem]? { cache.schedule.map { $0.filter { $0.occursAt > Date() } } }
+
+    /// Requests sent from here (or another device) that the Mac hasn't picked up yet.
+    var pending: [Cloud.Request] { cache.requests.values.sorted { $0.requestedAt < $1.requestedAt } }
+
+    /// Where a session stands, counting requests still on their way to the Mac.
+    func state(of i: ScheduleItem) -> SessionState {
+        let last = cache.requests.values.filter { $0.pick.id == i.id }.max { $0.requestedAt < $1.requestedAt }
+        let picked = cache.picks.values.contains { $0.id == i.id }
+        let skipped = cache.skips.values.contains { $0.id == i.id }
+        switch last?.action {
+        case .book?: return SessionState(i, picked: true, skipped: false)
+        case .withdraw?: return SessionState(i, picked: false, skipped: skipped)
+        case .skip?: return SessionState(i, picked: false, skipped: true)
+        case .unskip?: return SessionState(i, picked: picked, skipped: false)
+        case .cancel?: return i.joined ? .booking : SessionState(i, picked: picked, skipped: skipped)
+        case nil: return SessionState(i, picked: picked, skipped: skipped)
+        }
+    }
+
+    /// Ask the Mac to do something to one session. It acts within about half a
+    /// minute; the change comes back through the usual records.
+    func send(_ action: Cloud.Request.Action, _ pick: ClassPick) async throws {
+        let q = Cloud.Request(action: action, pick: pick)
+        _ = try await database.save(q.record())
+        cache.requests[q.id] = q
+        version += 1
+        if let d = try? JSONEncoder().encode(cache) { try? d.write(to: Self.cacheURL, options: .atomic) }
+        // Pick up the Mac's response without waiting for a pull to refresh.
+        Task {
+            for delay in [20, 40, 60, 90] {
+                try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000)
+                await refresh()
+                if cache.requests[q.id] == nil { break }
+            }
+        }
+    }
+
     // MARK: Alerts
 
     private static let alertsID = "ymca-booker-opening-alerts"
@@ -287,6 +339,10 @@ final class CloudSource: ObservableObject {
         var stats: [String: Cloud.Slot] = [:]
         var bookings: [String: Cloud.Booking] = [:]
         var mac: Cloud.MacStatus?
+        var schedule: [ScheduleItem]?
+        var picks: [String: ClassPick] = [:]
+        var skips: [String: ClassPick] = [:]
+        var requests: [String: Cloud.Request] = [:]
         var token: Data?
         var lastRefresh: Date?
     }

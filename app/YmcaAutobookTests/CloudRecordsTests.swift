@@ -41,6 +41,34 @@ final class CloudRecordsTests: XCTestCase {
         CloudStore.shared.build(s).map(\.record).filter { $0.recordType == type }
     }
 
+    func testPicksSkipsAndScheduleRoundTrip() throws {
+        let p = ClassPick(occurrenceId: 401, name: "BODYCOMBAT", occursAt: occursAt,
+                          openAt: occursAt.addingTimeInterval(-167 * 3600), branchId: 1388, room: "", trainer: "Sam")
+        let item = ScheduleItem(id: 401, name: "BODYCOMBAT", occursAt: occursAt, openAt: p.openAt, minutes: 60,
+                                branchId: 1388, room: "Studio", trainer: "Sam", capacity: 30, full: false,
+                                joined: false, autoBook: true)
+        var s = snapshot()
+        s.picks = [p]
+        s.skips = [p]
+        s.schedule = [item]
+        XCTAssertEqual(records(s, "OneOff").compactMap(Cloud.pick), [p])
+        XCTAssertEqual(records(s, "Skip").compactMap(Cloud.pick), [p])
+        let sched = try XCTUnwrap(records(s, "Schedule").first)
+        XCTAssertEqual(sched.recordID.recordName, Cloud.scheduleRecordName)
+        XCTAssertEqual(Cloud.schedule(sched), [item])
+        // No plan yet since launch: no Schedule record (and push keeps iCloud's copy).
+        XCTAssertTrue(records(snapshot(), "Schedule").isEmpty)
+    }
+
+    func testOneOffClassBypassesItsKey() {
+        let p = ClassPick(occurrenceId: 401, name: "BODYCOMBAT", occursAt: occursAt, openAt: occursAt, branchId: 1388)
+        let k = RecurringClass.oneOff(p)
+        XCTAssertTrue(k.isOneOff)
+        XCTAssertEqual(k.key, "oneoff-401")
+        XCTAssertEqual(k.locationIds, [1388])
+        XCTAssertFalse(RecurringClass(key: "rpm-wed", name: "RPM", weekday: "Wed", start: "09:30", locationIds: [1388]).isOneOff)
+    }
+
     func testClassRoundTrip() throws {
         let c = try XCTUnwrap(records(snapshot(), "Class").first.flatMap(Cloud.Class.init))
         XCTAssertEqual(c.key, "bodypump-tue")

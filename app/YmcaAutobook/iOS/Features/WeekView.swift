@@ -18,6 +18,7 @@ struct WeekView: View {
     private static let daysAhead = 14
     @State private var showZoom = false
     @State private var detail: ClassDetail?
+    @State private var showBook = false
 
     private var cal: Calendar { CalendarHelper.pacific }
 
@@ -74,6 +75,15 @@ struct WeekView: View {
                 await snapshot.load(); await bookings.load()
                 await fullClasses.load()
             }
+            .toolbar {
+                // Booking and cancelling go through the Mac, so only in iCloud mode.
+                if DataSource.isCloud {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showBook = true } label: { Label("Book", systemImage: "calendar.badge.plus") }
+                    }
+                }
+            }
+            .sheet(isPresented: $showBook, onDismiss: { Task { await bookings.load() } }) { BookView() }
             .fullScreenCover(isPresented: $showZoom) { CalendarZoomSheet() }
             .sheet(item: $detail) { ClassDetailSheet(detail: $0) }
         }

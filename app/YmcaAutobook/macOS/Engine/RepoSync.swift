@@ -1,9 +1,9 @@
 #if os(macOS)
 import Foundation
 
-/// Reads away dates and one-off swaps from the private repo — the same
-/// `pauses.yml` / `swaps.yml` the GitHub engine and the iOS app use, so there's
-/// one place to change them. Read-only: edits are made in the repo itself.
+/// The Mac's link to the GitHub backup's private repo. Since 10/14 the Mac
+/// writes classes.yml, pauses.yml and swaps.yml there (RepoMirror) and reads
+/// pauses.yml / swaps.yml only once, to carry over what was edited there before.
 ///
 /// The parsers are ports of the iOS app's (PausesRepository / SwapsRepository):
 /// just enough YAML for the two files' fixed shapes. The Python engine uses a
@@ -12,9 +12,8 @@ enum RepoSync {
     private static let tokenKey = "githubToken"
     private static let repoKey = "githubRepo"
 
-    /// "owner/name" of a private repo holding pauses.yml / swaps.yml. Optional:
-    /// unset means the GitHub source is off and away dates/swaps are kept in the
-    /// app. Only people who also run the GitHub booker (Option A) need it.
+    /// "owner/name" of the GitHub backup's private repo. Optional: only people
+    /// who also run the GitHub booker (Option B) as a backup need it.
     static var repo: String? {
         UserDefaults.standard.string(forKey: repoKey).flatMap {
             let t = $0.trimmingCharacters(in: .whitespaces)
@@ -105,62 +104,6 @@ enum RepoSync {
             case let c: throw Failure.http(c, path)
             }
         }
-    }
-
-    // MARK: Skips the Mac writes into swaps.yml for the GitHub backup
-
-    /// Marks the swaps.yml entries the Mac owns; it never touches any other.
-    static let skipNote = "Skipped in YMCA Booker"
-
-    /// swaps.yml with the Mac's skip entries made exactly `want` ("yyyy-MM-dd|class-key"):
-    /// stale ones removed, missing ones added at the end, everything else as it was.
-    static func mirrorSkips(_ yaml: String, want: Set<String>) -> String {
-        var lines = yaml.components(separatedBy: "\n")
-        while lines.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { lines.removeLast() }
-        func isEntry(_ l: String) -> Bool { l.hasPrefix("  - ") || l.hasPrefix("- ") }
-        func isTopLevel(_ l: String) -> Bool { !l.isEmpty && !l.hasPrefix(" ") && !l.hasPrefix("- ") }
-        func id(_ block: [String]) -> String? {
-            var date: String?, skip: String?
-            for l in block {
-                var t = stripComment(l).trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("- ") { t = String(t.dropFirst(2)) }
-                let kv = t.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
-                guard kv.count == 2 else { continue }
-                if kv[0] == "date" { date = unquote(kv[1]) }
-                if kv[0] == "skip" { skip = unquote(kv[1]) }
-            }
-            guard let date, let skip else { return nil }
-            return "\(date)|\(skip)"
-        }
-        var out: [String] = [], have = Set<String>()
-        var i = 0
-        while i < lines.count {
-            guard isEntry(lines[i]) else { out.append(lines[i]); i += 1; continue }
-            var j = i + 1
-            while j < lines.count, !isEntry(lines[j]), !isTopLevel(lines[j]) { j += 1 }
-            let block = Array(lines[i..<j])
-            if block.contains(where: { $0.contains(skipNote) }), let k = id(block) {
-                if want.contains(k), !have.contains(k) { have.insert(k); out += block }
-            } else {
-                out += block
-            }
-            i = j
-        }
-        while out.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { out.removeLast() }
-        let missing = want.subtracting(have).sorted()
-        if !missing.isEmpty {
-            if let s = out.firstIndex(where: { $0.hasPrefix("swaps:") }) {
-                out[s] = "swaps:"   // `swaps: []` can't take entries
-            } else {
-                out.append("swaps:")
-            }
-            for m in missing {
-                let parts = m.split(separator: "|", maxSplits: 1).map(String.init)
-                guard parts.count == 2 else { continue }
-                out += ["", "  - date: \(parts[0])", "    skip: \(parts[1])", "    note: \"\(skipNote)\""]
-            }
-        }
-        return out.joined(separator: "\n") + "\n"
     }
 
     // MARK: pauses.yml — `- {start: 2026-10-23, end: 2026-10-23, except: [a, b]}  # note`

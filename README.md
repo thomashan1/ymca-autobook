@@ -8,17 +8,48 @@ The booker logs in just before, waits for that exact second, and books it.
 
 ## Two ways to run it
 
+### A. Mac + iPhone (recommended)
+
+**For anyone with a Mac that can stay on.** The **YMCA Booker** app on your Mac does the
+booking; the same app on your iPhone or iPad shows your schedule and booking results.
+
+- **You need:** a Mac that stays on and awake, ideally a **desktop** (iMac, Mac mini,
+  Mac Studio). A MacBook works only while it's open, awake and online. Close the lid
+  when a booking window opens and that class isn't booked. Also: an iCloud account
+  and your YMCA (egym) login.
+- **You don't need anything from GitHub:** no GitHub account, no repo, no token, no
+  cron-job.org. Your classes and away dates live in the app and your own iCloud.
+
+[Set up Option A ↓](#option-a-mac--iphone)
+
+### B. GitHub (advanced)
+
+**For people comfortable running their own GitHub setup**, or with no Mac that can stay
+on. GitHub Actions does the booking in the cloud, started on time by cron-job.org.
+
+- **You need:** a GitHub account with this code and a private repo, a GitHub token,
+  repo secrets, cron-job.org jobs and your YMCA login.
+- **Nothing runs at home,** and you can check it from any device.
+
+[Set up Option B ↓](#option-b-github-advanced)
+
+### Side by side
+
 | | **Option A: Mac + iPhone** | **Option B: GitHub (advanced)** |
 |---|---|---|
 | Who books | **YMCA Booker** on your Mac | GitHub Actions, started by cron-job.org |
-| Your data | Your own iCloud | Files in two GitHub repos |
+| Your data | Your own iCloud | Files in a private GitHub repo |
 | Accounts | iCloud, the YMCA | GitHub, cron-job.org, the YMCA |
-| Setup | Install two apps and log in | Repos, secrets, a token and cron jobs |
-| Needs | A Mac that's on and awake | Nothing running at home |
+| GitHub needed? | **No** | Yes |
+| Setup | Install the app and log in | Repos, secrets, a token and cron jobs |
+| Needs | A Mac that's on and awake (a desktop is best) | Nothing running at home |
 | Works on | Apple only: a Mac, plus an iPhone or iPad to view | Any device (it's all in the cloud) |
 
-Option A is the one to use. Option B is for people comfortable running their own
-GitHub setup.
+**Both at once (optional):** if you run Option A and also want Option B as a backup for
+when the Mac is asleep or offline, turn on **Settings → Advanced → GitHub backup** on
+the Mac. The Mac stays the main booker and writes a copy of your classes and away
+dates to your private repo; GitHub books a class only if the Mac didn't get it within
+5 seconds of the opening. Most people won't need this.
 
 ## 📱 iOS app
 
@@ -61,7 +92,8 @@ Mac it does the booking, and on the iPhone or iPad it shows it. It's in [`app/`]
 4. **On the iPhone or iPad:** install **YMCA Booker**, signed in to the **same iCloud
    account**, and allow notifications.
 
-That's it. There's no GitHub, no cron-job.org and no token.
+That's it. There's no GitHub, no cron-job.org and no token. Add away dates under
+**Away & swaps**, and skip or book a single session under **Book**.
 
 ### How it works
 
@@ -76,9 +108,10 @@ flowchart LR
   the exact second.
 - It publishes your lineup, away dates, real bookings and each result to your
   private iCloud database. The phone reads them and sends an alert for each result.
-- **The Mac has to be on and awake** when a window opens. If it's asleep or off,
-  that class isn't booked. Keep it plugged in, and set it not to sleep (System
-  Settings → Battery/Energy → prevent automatic sleeping).
+- **The Mac has to be on and awake** when a window opens. If it's asleep, off, or
+  a laptop with its lid closed, that class isn't booked. A desktop Mac is the best
+  fit: keep it plugged in and set it not to sleep (System Settings → Energy →
+  prevent automatic sleeping). The app keeps the Mac from idle-sleeping while it runs.
 
 ### Not done yet (tracked in [#146](https://github.com/thomashan1/ymca-autobook/issues/146))
 
@@ -93,7 +126,9 @@ flowchart LR
 
 ## Option B: GitHub (advanced)
 
-No Mac needed: GitHub Actions does the booking, and your plan lives in files.
+No Mac needed: GitHub Actions does the booking, and your plan lives in files in a
+private repo. (Running it as a backup to Option A? Then don't edit these files: the
+Mac writes them.)
 
 ### How it works
 
@@ -143,9 +178,9 @@ classes:
 cp .env.example .env      # your egym login
 ```
 
-GitHub Actions secrets: `EGYM_USERNAME`, `EGYM_PASSWORD`, plus optional
-`PRIVATE_REPO_TOKEN` (away dates and swaps) and `NOTIFY_EMAIL` / `GMAIL_APP_PASSWORD`
-(emails). Create the cron-job.org triggers with `./scripts/setup_cronjob_org.sh`.
+GitHub Actions secrets: `EGYM_USERNAME`, `EGYM_PASSWORD`, `PRIVATE_REPO_TOKEN`
+(reads `classes.yml`, away dates and swaps from your private repo), plus optional
+`NOTIFY_EMAIL` / `GMAIL_APP_PASSWORD` (emails). Create the cron-job.org triggers with `./scripts/setup_cronjob_org.sh`.
 
 Handy commands (`.venv/bin/python -m src.main …`):
 

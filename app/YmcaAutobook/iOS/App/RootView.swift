@@ -10,6 +10,7 @@ struct RootView: View {
     @EnvironmentObject var bookings: BookingsRepository
     @EnvironmentObject var fullClasses: FullRepository
     @EnvironmentObject var fillStats: FillStatsRepository
+    @Environment(\.scenePhase) private var scenePhase
 
     // Initial tab, overridable via launch arg `-screenshotTab N` (for screenshots).
     @State private var tab = UserDefaults.standard.integer(forKey: "screenshotTab")
@@ -43,17 +44,22 @@ struct RootView: View {
             await fillStats.load()
         }
         // A booking alert from the Mac means there's something new to show.
-        .onReceive(NotificationCenter.default.publisher(for: .cloudChanged)) { _ in
-            guard auth.isCloud else { return }
-            Task {
-                await CloudSource.shared.refresh()
-                await classes.load(); await pauses.load(); await swaps.load()
-                await bookings.load(); await fullClasses.load(); await fillStats.load()
-            }
-        }
+        .onReceive(NotificationCenter.default.publisher(for: .cloudChanged)) { _ in reloadFromMac() }
+        // So does coming back to the app: the Mac may have booked while it was
+        // in the background, and not everyone opens it from the alert.
+        .onChange(of: scenePhase) { _, phase in if phase == .active { reloadFromMac() } }
         .sheet(isPresented: .constant(!auth.isConnected && !SampleMode.active)) {
             SettingsView(onboarding: true)
                 .interactiveDismissDisabled()
+        }
+    }
+
+    private func reloadFromMac() {
+        guard auth.isCloud else { return }
+        Task {
+            await CloudSource.shared.refresh()
+            await classes.load(); await pauses.load(); await swaps.load()
+            await bookings.load(); await fullClasses.load(); await fillStats.load()
         }
     }
 }

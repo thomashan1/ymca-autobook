@@ -123,8 +123,10 @@ struct BookView: View {
                 Button(a == .book ? "Book" : a == .cancel ? "Cancel" : a == .withdraw ? "Undo" : a == .skip ? "Skip" : "Unskip") {
                     if a == .cancel { confirm = (i, a) } else { send(a, i) }
                 }
-                .buttonStyle(.bordered)
-                .tint(a == .cancel ? .red : a == .book ? Theme.accent : .secondary)
+                // Book is the one filled, blue button; Cancel stays red but outlined,
+                // so the two never look alike (the app's red accent made them twins).
+                .modifier(ActionStyle(primary: a == .book))
+                .tint(a == .cancel ? .red : a == .book ? .blue : .secondary)
                 .controlSize(.small)
             } else if s == .booking {
                 ProgressView()
@@ -192,6 +194,13 @@ struct BookView: View {
     }
 
     private func time(_ d: Date) -> String { d.formatted(date: .omitted, time: .shortened) }
+
+    private struct ActionStyle: ViewModifier {
+        let primary: Bool
+        func body(content: Content) -> some View {
+            if primary { content.buttonStyle(.borderedProminent) } else { content.buttonStyle(.bordered) }
+        }
+    }
 
     private static let cal: Calendar = {
         var c = Calendar(identifier: .gregorian)

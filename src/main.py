@@ -42,6 +42,13 @@ LIST_WINDOW_DAYS = 16         # how far ahead to look for occurrences
 # them; 60 sits in the middle. Raising FIRE_LEAD_MINS to 60+ would break that, so
 # the two constants have to move together.
 OPEN_GUARD = timedelta(minutes=60)
+# The Mac app is the primary booker and GitHub the backup (since 2026-10-14).
+# At the opening second the Mac books first (its reply lands ~0.7-1.1 s after
+# the open); this run waits this long past the open, then re-reads the class
+# and books only if nobody has it yet. 5 s leaves the Mac room for a few
+# retries and still beats the fastest fill (BODYPUMP, ~34 s). 0 restores the
+# old race at the open instant (e.g. if the Mac is retired).
+BACKUP_GRACE_SECONDS = float(os.environ.get("BOOK_BACKUP_GRACE_S", "5"))
 
 
 def load_config() -> dict:
@@ -413,6 +420,16 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
                           f"{_fmt(open_dt, tz)} (this week likely already booked).")
         print(f"Waiting until {_fmt(open_dt, tz)} ...")
         wait_until(open_dt)
+        if BACKUP_GRACE_SECONDS > 0:
+            wait_until(open_dt + timedelta(seconds=BACKUP_GRACE_SECONDS))
+            fresh = refresh_occurrence(context, csrf, klass, target["id"], target["occurs_at"])
+            if fresh and fresh.get("is_joined"):
+                return True, (f"Already booked: '{label}' on {occ_date:%Y-%m-%d} — the "
+                              f"primary booker (the Mac) got it; GitHub stood by "
+                              f"{BACKUP_GRACE_SECONDS:g} s as backup (occurrence {target['id']}).")
+            print(f"Not booked {BACKUP_GRACE_SECONDS:g} s after the open — booking as backup.")
+            if fresh and fresh.get("lock_version") is not None:
+                target["lock_version"] = fresh["lock_version"]
 
     # Retry loop: fire at the open instant; keep trying through "too early"
     # (advance_time_restriction) and refresh lock_version only on lock conflicts.

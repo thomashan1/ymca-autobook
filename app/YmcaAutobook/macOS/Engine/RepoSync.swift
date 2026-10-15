@@ -36,7 +36,7 @@ enum RepoSync {
         var errorDescription: String? {
             switch self {
             case .noRepo: return "No GitHub repo set"
-            case .noToken: return "No GitHub token — add one in Settings → General"
+            case .noToken: return "No GitHub token — add one in Settings → Advanced"
             case .readOnly: return "The GitHub token can't write to \(RepoSync.repo ?? "the repo") — give it Contents: Read and write"
             case .http(401, _), .http(403, _): return "GitHub refused the token (expired, or no access to \(RepoSync.repo ?? "the repo"))"
             case .http(let code, let path): return "GitHub returned \(code) for \(path)"

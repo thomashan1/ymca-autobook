@@ -369,6 +369,18 @@ final class Engine: ObservableObject {
         await publishToRepo(force: true)
     }
 
+    /// Stop writing the backup copy and forget the repo and token. The files
+    /// already in the repo stay as they are.
+    func turnOffGitHub() {
+        repoPush?.cancel()
+        RepoSync.setRepo("")
+        RepoSync.setToken("")
+        UserDefaults.standard.removeObject(forKey: "repoWritten")
+        syncError = nil
+        lastSynced = nil
+        UserDefaults.standard.removeObject(forKey: "lastSynced")
+    }
+
     // MARK: Edits made to the JSON files on disk (e.g. by Claude)
 
     /// classes.json and pauses.json can be edited in place while the app runs;

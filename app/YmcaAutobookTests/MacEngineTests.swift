@@ -73,6 +73,56 @@ final class RepoSyncTests: XCTestCase {
     }
 }
 
+/// The Mac needs nothing from GitHub: the backup copy is written only with a
+/// repo set (Settings → Advanced), and never replaces the Mac's own data.
+final class GitHubBackupTests: XCTestCase {
+    private func defaults() throws -> (UserDefaults, String) {
+        let name = "GitHubBackupTests-\(UUID())"
+        return (try XCTUnwrap(UserDefaults(suiteName: name)), name)
+    }
+
+    func testBackupIsOffWithoutARepo() throws {
+        XCTAssertNil(RepoSync.normalize(nil))
+        XCTAssertNil(RepoSync.normalize(""))
+        XCTAssertNil(RepoSync.normalize("   "))
+        XCTAssertEqual(RepoSync.normalize(" me/private "), "me/private")
+        let (d, name) = try defaults()
+        defer { d.removePersistentDomain(forName: name) }
+        XCTAssertNil(RepoSync.repo(in: d))                 // a fresh Mac: no GitHub
+        d.set("", forKey: "githubRepo")                    // what turning the backup off leaves
+        XCTAssertNil(RepoSync.repo(in: d))
+        d.set("me/private", forKey: "githubRepo")
+        XCTAssertEqual(RepoSync.repo(in: d), "me/private")
+    }
+
+    func testMacWithoutARepoNeverImportsFromOne() throws {
+        let (d, name) = try defaults()
+        defer { d.removePersistentDomain(forName: name) }
+        RepoSync.settleImport(d)                           // launched with no repo
+        XCTAssertTrue(d.bool(forKey: RepoSync.importedKey))
+        d.set("me/private", forKey: "githubRepo")          // backup turned on later
+        RepoSync.settleImport(d)
+        XCTAssertTrue(d.bool(forKey: RepoSync.importedKey))   // still only writes
+    }
+
+    func testMacThatHadARepoImportsOnce() throws {
+        let (d, name) = try defaults()
+        defer { d.removePersistentDomain(forName: name) }
+        d.set("me/private", forKey: "githubRepo")
+        RepoSync.settleImport(d)
+        XCTAssertFalse(d.bool(forKey: RepoSync.importedKey))  // carries over once
+    }
+
+    func testOnlyChangedFilesAreWritten() {
+        let files = ["classes.yml": "c2", "pauses.yml": "p", "swaps.yml": "s"]
+        XCTAssertEqual(RepoMirror.pendingWrites(files, written: [:], force: false), RepoMirror.paths)
+        XCTAssertEqual(RepoMirror.pendingWrites(files, written: ["classes.yml": "c1", "pauses.yml": "p", "swaps.yml": "s"],
+                                                force: false), ["classes.yml"])
+        XCTAssertEqual(RepoMirror.pendingWrites(files, written: files, force: false), [])
+        XCTAssertEqual(RepoMirror.pendingWrites(files, written: files, force: true), RepoMirror.paths)
+    }
+}
+
 final class ModelTests: XCTestCase {
     private func occurrence(_ title: String, _ iso: String) -> Occurrence? {
         Occurrence(["id": 1, "occurs_at": iso, "service_title": title,
@@ -91,6 +141,24 @@ final class ModelTests: XCTestCase {
     func testOpenAtIs167HoursBefore() throws {
         let o = try XCTUnwrap(occurrence("RPM", "2026-10-21T16:30:00.000Z"))
         XCTAssertEqual(o.occursAt.timeIntervalSince(o.openAt), 167 * 3600)
+    }
+
+    /// The Mac decides from its own away dates and one-day changes alone.
+    func testSkipReasonFromTheMacsOwnData() throws {
+        let k = RecurringClass(key: "bodypump-thu", name: "BODYPUMP", weekday: "Thu", start: "09:00", locationIds: [1392])
+        let thu = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-22T16:00:00Z"))   // Thu 9:00 PDT
+        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [], swaps: []))
+        XCTAssertEqual(Engine.skipReason(k, on: thu, pauses: [Pause(start: "2026-10-19", end: "2026-10-23", except: nil)],
+                                         swaps: []), "away")
+        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [Pause(start: "2026-10-22", end: "2026-10-22", except: ["bodypump-thu"])],
+                                       swaps: []), "kept by except:")
+        XCTAssertEqual(Engine.skipReason(k, on: thu, pauses: [], swaps: [Swap(date: "2026-10-22", skip: "bodypump-thu")]),
+                       "swap: skip")
+        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [], swaps: [Swap(date: "2026-10-22", skip: "bodypump-thu",
+                                                                            bookName: "BODYCOMBAT")]),
+                     "with a replacement the original stays booked until the replacement lands")
+        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [], swaps: [Swap(date: "2026-10-29", skip: "bodypump-thu")]))
+        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [], swaps: [Swap(date: "2026-10-22", skip: "cycle-sculpt-thu")]))
     }
 
     func testPauseCoversRespectsExcept() {

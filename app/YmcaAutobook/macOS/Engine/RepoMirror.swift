@@ -92,6 +92,12 @@ enum RepoMirror {
         return header + "\nswaps:\n" + entries.sorted { $0.date < $1.date }.map(\.text).joined(separator: "\n\n") + "\n"
     }
 
+    /// The files to write: those that differ from what was last written (all
+    /// of them when forced), in `paths` order.
+    static func pendingWrites(_ files: [String: String], written: [String: String], force: Bool) -> [String] {
+        paths.filter { p in files[p].map { force || written[p] != $0 } ?? false }
+    }
+
     private static func quote(_ s: String) -> String {
         "\"" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
     }

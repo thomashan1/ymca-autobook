@@ -17,11 +17,14 @@ enum DataSource: String {
     private static let key = "dataSource"
 
     static var current: DataSource {
-        get { UserDefaults.standard.string(forKey: key).flatMap(DataSource.init(rawValue:)) ?? .icloud }
+        get { resolve(UserDefaults.standard.string(forKey: key)) }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: key) }
     }
 
     static var isCloud: Bool { current == .icloud && !SampleMode.active }
+
+    /// iCloud unless GitHub was explicitly chosen (Settings → Advanced).
+    static func resolve(_ raw: String?) -> DataSource { raw.flatMap(DataSource.init(rawValue:)) ?? .icloud }
 }
 
 /// Everything the Mac app publishes to iCloud, mapped onto the app's own models

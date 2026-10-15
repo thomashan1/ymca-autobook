@@ -6,8 +6,22 @@ import Foundation
 struct GitHubClient {
     var baseURL = Config.apiBase
     var tokenProvider: () -> String? = { KeychainStore.token() }
+    /// GitHub is only ever contacted after the user picks it under Settings →
+    /// Advanced. In the default iCloud mode every call fails here, before any
+    /// token is read or request made, whatever screen asked.
+    var allowed: () -> Bool = { DataSource.current == .github }
 
-    enum GitHubError: Error { case notAuthenticated, http(Int, String), decode }
+    enum GitHubError: Error, LocalizedError {
+        case notAuthenticated, notInGitHubMode, http(Int, String), decode
+        var errorDescription: String? {
+            switch self {
+            case .notAuthenticated: return "No GitHub token stored."
+            case .notInGitHubMode: return "GitHub is off. Turn on Settings → Advanced → Use GitHub instead to use it."
+            case .http(let code, _): return "GitHub returned \(code)."
+            case .decode: return "Couldn't read GitHub's reply."
+            }
+        }
+    }
 
     // MARK: Auth
 
@@ -20,6 +34,8 @@ struct GitHubClient {
             return nil
         } catch GitHubError.notAuthenticated {
             return "No token stored."
+        } catch GitHubError.notInGitHubMode {
+            return GitHubError.notInGitHubMode.errorDescription
         } catch GitHubError.http(let code, _) where code == 401 {
             return "GitHub rejected this token (401 Bad credentials). Paste the full token (it starts with github_pat_ and is long) and make sure it hasn't expired."
         } catch GitHubError.http(let code, _) {
@@ -154,6 +170,7 @@ struct GitHubClient {
 
     @discardableResult
     private func send(_ url: URL, method: String, json: [String: Any]?) async throws -> Data {
+        guard allowed() else { throw GitHubError.notInGitHubMode }
         guard let token = tokenProvider() else { throw GitHubError.notAuthenticated }
         var req = URLRequest(url: url)
         req.httpMethod = method

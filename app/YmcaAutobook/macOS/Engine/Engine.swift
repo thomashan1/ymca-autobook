@@ -74,6 +74,7 @@ final class Engine: ObservableObject {
     private let syncEvery: TimeInterval = 600
 
     init() {
+        RepoSync.settleImport()
         Notifier.requestPermission()
         LoginItem.registerIfWanted()
         if signedInAs != nil { start(); startInbox() }
@@ -340,8 +341,8 @@ final class Engine: ObservableObject {
         ]
         var written = UserDefaults.standard.dictionary(forKey: "repoWritten") as? [String: String] ?? [:]
         do {
-            for path in RepoMirror.paths {
-                guard let text = files[path], force || written[path] != text else { continue }
+            for path in RepoMirror.pendingWrites(files, written: written, force: force) {
+                guard let text = files[path] else { continue }
                 try await RepoSync.update(path, message: "YMCA Booker: update \(path)") { _ in text }
                 written[path] = text
                 UserDefaults.standard.set(written, forKey: "repoWritten")
@@ -406,6 +407,10 @@ final class Engine: ObservableObject {
     /// Why this class won't be booked on this date, if it won't: an away date
     /// (unless the class is in its `except:`), or a skip-only swap.
     func skipReason(_ k: RecurringClass, on date: Date) -> String? {
+        Self.skipReason(k, on: date, pauses: pauses, swaps: swaps)
+    }
+
+    nonisolated static func skipReason(_ k: RecurringClass, on date: Date, pauses: [Pause], swaps: [Swap]) -> String? {
         if pauses.contains(where: { $0.covers(date, key: k.key) }) { return "away" }
         let day = Pause.day(date)
         if swaps.contains(where: { $0.date == day && $0.skip == k.key && $0.isSkipOnly }) { return "swap: skip" }

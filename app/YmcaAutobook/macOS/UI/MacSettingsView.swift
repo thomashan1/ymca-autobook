@@ -226,7 +226,10 @@ struct GeneralSettings: View {
                     Button("Save") { saveGitHub() }
                         .disabled(repo.trimmingCharacters(in: .whitespaces) == (RepoSync.repo ?? "") && token.isEmpty)
                 }
-                Text("Only if you also run the GitHub booker: the Mac then reads away dates and swaps from that repo's pauses.yml and swaps.yml, so both bookers share them. Use a fine-grained token for that repo only, with Contents: Read-only. It's stored in this Mac's Keychain.")
+                if let err = engine.skipMirrorError {
+                    Label(err, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
+                Text("Only if you also run the GitHub booker: the Mac then reads away dates and swaps from that repo's pauses.yml and swaps.yml, so both bookers share them, and writes your Skips into swaps.yml so the GitHub backup skips them too. Use a fine-grained token for that repo only, with Contents: Read and write. It's stored in this Mac's Keychain.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("iCloud (for the iPhone app)") {

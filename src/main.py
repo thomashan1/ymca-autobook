@@ -24,6 +24,7 @@ import yaml
 from . import fisikal
 from . import full_log
 from . import pauses
+from . import swaps
 from .http_context import HttpContext
 from .login import login
 from .notify import notify
@@ -355,13 +356,13 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
     if not target:
         return False, f"No upcoming bookable occurrence found for {label}."
 
-    # Dropped for a one-off swap (src/swaps.py). run_due.py only puts a date in
-    # here once the replacement is confirmed booked, so this branch can never be
-    # what leaves a day empty.
+    # Dropped for a one-off swap (src/swaps.py): a skip-only swap, or one whose
+    # replacement run_due.py has confirmed booked — never one still waiting on
+    # its replacement, so this branch can't leave a day empty.
     if skip_dates and _local_date(target, tz) in skip_dates:
         occ_local = _local_date(target, tz)
-        return True, (f"Swapped out: skipping '{label}' on {occ_local} — the "
-                      f"one-off replacement for that day is already booked.")
+        return True, (f"Swapped out: skipping '{label}' on {occ_local} — "
+                      f"swaps.yml skips it that day.")
 
     # Skip if the class we'd book falls on an away-date. We match on the
     # occurrence's own (local) date, not "today" — booking opens ~7 days ahead,
@@ -602,8 +603,14 @@ def main(argv=None) -> int:
 
             klass = get_class(cfg, args.klass)
             pause_ranges = pauses.load_ranges()
+            # Skip-only swaps for this class (incl. the Mac app's Skips, which it
+            # writes there), so the backup doesn't book what was skipped. A swap
+            # with a replacement stays run_due.py's: the original is kept until
+            # the replacement lands.
+            skip_dates = {s.date for s in swaps.load_swaps()
+                          if s.skip_key == klass["key"] and not s.book_name}
             success, detail = book(context, csrf, cfg, klass, args.dry_run, args.book_now,
-                                    pause_ranges=pause_ranges)
+                                    pause_ranges=pause_ranges, skip_dates=skip_dates)
             if not args.dry_run:
                 # "Nothing to book now" is a no-op (already booked / window not open
                 # yet, always success=True) — not a real attempt, so no alert either way.

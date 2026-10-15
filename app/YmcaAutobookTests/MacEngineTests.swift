@@ -18,6 +18,34 @@ final class RepoSyncTests: XCTestCase {
         XCTAssertEqual(ps[1].except ?? [], ["core-mon", "lift-hiit-mon"])
     }
 
+    func testMirrorSkipsAddsRemovesAndLeavesOthers() {
+        let yaml = """
+        # header comment
+        swaps:
+          - date: 2026-10-01
+            skip: cycle-sculpt-thu
+            note: "lunch"
+
+          - date: 2026-10-20
+            skip: cycle-tue
+            note: "Skipped in YMCA Booker"
+        """
+        let out = RepoSync.mirrorSkips(yaml, want: ["2026-10-22|bodypump-thu"])
+        let swaps = RepoSync.parseSwaps(out)
+        XCTAssertEqual(swaps.map(\.date), ["2026-10-01", "2026-10-22"])
+        XCTAssertEqual(swaps.map(\.skip), ["cycle-sculpt-thu", "bodypump-thu"])
+        XCTAssertTrue(out.hasPrefix("# header comment\nswaps:\n  - date: 2026-10-01"))
+        // Idempotent, and an empty want removes only the Mac's own entries.
+        XCTAssertEqual(RepoSync.mirrorSkips(out, want: ["2026-10-22|bodypump-thu"]), out)
+        XCTAssertEqual(RepoSync.parseSwaps(RepoSync.mirrorSkips(out, want: [])).map(\.date), ["2026-10-01"])
+    }
+
+    func testMirrorSkipsIntoEmptyFile() {
+        let out = RepoSync.mirrorSkips("swaps: []\n", want: ["2026-10-22|bodypump-thu"])
+        XCTAssertEqual(out, "swaps:\n\n  - date: 2026-10-22\n    skip: bodypump-thu\n    note: \"Skipped in YMCA Booker\"\n")
+        XCTAssertEqual(RepoSync.parseSwaps(out).first?.isSkipOnly, true)
+    }
+
     func testParseSwaps() {
         let yaml = """
         swaps:

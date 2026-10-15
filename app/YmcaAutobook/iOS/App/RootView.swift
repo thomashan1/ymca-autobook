@@ -77,11 +77,14 @@ private struct ClassesTab: View {
                 default: ClassesView(embedded: true)
                 }
             }
-            // A large title would scroll under the segment bar and blur.
+            // The segments stand in for the title, in the nav bar, so they sit
+            // in the same place on every page and cost no extra row.
             .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                SegmentBar(selection: Binding(get: { shown }, set: { segment = $0 }),
-                           options: (canBook ? [("book", "Book")] : []) + [("weekly", "Weekly"), ("fill", "Fill speed")])
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    SegmentBar(selection: Binding(get: { shown }, set: { segment = $0 }),
+                               options: (canBook ? [("book", "Book")] : []) + [("weekly", "Weekly"), ("fill", "Fill speed")])
+                }
             }
         }
     }
@@ -96,10 +99,13 @@ private struct UpcomingTab: View {
             Group {
                 if segment == "away" { AwayView(embedded: true) } else { JobsView(embedded: true) }
             }
-            // A large title would scroll under the segment bar and blur.
+            // The segments stand in for the title, in the nav bar, so they sit
+            // in the same place on every page and cost no extra row.
             .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                SegmentBar(selection: $segment, options: [("openings", "Openings"), ("away", "Away")])
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    SegmentBar(selection: $segment, options: [("openings", "Openings"), ("away", "Away")])
+                }
             }
         }
     }
@@ -114,8 +120,7 @@ private struct SegmentBar: View {
             ForEach(options, id: \.0) { Text($0.1).tag($0.0) }
         }
         .pickerStyle(.segmented)
-        .padding(.horizontal).padding(.vertical, 8)
-        .background(.bar)
+        .frame(width: 280)
     }
 }
 #endif

@@ -32,12 +32,7 @@ struct ClassesView: View {
 
     private var content: some View {
             List {
-                if auth.isCloud {
-                    Section {
-                        Label("Your Mac's lineup — change classes on the Mac.", systemImage: "desktopcomputer")
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
-                } else {
+                if !auth.isCloud {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
                         Label("Edits here change classes.yml", systemImage: "doc.text.fill")
@@ -73,6 +68,9 @@ struct ClassesView: View {
                             }
                         }
                     }
+                }
+                if auth.isCloud {
+                    Section {} footer: { Text("Your Mac's lineup. Change classes on the Mac.") }
                 }
             }
             .navigationTitle("My Classes")

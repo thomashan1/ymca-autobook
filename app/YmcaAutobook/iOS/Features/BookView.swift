@@ -33,6 +33,9 @@ struct BookView: View {
                         ForEach(items(on: day)) { row($0) }
                     }
                 }
+                Section {} footer: {
+                    Text("Booking opens 7 days ahead. Tap Book on any class: your Mac books it now if it's open, or at the second it opens.")
+                }
             }
             .navigationTitle("Book")
             .navigationBarTitleDisplayMode(.inline)
@@ -60,55 +63,31 @@ struct BookView: View {
 
     @ViewBuilder private var header: some View {
         Section {
-            Picker("Branch", selection: $branch) {
-                Text("Both").tag(0)
-                Text("Southwest").tag(1392)
-                Text("Northwest").tag(1388)
-            }
-            .pickerStyle(.segmented)
-            dayChips
-            Toggle("Only mine", isOn: $onlyMine)
-            if let mac = cloud.mac, mac.looksDown {
-                Label("Your Mac hasn't checked in since \(mac.updatedAt.formatted(.relative(presentation: .named))). Requests wait until it's back.",
-                      systemImage: "exclamationmark.triangle.fill")
-                    .font(.footnote).foregroundStyle(.orange)
-            }
-            if cloud.schedule == nil {
-                Text(cloud.error ?? "Waiting for the class schedule from your Mac. Update YMCA Booker on the Mac if this stays empty.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-        } footer: {
-            Text("Booking opens 7 days ahead. Tap Book on any class: your Mac books it now if it's open, or at the second it opens.")
-        }
-    }
-
-    private var dayChips: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    chip("All days", selected: day == nil) { day = nil }
-                    ForEach(days, id: \.self) { d in
-                        chip(d.formatted(.dateTime.weekday(.abbreviated).day()), selected: day == d) { day = d }
-                            .id(d)
-                    }
+            ChipRow(scrollTo: day) {
+                MenuChip(options: [(0, "Both branches"), (1392, "Southwest"), (1388, "Northwest")],
+                         selection: $branch, active: branch != 0)
+                Chip(title: "Mine", systemImage: "person.fill", selected: onlyMine) { onlyMine.toggle() }
+                Divider().frame(height: 20)
+                Chip(title: "All days", selected: day == nil) { day = nil }
+                ForEach(days, id: \.self) { d in
+                    Chip(title: d.formatted(.dateTime.weekday(.abbreviated).day()), selected: day == d) { day = d }
+                        .id(d)
                 }
-                .padding(.vertical, 2)
-            }
-            .onChange(of: day) { _, d in
-                if let d { withAnimation { proxy.scrollTo(d, anchor: .center) } }
             }
         }
-    }
-
-    private func chip(_ title: String, selected: Bool, _ tap: @escaping () -> Void) -> some View {
-        Button(action: tap) {
-            Text(title)
-                .font(.subheadline.weight(selected ? .semibold : .regular))
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(selected ? Theme.accent : Color(.secondarySystemFill), in: Capsule())
-                .foregroundStyle(selected ? .white : .primary)
+        if (cloud.mac?.looksDown ?? false) || cloud.schedule == nil {
+            Section {
+                if let mac = cloud.mac, mac.looksDown {
+                    Label("Your Mac hasn't checked in since \(mac.updatedAt.formatted(.relative(presentation: .named))). Requests wait until it's back.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote).foregroundStyle(.orange)
+                }
+                if cloud.schedule == nil {
+                    Text(cloud.error ?? "Waiting for the class schedule from your Mac. Update YMCA Booker on the Mac if this stays empty.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
         }
-        .buttonStyle(.plain)
     }
 
     private func row(_ i: ScheduleItem) -> some View {

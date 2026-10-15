@@ -2,8 +2,7 @@
 import SwiftUI
 
 /// The recurring lineup, grouped by weekday. Swipe a class to delete it — that
-/// removes it from classes.yml via a PR (main is protected), which lands
-/// automatically. Useful after a trial you didn't enjoy.
+/// removes it from classes.yml in the private repo. Useful after a trial you didn't enjoy.
 struct ClassesView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var snapshot: SnapshotRepository
@@ -37,7 +36,7 @@ struct ClassesView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Label("Edits here change classes.yml", systemImage: "doc.text.fill")
                             .font(.footnote.weight(.semibold)).foregroundStyle(Theme.accent)
-                        Text("This is your recurring auto-book schedule, stored in **classes.yml** in the public repo **thomashan1/ymca-autobook**. Swiping a class to remove it opens a pull request against that file (main is protected) which merges automatically. Away dates live separately in **pauses.yml** (private repo) — edit those under Upcoming → Away.")
+                        Text("This is your recurring auto-book schedule, stored in **classes.yml** in your private repo, next to **pauses.yml** (away dates, under Upcoming → Away). Swiping a class to remove it edits that file.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
@@ -86,7 +85,7 @@ struct ClassesView: View {
                 }
                 Button("Cancel", role: .cancel) { deleteTarget = nil }
             } message: {
-                Text("Stops auto-booking this class. Opens a PR against classes.yml that merges automatically.")
+                Text("Stops auto-booking this class. Removes it from classes.yml in your private repo.")
             }
             .alert("Remove class", isPresented: Binding(get: { resultMessage != nil }, set: { if !$0 { resultMessage = nil } })) {
                 Button("OK") { resultMessage = nil }
@@ -111,11 +110,9 @@ struct ClassesView: View {
             switch await classes.delete(c) {
             case .merged:
                 resultMessage = "Removed \(c.name) from the schedule."
-            case .prOpened(let n, _):
-                resultMessage = "Opened PR #\(n) to remove \(c.name). It'll merge automatically once checks pass."
             case .failed(let why):
                 if why.contains("403") || why.lowercased().contains("not accessible") {
-                    resultMessage = "Couldn't remove \(c.name): your token can't open a pull request. In your GitHub token settings, add Pull requests = Read and write (see Settings → How to create a token), then try again."
+                    resultMessage = "Couldn't remove \(c.name): your token can't write to the private repo. In your GitHub token settings, set Contents = Read and write (see Settings → How to create a token), then try again."
                 } else {
                     resultMessage = "Couldn't remove \(c.name): \(why)"
                 }

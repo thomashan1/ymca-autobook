@@ -24,13 +24,19 @@ import yaml
 from . import fisikal
 from . import full_log
 from . import pauses
+from . import private_store
 from . import swaps
 from .http_context import HttpContext
 from .login import login
 from .notify import notify
 from .schedule import open_instant, wait_until
 
+# classes.yml lives in the PRIVATE repo (moved out of this public one on
+# 2026-10-14) and is read from there whenever PRIVATE_REPO_TOKEN is set, as in
+# every workflow. This local path is only for runs on a laptop without the token;
+# the file is git-ignored here.
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), os.pardir, "classes.yml")
+CONFIG_REMOTE = "classes.yml"
 MAX_RETRY_ATTEMPTS = 3        # max booking attempts (avoids hammering the server)
 RETRY_SLEEP_SECONDS = 5.0     # seconds between retries
 LIST_WINDOW_DAYS = 16         # how far ahead to look for occurrences
@@ -53,8 +59,26 @@ BACKUP_GRACE_SECONDS = float(os.environ.get("BOOK_BACKUP_GRACE_S", "5"))
 
 
 def load_config() -> dict:
-    with open(CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    token = os.environ.get("PRIVATE_REPO_TOKEN")
+    if token:
+        # Fail closed: without the class list there is nothing safe to book. One
+        # retry covers a blip in GitHub's API right at a booking window.
+        for attempt in range(2):
+            try:
+                text, _ = private_store.get_file(token, CONFIG_REMOTE)
+                break
+            except Exception as exc:
+                if attempt:
+                    raise SystemExit(f"Couldn't read {CONFIG_REMOTE} from the private repo: {exc!r}")
+                time.sleep(3)
+        if text is None:
+            raise SystemExit(f"No {CONFIG_REMOTE} in the private repo ({private_store.REPO}).")
+        return yaml.safe_load(text)
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH) as f:
+            return yaml.safe_load(f)
+    raise SystemExit("No classes: set PRIVATE_REPO_TOKEN to read classes.yml from the private repo, "
+                     "or put a local copy next to the code.")
 
 
 def get_class(cfg: dict, key: str) -> dict:

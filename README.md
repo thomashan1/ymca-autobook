@@ -114,9 +114,11 @@ flowchart LR
 The full diagrams and the reasoning behind them are in
 [`docs/architecture.md`](docs/architecture.md).
 
-### Your classes
+### Your classes, away dates and swaps
 
-Listed in [`classes.yml`](classes.yml):
+All three live in a separate **private** repo, so they never appear here.
+
+- **`classes.yml`**: the classes to book every week ([example](classes.example.yml)):
 
 ```yaml
 classes:
@@ -126,12 +128,6 @@ classes:
     start: "10:15"
     location_ids: [1392]      # Southwest = 1392, Northwest = 1388
 ```
-
-After changing it, run `.venv/bin/python scripts/gen_workflow.py` and commit both files.
-
-### Away dates and swaps
-
-Both live in a separate **private** repo, so they never appear here.
 
 - **`pauses.yml`**: dates to skip, optionally keeping specific classes
   ([example](pauses.example.yml)).

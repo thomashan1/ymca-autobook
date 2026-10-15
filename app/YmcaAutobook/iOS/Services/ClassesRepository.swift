@@ -31,7 +31,7 @@ final class ClassesRepository: ObservableObject {
         isLoading = true; error = nil
         defer { isLoading = false }
         do {
-            let (text, sha) = try await client.readFile(repo: Config.publicRepo, path: Config.classesPath)
+            let (text, sha) = try await client.readFile(repo: Config.privateRepo, path: Config.classesPath)
             self.sha = sha
             self.classes = Self.parse(text).sorted { ($0.weekday, $0.start) < ($1.weekday, $1.start) }
         } catch {
@@ -42,40 +42,22 @@ final class ClassesRepository: ObservableObject {
     var regulars: [GymClass] { classes.filter { !$0.isTrial } }
     var trials: [GymClass] { classes.filter { $0.isTrial } }
 
-    // MARK: Delete a class (via PR, since classes.yml lives on protected main)
+    // MARK: Delete a class (a direct commit to the private repo, like away dates)
 
-    enum DeleteOutcome { case merged, prOpened(Int, String), failed(String) }
+    enum DeleteOutcome { case merged, failed(String) }
 
-    /// Remove a class from classes.yml on a branch, open a PR, and try to land
-    /// it (immediate merge, else enable auto-merge). Refreshes on success.
+    /// Remove a class from classes.yml in the private repo. Refreshes on success.
     func delete(_ c: GymClass) async -> DeleteOutcome {
         do {
-            let (text, sha) = try await client.readFile(repo: Config.publicRepo, path: Config.classesPath)
+            let (text, sha) = try await client.readFile(repo: Config.privateRepo, path: Config.classesPath)
             guard let newText = Self.removingClass(c.key, from: text) else {
                 return .failed("Couldn't find \(c.key) in classes.yml.")
             }
-            let stamp = Int(Date().timeIntervalSince1970)
-            let branch = "app/remove-\(c.key)-\(stamp)"
-            let head = try await client.headSha()
-            try await client.createBranch(branch, fromSha: head)
             try await client.writeFile(
-                repo: Config.publicRepo, path: Config.classesPath, text: newText,
-                message: "Remove \(c.name) (\(c.weekday.rawValue) \(c.start)) via iOS app",
-                sha: sha, branch: branch)
-            let pr = try await client.createPR(
-                title: "Remove \(c.name) (\(c.weekday.rawValue) \(c.start))",
-                head: branch,
-                body: "Removing this class from the auto-book schedule, requested from the iOS app.")
-
-            // Try an immediate merge; fall back to enabling auto-merge.
-            do {
-                try await client.mergePR(number: pr.number)
-                await load()
-                return .merged
-            } catch {
-                try? await client.enableAutoMerge(prNodeId: pr.node_id)
-                return .prOpened(pr.number, pr.html_url)
-            }
+                repo: Config.privateRepo, path: Config.classesPath, text: newText,
+                message: "Remove \(c.name) (\(c.weekday.rawValue) \(c.start)) via the app", sha: sha)
+            await load()
+            return .merged
         } catch {
             return .failed(String(describing: error))
         }

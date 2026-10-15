@@ -165,7 +165,7 @@ struct SettingsView: View {
             reason("exclamationmark.triangle", "If it leaks or you revoke it",
                    "Revoke it on github.com and make another. It only reaches these two repos, so nothing else of yours is exposed.")
             reason("lock.rotation", "If a permission is missing",
-                   "An action that used to work starts failing — deleting a class needs Pull requests: Read and write, for instance. Fix it by editing the token's permissions on github.com; that doesn't require a new token.")
+                   "An action that used to work starts failing — deleting a class needs Contents: Read and write, for instance. Fix it by editing the token's permissions on github.com; that doesn't require a new token.")
             reason("iphone", "On a new phone",
                    "Tokens live in this device's Keychain and aren't shared between devices, so a second phone needs its own.")
         } header: {
@@ -181,7 +181,7 @@ struct SettingsView: View {
             step(2, "Tap “Generate new token”. Name it (e.g. “YMCA Autobook app”) and set an expiration.")
             step(3, "Resource owner: \(Config.owner).")
             step(4, "Repository access → Only select repositories → choose both \(Config.publicRepo) and \(Config.privateRepo).")
-            step(5, "Permissions → Repository permissions. Set all four of these — every one is Read and write, not Read-only:")
+            step(5, "Permissions → Repository permissions. Set all three of these — every one is Read and write, not Read-only:")
             ForEach(Self.tokenPermissions, id: \.self) { permissionRow($0) }
             step(6, "Generate the token, copy it, and paste it into the field above.")
         } header: {
@@ -192,10 +192,10 @@ struct SettingsView: View {
     }
 
     /// The repository permissions the token needs. All four are Read and write:
-    /// every one of them backs a write path — Contents edits pauses.yml,
-    /// Pull requests opens the classes.yml PR, Actions dispatches a booking run,
-    /// Workflows covers book.yml living under .github/workflows.
-    static let tokenPermissions = ["Contents", "Pull requests", "Actions", "Workflows"]
+    /// every one of them backs a write path — Contents edits classes.yml and
+    /// pauses.yml in the private repo, Actions dispatches a booking run, Workflows
+    /// covers book.yml living under .github/workflows.
+    static let tokenPermissions = ["Contents", "Actions", "Workflows"]
 
     /// One permission as a row rather than a clause in a sentence — you set
     /// these one dropdown at a time on github.com, so a list you can tick off

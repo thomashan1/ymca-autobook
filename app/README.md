@@ -54,7 +54,7 @@ opens also skips it, so the Mac doesn't book it back.
   subscription sends an alert for every booking result
   (`iOS/Services/CloudSource.swift`; text via `Localizable.strings`).
 - **GitHub** (Settings → Advanced → **Use GitHub instead**) is the advanced setup
-  (README Option B). The app then reads `classes.yml`, `pauses.yml`, `swaps.yml`,
+  (README Option B). The app then reads `classes.yml`, `pauses.yml`, `swaps.yml` (all in the private repo),
   `bookings.json` and `schedule_snapshot.json` from the two repos, writes
   `pauses.yml`, opens auto-merging PRs to remove classes, and dispatches `book.yml`
   for "Book now".

@@ -16,3 +16,6 @@ venv/
 # Playwright
 playwright-report/
 test-results/
+
+# Personal class list: lives in the private repo (ymca-private) since 2026-10-14.
+classes.yml

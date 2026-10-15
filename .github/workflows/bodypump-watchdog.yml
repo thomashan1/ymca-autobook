@@ -65,6 +65,7 @@ jobs:
         env:
           EGYM_USERNAME: ${{ secrets.EGYM_USERNAME }}
           EGYM_PASSWORD: ${{ secrets.EGYM_PASSWORD }}
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: python -m src.main --class "${{ steps.which.outputs.key }}"

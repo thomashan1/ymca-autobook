@@ -44,6 +44,11 @@ enum Store {
         try? data.write(to: url("skips.json"), options: .atomic)
     }
 
+    /// When a file last changed on disk, to notice edits made outside the app.
+    static func modified(_ name: String) -> Date? {
+        (try? FileManager.default.attributesOfItem(atPath: url(name).path))?[.modificationDate] as? Date
+    }
+
     static func save(classes: [RecurringClass]) { write(classes, to: "classes.json") }
     static func save(pauses: [Pause]) { write(pauses.sorted { $0.start < $1.start }, to: "pauses.json") }
 

@@ -18,23 +18,25 @@ final class Engine: ObservableObject {
 
     @Published private(set) var classes = Store.classes()
     @Published private(set) var history: [FillRecord] = Store.fillHistory()
-    /// Away dates and swaps: synced from the private repo, cached locally so a
-    /// GitHub outage never stops a booking (the cached copy is used instead).
+    /// Away dates, kept here (and in iCloud). `swaps` are hand-written one-day
+    /// swaps carried over from the private repo's swaps.yml before 10/14.
     @Published private(set) var pauses = Store.pauses()
     @Published private(set) var swaps = Store.swaps()
+    /// When the GitHub backup's copy was last brought up to date, and why not.
     @Published private(set) var lastSynced = UserDefaults.standard.object(forKey: "lastSynced") as? Date
     @Published private(set) var syncError: String?
-    private var lastSyncAttempt: Date?
+    private var lastRepoCheck: Date?
+    private var repoPush: Task<Void, Never>?
+    /// Lineup sessions' class keys by occurrence id, from the last plan.
+    private var lineupKeys: [Int: String] = [:]
+    /// Modification dates of the JSON files as the app last read or wrote them.
+    private var diskStamps: [String: Date] = ["classes.json": Store.modified("classes.json"),
+                                              "pauses.json": Store.modified("pauses.json")].compactMapValues { $0 }
 
     /// Sessions picked to book outside the lineup, here or from the iPhone.
     @Published private(set) var picks = Store.picks()
     /// Lineup sessions not to book this time ("skip this one").
     @Published private(set) var skips = Store.skips()
-    /// What mirrorSkips last wrote to swaps.yml ("date|key"), so a plan only
-    /// writes when the skips change.
-    private var mirroredSkips = Set(UserDefaults.standard.stringArray(forKey: "mirroredSkips") ?? [])
-    /// Set when a skip couldn't be written to swaps.yml (usually a read-only token).
-    @Published private(set) var skipMirrorError: String?
     /// Bookings being cancelled right now.
     @Published private(set) var cancelling: Set<Int> = []
     /// Every upcoming group class at both branches, from the last plan; nil
@@ -68,7 +70,7 @@ final class Engine: ObservableObject {
     private let replanEvery: TimeInterval = 3 * 3600
     /// Start waking up and warming the session this long before an opening.
     private let warmup: TimeInterval = 90
-    /// Pick up pauses.yml / swaps.yml changes this often (and right before every opening).
+    /// Check the GitHub backup's copy is current this often (and retry a failed write).
     private let syncEvery: TimeInterval = 600
 
     init() {
@@ -105,8 +107,10 @@ final class Engine: ObservableObject {
     func update(classes: [RecurringClass]) {
         self.classes = classes
         Store.save(classes: classes)
+        noteOwnWrite("classes.json")
         replanSoon()
         pushToCloudSoon()
+        publishToRepoSoon()
     }
 
     // MARK: Picked sessions (one-off bookings)
@@ -140,6 +144,7 @@ final class Engine: ObservableObject {
         skips = kept
         Store.save(skips: skips)
         pushToCloudSoon()
+        publishToRepoSoon()
     }
 
     func isSkipped(_ occurrenceId: Int) -> Bool { skips.contains { $0.id == occurrenceId } }
@@ -207,6 +212,7 @@ final class Engine: ObservableObject {
         picks = new.sorted { $0.openAt < $1.openAt }
         Store.save(picks: picks)
         pushToCloudSoon()
+        publishToRepoSoon()
     }
 
     private func dropPicks(_ ids: some Collection<Int>) {
@@ -280,69 +286,109 @@ final class Engine: ObservableObject {
         await CloudStore.shared.delete(requests: requests)
     }
 
-    // MARK: Away dates and swaps (from the private repo)
+    // MARK: Away dates
 
-    /// Fetch pauses.yml and swaps.yml. Returns true if either changed. On any
-    /// failure the cached copy stays in force — same fail-open rule as the
-    /// Python engine, so a bad token can't silently stop bookings.
-    @discardableResult
-    func syncFromRepo() async -> Bool {
-        lastSyncAttempt = Date()
-        guard RepoSync.isEnabled else { syncError = nil; return false }
+    func addPause(_ p: Pause) {
+        setPauses(pauses.filter { $0.id != p.id } + [p])
+    }
+
+    func removePause(_ p: Pause) {
+        setPauses(pauses.filter { $0.id != p.id })
+    }
+
+    private func setPauses(_ new: [Pause]) {
+        pauses = new.sorted { $0.start < $1.start }
+        Store.save(pauses: pauses)
+        noteOwnWrite("pauses.json")
+        replanSoon()
+        pushToCloudSoon()
+        publishToRepoSoon()
+    }
+
+    // MARK: The GitHub backup's copy (one way: Mac → repo)
+
+    /// Before 10/14 the private repo was where away dates and swaps were edited
+    /// and the Mac read them from it. On the first launch since, read them one
+    /// last time so nothing edited there is lost; from then on the Mac only writes.
+    private func importFromRepoOnce() async {
+        guard RepoSync.isEnabled, !UserDefaults.standard.bool(forKey: "repoImported") else { return }
         do {
             async let p = RepoSync.fetch("pauses.yml")
             async let w = RepoSync.fetch("swaps.yml")
             let (pText, wText) = try await (p, w)
-            guard let pText else { throw RepoSync.Failure.http(404, "pauses.yml") }
-            let newPauses = RepoSync.parsePauses(pText)
-            let newSwaps = wText.map(RepoSync.parseSwaps) ?? []   // no swaps.yml = no swaps
-            let changed = newPauses != pauses || newSwaps != swaps
-            if changed {
-                pauses = newPauses
-                swaps = newSwaps
-                Store.save(pauses: newPauses)
-                Store.save(swaps: newSwaps)
+            if let pText { pauses = RepoSync.parsePauses(pText); Store.save(pauses: pauses); noteOwnWrite("pauses.json") }
+            swaps = wText.map(RepoSync.parseSwaps)?.filter { !$0.isPast && $0.note != "Skipped in YMCA Booker" } ?? []
+            Store.save(swaps: swaps)
+            UserDefaults.standard.set(true, forKey: "repoImported")
+            replanSoon()
+        } catch {
+            syncError = "Couldn't read away dates from GitHub one last time: \(error.localizedDescription)"
+        }
+    }
+
+    /// Write classes.yml, pauses.yml and swaps.yml into the repo where they differ
+    /// from what was last written. Cheap when nothing changed (no network).
+    func publishToRepo(force: Bool = false) async {
+        guard RepoSync.isEnabled, !isFiring else { return }
+        await importFromRepoOnce()
+        guard UserDefaults.standard.bool(forKey: "repoImported") else { return }   // never overwrite unread edits
+        let skipPairs = skips.compactMap { s in lineupKeys[s.id].map { (date: Pause.day(s.occursAt), key: $0) } }
+        let files = [
+            "classes.yml": RepoMirror.classesYAML(classes, timeZone: FisikalClient.zone.identifier),
+            "pauses.yml": RepoMirror.pausesYAML(pauses),
+            "swaps.yml": RepoMirror.swapsYAML(swaps: swaps, skips: skipPairs, picks: picks),
+        ]
+        var written = UserDefaults.standard.dictionary(forKey: "repoWritten") as? [String: String] ?? [:]
+        do {
+            for path in RepoMirror.paths {
+                guard let text = files[path], force || written[path] != text else { continue }
+                try await RepoSync.update(path, message: "YMCA Booker: update \(path)") { _ in text }
+                written[path] = text
+                UserDefaults.standard.set(written, forKey: "repoWritten")
             }
             lastSynced = Date()
             UserDefaults.standard.set(lastSynced, forKey: "lastSynced")
             syncError = nil
-            if changed { pushToCloudSoon() }
-            return changed
         } catch {
-            syncError = error.localizedDescription
-            return false
+            syncError = "GitHub backup not updated: \(error.localizedDescription)"
         }
     }
 
-    /// Write this Mac's skips of lineup sessions into the repo's swaps.yml as
-    /// skip-only swaps (and drop them on Unskip), so GitHub — the backup — doesn't
-    /// book what was skipped. `keys` maps a lineup session's occurrence id to its
-    /// class key. Only touches the repo when the set changes.
-    private func mirrorSkips(_ keys: [Int: String]) async {
-        guard RepoSync.isEnabled else { return }
-        let want = Set(skips.compactMap { s in keys[s.id].map { "\(Pause.day(s.occursAt))|\($0)" } })
-        guard want != mirroredSkips else { return }
-        do {
-            try await RepoSync.update("swaps.yml", message: "YMCA Booker: skips for the GitHub backup") {
-                RepoSync.mirrorSkips($0 ?? "swaps:\n", want: want)
-            }
-            mirroredSkips = want
-            UserDefaults.standard.set(Array(want), forKey: "mirroredSkips")
-            skipMirrorError = nil
-        } catch {
-            skipMirrorError = "The GitHub backup may still book what you skipped: \(error.localizedDescription)"
+    private func publishToRepoSoon() {
+        repoPush?.cancel()
+        repoPush = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
+            await self?.publishToRepo()
         }
-    }
-
-    func syncNow() async {
-        if await syncFromRepo() { replanSoon() }
     }
 
     func setGitHub(repo: String, token: String?) async {
         RepoSync.setRepo(repo)
         if let token, !token.isEmpty { RepoSync.setToken(token) }
-        await syncNow()
-        replanSoon()   // retries writing skips with the new token
+        await publishToRepo(force: true)
+    }
+
+    // MARK: Edits made to the JSON files on disk (e.g. by Claude)
+
+    /// classes.json and pauses.json can be edited in place while the app runs;
+    /// the loop picks a change up on its next pass. The app's own saves are noted
+    /// so they don't count as outside edits.
+    private func noteOwnWrite(_ name: String) { diskStamps[name] = Store.modified(name) }
+
+    private func reloadEditedFiles() {
+        var changed = false
+        if Store.modified("classes.json") != diskStamps["classes.json"] {
+            noteOwnWrite("classes.json")
+            let c = Store.classes()
+            if c != classes { classes = c; changed = true }
+        }
+        if Store.modified("pauses.json") != diskStamps["pauses.json"] {
+            noteOwnWrite("pauses.json")
+            let p = Store.pauses()
+            if p != pauses { pauses = p; changed = true }
+        }
+        if changed { lastPlanned = nil; pushToCloudSoon(); publishToRepoSoon() }
     }
 
     /// Why this class won't be booked on this date, if it won't: an away date
@@ -530,8 +576,10 @@ final class Engine: ObservableObject {
 
     private func run() async {
         while !Task.isCancelled {
-            if lastSyncAttempt.map({ Date().timeIntervalSince($0) >= syncEvery }) ?? true, !isFiring {
-                if await syncFromRepo() { lastPlanned = nil }
+            reloadEditedFiles()
+            if lastRepoCheck.map({ Date().timeIntervalSince($0) >= syncEvery }) ?? true, !isFiring {
+                lastRepoCheck = Date()
+                await publishToRepo()
             }
             if lastPlanned.map({ Date().timeIntervalSince($0) > replanEvery }) ?? true || openings.isEmpty {
                 await plan()
@@ -547,7 +595,7 @@ final class Engine: ObservableObject {
             let replanAt = (lastPlanned ?? Date()).addingTimeInterval(replanEvery)
             if Date() < wakeAt {
                 status = "Next: \(group.map(\.klass.name).joined(separator: " + ")) opens \(next.openAt.formatted(date: .abbreviated, time: .standard))"
-                let syncAt = (lastSyncAttempt ?? Date()).addingTimeInterval(syncEvery)
+                let syncAt = (lastRepoCheck ?? Date()).addingTimeInterval(syncEvery)
                 await sleep(until: min(wakeAt, replanAt, syncAt))
                 continue
             }
@@ -599,9 +647,9 @@ final class Engine: ObservableObject {
             }
             dropPicks(triage.drop)
             setSkips(skips)   // let past ones go
-            let lineupKeys = Dictionary(found.map { ($0.occurrence.id, $0.klass.key) }) { a, _ in a }
-                .filter { !$0.value.hasPrefix("oneoff-") }
-            Task { await mirrorSkips(lineupKeys) }
+            lineupKeys = Dictionary(found.map { ($0.occurrence.id, $0.klass.key) }) { a, _ in a }
+                .filter { !$0.value.hasPrefix(RecurringClass.oneOffPrefix) }
+            publishToRepoSoon()
             for p in picks where triage.now.contains(p.id) { Task { await bookNow(p) } }
 
             schedule = upcoming
@@ -639,9 +687,8 @@ final class Engine: ObservableObject {
             isFiring = false
         }
 
-        // Last look at the away dates and swaps, so a change made minutes ago
-        // counts. Bounded by RepoSync's short timeout; on failure the cached copy stands.
-        await syncFromRepo()
+        // An away date written into pauses.json a minute ago still counts.
+        reloadEditedFiles()
         let group = planned.map {
             Opening(klass: $0.klass, occurrence: $0.occurrence,
                     paused: !$0.klass.isOneOff && (skipReason($0.klass, on: $0.occurrence.occursAt) != nil

@@ -8,6 +8,9 @@ struct RecurringClass: Codable, Identifiable, Hashable, Sendable {
     let weekday: String      // "Mon" … "Sun"
     let start: String        // local "HH:mm"
     let locationIds: [Int]   // branch: Southwest 1392, Northwest 1388
+    /// Extra GitHub trigger leads (minutes before the opening) for classes that
+    /// fill in seconds; only carried through to classes.yml for the backup.
+    var extraLeads: [Int]? = nil
     var id: String { key }
 
     var branch: String {
@@ -73,8 +76,9 @@ struct Pause: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
-/// A one-off swap from swaps.yml: on `date`, skip a recurring class and/or book
-/// a different one. GitHub's swap-check carries it out; the Mac only reads it.
+/// A hand-written one-off swap, carried over from swaps.yml before 10/14: on
+/// `date`, skip a recurring class and/or book a different one. GitHub's
+/// swap-check carries out a replacement; the Mac only honors a skip.
 struct Swap: Codable, Hashable, Identifiable, Sendable {
     var date: String             // yyyy-MM-dd, the class date
     var skip: String? = nil      // a class key

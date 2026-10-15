@@ -82,9 +82,9 @@ flowchart LR
 
 ### Not done yet (tracked in [#146](https://github.com/thomashan1/ymca-autobook/issues/146))
 
-- **Away dates and swaps** can't be added in the Mac app yet
-  ([#148](https://github.com/thomashan1/ymca-autobook/issues/148)). For now it can
-  read them from an Option B private repo (Settings → General → GitHub source).
+- **Editing away dates and classes from the iPhone** (the Mac can already)
+  ([#148](https://github.com/thomashan1/ymca-autobook/issues/148)). Option A needs
+  no GitHub; running Option B as a backup is optional (Mac Settings → Advanced).
 - **First-run setup** (choosing your branches) is
   [#150](https://github.com/thomashan1/ymca-autobook/issues/150).
 - **A download** (a signed Mac app, plus TestFlight for the iPhone) is

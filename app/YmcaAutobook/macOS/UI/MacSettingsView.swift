@@ -13,6 +13,7 @@ struct SettingsView: View {
             StatsView(engine: engine).tabItem { Label("Stats", systemImage: "chart.bar") }
             PausesView(engine: engine).tabItem { Label("Away & swaps", systemImage: "pause.circle") }
             GeneralSettings(engine: engine).tabItem { Label("General", systemImage: "gearshape") }
+            AdvancedSettings(engine: engine).tabItem { Label("Advanced", systemImage: "gearshape.2") }
         }
         .padding()
         .frame(minWidth: 960, minHeight: 560)
@@ -112,7 +113,7 @@ struct PausesView: View {
             }
             .onChange(of: start) { _, s in if end < s { end = s } }
             HStack {
-                SyncStatus(engine: engine)
+                if RepoSync.isEnabled { SyncStatus(engine: engine) }
                 Spacer()
                 Toggle("Show past", isOn: $showPast)
             }
@@ -220,14 +221,6 @@ struct GeneralSettings: View {
     @State private var launchAtLogin = LoginItem.isEnabled
     @State private var loginError: String?
     @State private var notifications = "…"
-    @State private var token = ""
-    @State private var repo = RepoSync.repo ?? ""
-
-    private func saveGitHub() {
-        let t = token
-        token = ""
-        Task { await engine.setGitHub(repo: repo, token: t) }
-    }
 
     var body: some View {
         Form {
@@ -244,20 +237,6 @@ struct GeneralSettings: View {
             Section("Notifications") {
                 LabeledContent("Status", value: notifications)
                 Text("A notification per opening with the booking result, plus a warning if the YMCA can't be reached.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("GitHub backup (optional)") {
-                TextField("Private repo", text: $repo, prompt: Text("owner/repo — leave empty if you don't use GitHub"))
-                    .onSubmit(saveGitHub)
-                SecureField("Token", text: $token, prompt: Text(RepoSync.token == nil ? "Paste a token" : "Saved — paste to replace"))
-                    .onSubmit(saveGitHub)
-                HStack {
-                    SyncStatus(engine: engine)
-                    Spacer()
-                    Button("Save") { saveGitHub() }
-                        .disabled(repo.trimmingCharacters(in: .whitespaces) == (RepoSync.repo ?? "") && token.isEmpty)
-                }
-                Text("Only if you also run the GitHub booker as a backup. The Mac keeps your classes, away dates and one-day changes itself; after each change it writes a copy into that private repo's classes.yml, pauses.yml and swaps.yml for the backup to follow. It never reads them back, so edit here or on the iPhone, not in the repo. Use a fine-grained token for that repo only, with Contents: Read and write. It's stored in this Mac's Keychain.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("iCloud (for the iPhone app)") {
@@ -290,6 +269,54 @@ struct GeneralSettings: View {
                 : s.authorizationStatus == .denied ? "off — turn on in System Settings → Notifications → YMCA Booker"
                 : "not decided yet"
         }
+    }
+}
+
+// MARK: Advanced
+
+/// The optional GitHub backup (Option B). Off by default: the Mac books on its
+/// own and syncs to the iPhone through iCloud, with no GitHub account needed.
+struct AdvancedSettings: View {
+    @ObservedObject var engine: Engine
+    @State private var on = RepoSync.isEnabled
+    @State private var token = ""
+    @State private var repo = RepoSync.repo ?? ""
+
+    private func save() {
+        let t = token
+        token = ""
+        Task { await engine.setGitHub(repo: repo, token: t) }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Also keep a GitHub backup", isOn: $on)
+                    .onChange(of: on) { _, enabled in
+                        if !enabled { repo = ""; token = ""; engine.turnOffGitHub() }
+                    }
+                Text("Not needed. YMCA Booker books from this Mac and shows everything on your iPhone and iPad through iCloud, without GitHub. Turn this on only if you also run the GitHub Actions booker (see the project README) as a backup for when the Mac is asleep or offline.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } header: { Text("GitHub backup") }
+            if on {
+                Section {
+                    TextField("Private repo", text: $repo, prompt: Text("owner/repo"))
+                        .onSubmit(save)
+                    SecureField("Token", text: $token, prompt: Text(RepoSync.token == nil ? "Paste a token" : "Saved — paste to replace"))
+                        .onSubmit(save)
+                    HStack {
+                        if RepoSync.isEnabled { SyncStatus(engine: engine) }
+                        Spacer()
+                        Button("Save") { save() }
+                            .disabled(repo.trimmingCharacters(in: .whitespaces).isEmpty
+                                      || (repo.trimmingCharacters(in: .whitespaces) == (RepoSync.repo ?? "") && token.isEmpty))
+                    }
+                    Text("After each change the Mac writes a copy of your classes, away dates and one-day changes into that private repo's classes.yml, pauses.yml and swaps.yml, for the backup to follow. It never reads them back, so keep editing here or on the iPhone, not in the repo. Use a fine-grained token for that repo only, with Contents: Read and write. It's stored in this Mac's Keychain. Turning the backup off forgets the repo and token.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 #endif

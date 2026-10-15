@@ -67,8 +67,13 @@ on or off.
 - **Sign-in:** your YMCA (egym) login lives in the login Keychain, under service
   `com.thomashan.ybooker.mac`, a name kept from when the Mac app was separate. Local
   files live in `~/Library/Application Support/YBookerMac`.
-- **Away dates and swaps:** read from an optional private GitHub repo
-  (Settings → General); editing them in the app is #148.
+- **Classes, away dates and one-day changes** are kept and edited on the Mac
+  (My classes, Away & swaps, Book). It needs no GitHub account.
+- **GitHub backup (optional, Settings → Advanced):** off by default. Turned on with a
+  private repo and a token (Contents: Read and write on that repo only), the Mac
+  writes `classes.yml`, `pauses.yml` and `swaps.yml` there after every change, one
+  way, so the Option B GitHub booker can back it up. Turning it off forgets the repo
+  and token.
 - **Open at login:** on by default. The app re-registers itself on every launch,
   so this keeps working if the app moves.
 - **Moving over from the old app:** the first launch copies the old app's settings

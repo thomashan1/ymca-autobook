@@ -246,6 +246,7 @@ final class Engine: ObservableObject {
             }
             let opening = Opening(klass: k, occurrence: o, paused: false)
             entry.booking = await Self.book(opening)
+            if entry.booking?.booked == true { noteBooked([(o, p.branchId)]) }
             let (_, s, fullAt, _) = await Self.sample(opening, index: 0)
             entry.firedAt = s?.at ?? Date()
             entry.atOpen = s
@@ -758,8 +759,11 @@ final class Engine: ObservableObject {
         }
         record(entries)
         dropPicks(group.filter(\.klass.isOneOff).map(\.occurrence.id))
+        noteBooked(group.indices.filter { entries[$0].booking?.booked == true }
+            .map { (group[$0].occurrence, group[$0].klass.locationIds.first ?? 0) })
         // The booking is decided; send the result to iCloud now (the phone's alert
-        // comes from it) rather than after the follow-up reads ~5 minutes later.
+        // and Week view come from it) rather than after the follow-up reads and
+        // the re-plan ~5 minutes later.
         Task { await pushToCloud() }
         for e in entries where e.booking != nil {
             Notifier.post("\(e.booking!.booked ? "✅" : "❌") \(e.className) · \(e.occursAt.formatted(.dateTime.weekday().month().day()))",
@@ -788,6 +792,34 @@ final class Engine: ObservableObject {
         for e in entries { Notifier.post("\(e.className) · \(e.occursAt.formatted(.dateTime.weekday().month().day()))", summary(e)) }
         lastPlanned = nil   // re-plan to pick up next week's occurrence of these classes
         pushToCloudSoon()
+    }
+
+    /// Put seats just won on the booking list and the schedule now, so the next
+    /// push shows them on the phone; the next plan re-reads both anyway.
+    private func noteBooked(_ booked: [(Occurrence, Int)]) {
+        guard !booked.isEmpty else { return }
+        (bookings, schedule) = Self.addingBooked(booked, bookings: bookings, schedule: schedule)
+    }
+
+    nonisolated static func addingBooked(_ booked: [(Occurrence, Int)], bookings: [CloudStore.Booking]?,
+                                         schedule: [ScheduleItem]?) -> ([CloudStore.Booking]?, [ScheduleItem]?) {
+        let ids = Set(booked.map(\.0.id))
+        let list = bookings.map { have in
+            let known = Set(have.map(\.occurrenceId))
+            return (have + booked.filter { !known.contains($0.0.id) }.map { o, branch in
+                CloudStore.Booking(occurrenceId: o.id, name: o.title, occursAt: o.occursAt, minutes: o.durationMinutes,
+                                   branchId: schedule?.first { $0.id == o.id }?.branchId ?? branch,
+                                   room: o.room, trainer: o.trainer)
+            }).sorted { $0.occursAt < $1.occursAt }
+        }
+        let items = schedule?.map { i in
+            ids.contains(i.id) && !i.joined
+                ? ScheduleItem(id: i.id, name: i.name, occursAt: i.occursAt, openAt: i.openAt, minutes: i.minutes,
+                               branchId: i.branchId, room: i.room, trainer: i.trainer, capacity: i.capacity,
+                               full: i.full, joined: true, autoBook: i.autoBook)
+                : i
+        }
+        return (list, items)
     }
 
     /// A real booking attempt at the opening second, mirroring src/main.py's book():

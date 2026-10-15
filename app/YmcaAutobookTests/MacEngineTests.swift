@@ -161,6 +161,25 @@ final class ModelTests: XCTestCase {
         XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [], swaps: [Swap(date: "2026-10-22", skip: "cycle-sculpt-thu")]))
     }
 
+    /// A seat won at the opening reaches the phone with the alert, not ~5 min later.
+    func testBookedSeatShowsAtOnce() throws {
+        let at = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-22T16:00:00Z"))
+        let o = try XCTUnwrap(Occurrence(["id": 7, "occurs_at": "2026-10-22T16:00:00.000Z", "service_title": "BODYPUMP",
+                                          "duration_in_minutes": 55, "sub_location_name": "Studio", "trainer_name": "T"]))
+        let item = ScheduleItem(id: 7, name: "BODYPUMP", occursAt: at, openAt: at.addingTimeInterval(-167 * 3600), minutes: 55,
+                                branchId: 1392, room: "Studio", trainer: "T", capacity: 30, full: false, joined: false, autoBook: true)
+        let other = CloudStore.Booking(occurrenceId: 3, name: "Cycle", occursAt: at.addingTimeInterval(-86400), minutes: 45,
+                                       branchId: 1392, room: "", trainer: "")
+        let (b, s) = Engine.addingBooked([(o, 1388)], bookings: [other], schedule: [item])
+        XCTAssertEqual(b?.map(\.occurrenceId), [3, 7])
+        XCTAssertEqual(b?.last?.branchId, 1392)               // the schedule's branch wins
+        XCTAssertEqual(s?.first?.joined, true)
+        let (again, _) = Engine.addingBooked([(o, 1392)], bookings: b, schedule: s)
+        XCTAssertEqual(again?.count, 2)                       // no duplicates
+        let (none, _) = Engine.addingBooked([(o, 1392)], bookings: nil, schedule: nil)
+        XCTAssertNil(none)                                    // before the first plan, nothing to add to
+    }
+
     func testPauseCoversRespectsExcept() {
         let p = Pause(start: "2026-11-23", end: "2026-11-27", except: ["core-mon"])
         let mon = try! XCTUnwrap(ISO8601DateFormatter().date(from: "2026-11-23T17:45:00Z"))   // Mon 9:45 PST

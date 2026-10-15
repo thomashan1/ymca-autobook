@@ -14,17 +14,27 @@ enum RepoSync {
 
     /// "owner/name" of the GitHub backup's private repo. Optional: only people
     /// who also run the GitHub booker (Option B) as a backup need it.
-    static var repo: String? {
-        UserDefaults.standard.string(forKey: repoKey).flatMap {
-            let t = $0.trimmingCharacters(in: .whitespaces)
-            return t.isEmpty ? nil : t
-        }
-    }
+    static var repo: String? { repo(in: .standard) }
+    static func repo(in d: UserDefaults) -> String? { normalize(d.string(forKey: repoKey)) }
+    /// The GitHub backup is on only with a repo set; empty or blank means off.
     static var isEnabled: Bool { repo != nil }
     static func setRepo(_ r: String) { UserDefaults.standard.set(r.trimmingCharacters(in: .whitespaces), forKey: repoKey) }
+    static func normalize(_ r: String?) -> String? {
+        guard let t = r?.trimmingCharacters(in: .whitespaces), !t.isEmpty else { return nil }
+        return t
+    }
 
-    /// A fine-grained token with Contents: Read and write on the private repo
-    /// (write only for the skips it puts in swaps.yml; read-only still syncs).
+    /// The one-time read of pauses.yml / swaps.yml carries over what a Mac that
+    /// used to read its away dates from the repo had there. A Mac with no repo
+    /// set when this runs (at launch) has nothing to carry over, so it's marked
+    /// done: turning the backup on later only writes, and never replaces the
+    /// Mac's own away dates with the repo's.
+    static func settleImport(_ d: UserDefaults = .standard) {
+        if repo(in: d) == nil { d.set(true, forKey: importedKey) }
+    }
+    static let importedKey = "repoImported"
+
+    /// A fine-grained token with Contents: Read and write on the backup's repo only.
     static var token: String? { Keychain.string(tokenKey).flatMap { $0.isEmpty ? nil : $0 } }
     static func setToken(_ t: String) {
         let t = t.trimmingCharacters(in: .whitespacesAndNewlines)

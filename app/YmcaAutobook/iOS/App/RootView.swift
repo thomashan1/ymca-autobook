@@ -18,14 +18,16 @@ struct RootView: View {
         TabView(selection: $tab) {
             WeekView()
                 .tabItem { Label("Week", systemImage: "calendar") }.tag(0)
-            ClassesView()
+            ClassesTab()
                 .tabItem { Label("Classes", systemImage: "list.bullet") }.tag(1)
-            JobsView()
-                .tabItem { Label("Jobs", systemImage: "clock") }.tag(2)
-            AwayView()
-                .tabItem { Label("Away", systemImage: "mappin.and.ellipse") }.tag(3)
+            UpcomingTab()
+                .tabItem { Label("Upcoming", systemImage: "clock") }.tag(2)
             SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape") }.tag(4)
+                .tabItem { Label("Settings", systemImage: "gearshape") }.tag(3)
+        }
+        // Back from Classes (Book): the Week view should show what was just booked or cancelled.
+        .onChange(of: tab) { old, _ in
+            if old == 1 { Task { await bookings.load() } }
         }
         .task(id: "\(auth.hasToken)|\(auth.source.rawValue)") {
             // SampleMode (simulator, no token) serves canned data from the
@@ -53,6 +55,63 @@ struct RootView: View {
             SettingsView(onboarding: true)
                 .interactiveDismissDisabled()
         }
+    }
+}
+
+/// Book any single class, or the weekly lineup. Booking single classes goes
+/// through the Mac, so in GitHub mode it's just the lineup.
+private struct ClassesTab: View {
+    @EnvironmentObject var auth: AuthStore
+    // Launch arg `-classesSegment weekly` picks the segment (for screenshots).
+    @AppStorage("classesSegment") private var segment = "book"
+
+    private var canBook: Bool { auth.isCloud || SampleMode.active }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if canBook && segment == "book" { BookView(embedded: true) } else { ClassesView(embedded: true) }
+            }
+            // A large title would scroll under the segment bar and blur.
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if canBook {
+                    SegmentBar(selection: $segment, options: [("book", "Book"), ("weekly", "Weekly")])
+                }
+            }
+        }
+    }
+}
+
+/// When each booking opens and how it went, and the days off.
+private struct UpcomingTab: View {
+    @AppStorage("upcomingSegment") private var segment = "openings"
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if segment == "away" { AwayView(embedded: true) } else { JobsView(embedded: true) }
+            }
+            // A large title would scroll under the segment bar and blur.
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                SegmentBar(selection: $segment, options: [("openings", "Openings"), ("away", "Away")])
+            }
+        }
+    }
+}
+
+private struct SegmentBar: View {
+    @Binding var selection: String
+    let options: [(String, String)]
+
+    var body: some View {
+        Picker("Show", selection: $selection) {
+            ForEach(options, id: \.0) { Text($0.1).tag($0.0) }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal).padding(.vertical, 8)
+        .background(.bar)
     }
 }
 #endif

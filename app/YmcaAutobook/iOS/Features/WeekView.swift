@@ -18,7 +18,6 @@ struct WeekView: View {
     private static let daysAhead = 14
     @State private var showZoom = false
     @State private var detail: ClassDetail?
-    @State private var showBook = UserDefaults.standard.bool(forKey: "screenshotBook")
 
     private var cal: Calendar { CalendarHelper.pacific }
 
@@ -75,15 +74,6 @@ struct WeekView: View {
                 await snapshot.load(); await bookings.load()
                 await fullClasses.load()
             }
-            .toolbar {
-                // Booking and cancelling go through the Mac, so only in iCloud mode.
-                if DataSource.isCloud || SampleMode.active {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { showBook = true } label: { Label("Book", systemImage: "calendar.badge.plus") }
-                    }
-                }
-            }
-            .sheet(isPresented: $showBook, onDismiss: { Task { await bookings.load() } }) { BookView().bookSheetSizing() }
             .fullScreenCover(isPresented: $showZoom) { CalendarZoomSheet() }
             .sheet(item: $detail) { ClassDetailSheet(detail: $0) }
         }
@@ -466,12 +456,6 @@ private struct OccurrenceRow: View {
             .padding(.horizontal, 6).padding(.vertical, 1)
             .background(color.opacity(0.18), in: Capsule())
             .foregroundStyle(color)
-    }
-}
-private extension View {
-    /// Full page on iPad, so the class list isn't squeezed into a form sheet.
-    @ViewBuilder func bookSheetSizing() -> some View {
-        if #available(iOS 18.0, *) { presentationSizing(.page) } else { self }
     }
 }
 #endif

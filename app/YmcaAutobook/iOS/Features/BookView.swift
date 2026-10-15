@@ -8,6 +8,9 @@ import SwiftUI
 struct BookView: View {
     @ObservedObject private var cloud = CloudSource.shared
     @Environment(\.dismiss) private var dismiss
+    /// Shown in the Classes tab rather than as a sheet: no navigation stack of
+    /// its own and no Done button.
+    var embedded = false
     @State private var search = ""
     @State private var branch = 0
     /// nil = every day.
@@ -19,7 +22,10 @@ struct BookView: View {
     @State private var error: String?
 
     var body: some View {
-        NavigationStack {
+        if embedded { content } else { NavigationStack { content } }
+    }
+
+    private var content: some View {
             List {
                 header
                 ForEach(shownDays, id: \.self) { day in
@@ -37,7 +43,9 @@ struct BookView: View {
                 if let n = startDay, days.indices.contains(n) { day = days[n]; startDay = nil }
             }
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                if !embedded {
+                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                }
             }
             .confirmationDialog(confirmTitle, isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
                                 titleVisibility: .visible) {
@@ -48,7 +56,6 @@ struct BookView: View {
             .alert("Couldn't reach iCloud", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: { Text(error ?? "") }
-        }
     }
 
     @ViewBuilder private var header: some View {

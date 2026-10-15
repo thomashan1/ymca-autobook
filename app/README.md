@@ -17,16 +17,15 @@ booking happens on the Mac.
 
 | Screen (iPhone/iPad) | Shows |
 |----------|----------------|
-| **Week**    | Two weeks of classes merged with your real bookings (room, instructor, end time); **Book** button (top right) |
-| **Classes** | Your recurring lineup and how fast each class fills |
-| **Jobs**    | Countdowns to each booking window, the Mac's status and each booking result |
-| **Away**    | Away dates and one-off swaps |
+| **Week**    | Two weeks of classes merged with your real bookings (room, instructor, end time) |
+| **Classes** | **Book**: every class at both branches for about two weeks, to book or cancel one at a time (iCloud mode only). **Weekly**: your recurring lineup and how fast each class fills |
+| **Upcoming** | **Openings**: countdowns to each booking window, the Mac's status and each booking result. **Away**: away dates and one-off swaps |
+| **Settings** | Data source, the Mac's status, GitHub (advanced) |
 
 ## Booking and cancelling single classes
 
 Besides the weekly lineup, any single upcoming session can be booked or cancelled:
-on the Mac under Settings → **Book**, on iPhone and iPad from the **Book** button on
-the Week screen. One shared rule (`SessionState` in `Shared/ClassPicks.swift`) decides
+on the Mac under Settings → **Book**, on iPhone and iPad under Classes → **Book**. One shared rule (`SessionState` in `Shared/ClassPicks.swift`) decides
 what each session offers:
 
 | The session is… | Action |

@@ -2,7 +2,7 @@
 import SwiftUI
 
 /// How fast classes fill once their booking window opens — every class at both
-/// branches, from the daily fill history. Opened from the Classes tab.
+/// branches, from the daily fill history. The Classes tab's Fill speed segment.
 struct FillStatsView: View {
     @EnvironmentObject var stats: FillStatsRepository
     @EnvironmentObject var classes: ClassesRepository

@@ -18,7 +18,7 @@ booking happens on the Mac.
 | Screen (iPhone/iPad) | Shows |
 |----------|----------------|
 | **Week**    | Two weeks of classes merged with your real bookings (room, instructor, end time) |
-| **Classes** | **Book**: every class at both branches for about two weeks, to book or cancel one at a time (iCloud mode only). **Weekly**: your recurring lineup and how fast each class fills |
+| **Classes** | **Book**: every class at both branches for about two weeks, to book or cancel one at a time (iCloud mode only). **Weekly**: your recurring lineup. **Fill speed**: how fast every class at both branches fills once booking opens |
 | **Upcoming** | **Openings**: countdowns to each booking window, the Mac's status and each booking result. **Away**: away dates and one-off swaps |
 | **Settings** | Data source, the Mac's status, GitHub (advanced) |
 

@@ -58,26 +58,30 @@ struct RootView: View {
     }
 }
 
-/// Book any single class, or the weekly lineup. Booking single classes goes
-/// through the Mac, so in GitHub mode it's just the lineup.
+/// Book any single class, the weekly lineup, or how fast classes fill. Booking
+/// single classes goes through the Mac, so GitHub mode has no Book segment.
 private struct ClassesTab: View {
     @EnvironmentObject var auth: AuthStore
-    // Launch arg `-classesSegment weekly` picks the segment (for screenshots).
+    // Launch arg `-classesSegment weekly|fill` picks the segment (for screenshots).
     @AppStorage("classesSegment") private var segment = "book"
 
     private var canBook: Bool { auth.isCloud || SampleMode.active }
+    private var shown: String { segment == "book" && !canBook ? "weekly" : segment }
 
     var body: some View {
         NavigationStack {
             Group {
-                if canBook && segment == "book" { BookView(embedded: true) } else { ClassesView(embedded: true) }
+                switch shown {
+                case "book": BookView(embedded: true)
+                case "fill": FillStatsView()
+                default: ClassesView(embedded: true)
+                }
             }
             // A large title would scroll under the segment bar and blur.
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .top, spacing: 0) {
-                if canBook {
-                    SegmentBar(selection: $segment, options: [("book", "Book"), ("weekly", "Weekly")])
-                }
+                SegmentBar(selection: Binding(get: { shown }, set: { segment = $0 }),
+                           options: (canBook ? [("book", "Book")] : []) + [("weekly", "Weekly"), ("fill", "Fill speed")])
             }
         }
     }

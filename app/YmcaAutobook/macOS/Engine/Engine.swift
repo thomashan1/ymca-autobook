@@ -30,6 +30,11 @@ final class Engine: ObservableObject {
     @Published private(set) var picks = Store.picks()
     /// Lineup sessions not to book this time ("skip this one").
     @Published private(set) var skips = Store.skips()
+    /// What mirrorSkips last wrote to swaps.yml ("date|key"), so a plan only
+    /// writes when the skips change.
+    private var mirroredSkips = Set(UserDefaults.standard.stringArray(forKey: "mirroredSkips") ?? [])
+    /// Set when a skip couldn't be written to swaps.yml (usually a read-only token).
+    @Published private(set) var skipMirrorError: String?
     /// Bookings being cancelled right now.
     @Published private(set) var cancelling: Set<Int> = []
     /// Every upcoming group class at both branches, from the last plan; nil
@@ -116,8 +121,8 @@ final class Engine: ObservableObject {
         update(picks: picks.filter { $0.id != id })
     }
 
-    /// Don't book this session of a lineup class (the Mac only — a GitHub
-    /// backup still books it unless pauses.yml says otherwise).
+    /// Don't book this session of a lineup class. With a GitHub repo set, the
+    /// skip is also written to its swaps.yml so the GitHub backup skips it too.
     func skip(_ p: ClassPick) {
         guard !skips.contains(where: { $0.id == p.id }) else { return }
         setSkips(skips + [p])
@@ -309,6 +314,26 @@ final class Engine: ObservableObject {
         }
     }
 
+    /// Write this Mac's skips of lineup sessions into the repo's swaps.yml as
+    /// skip-only swaps (and drop them on Unskip), so GitHub — the backup — doesn't
+    /// book what was skipped. `keys` maps a lineup session's occurrence id to its
+    /// class key. Only touches the repo when the set changes.
+    private func mirrorSkips(_ keys: [Int: String]) async {
+        guard RepoSync.isEnabled else { return }
+        let want = Set(skips.compactMap { s in keys[s.id].map { "\(Pause.day(s.occursAt))|\($0)" } })
+        guard want != mirroredSkips else { return }
+        do {
+            try await RepoSync.update("swaps.yml", message: "YMCA Booker: skips for the GitHub backup") {
+                RepoSync.mirrorSkips($0 ?? "swaps:\n", want: want)
+            }
+            mirroredSkips = want
+            UserDefaults.standard.set(Array(want), forKey: "mirroredSkips")
+            skipMirrorError = nil
+        } catch {
+            skipMirrorError = "The GitHub backup may still book what you skipped: \(error.localizedDescription)"
+        }
+    }
+
     func syncNow() async {
         if await syncFromRepo() { replanSoon() }
     }
@@ -317,6 +342,7 @@ final class Engine: ObservableObject {
         RepoSync.setRepo(repo)
         if let token, !token.isEmpty { RepoSync.setToken(token) }
         await syncNow()
+        replanSoon()   // retries writing skips with the new token
     }
 
     /// Why this class won't be booked on this date, if it won't: an away date
@@ -573,6 +599,9 @@ final class Engine: ObservableObject {
             }
             dropPicks(triage.drop)
             setSkips(skips)   // let past ones go
+            let lineupKeys = Dictionary(found.map { ($0.occurrence.id, $0.klass.key) }) { a, _ in a }
+                .filter { !$0.value.hasPrefix("oneoff-") }
+            Task { await mirrorSkips(lineupKeys) }
             for p in picks where triage.now.contains(p.id) { Task { await bookNow(p) } }
 
             schedule = upcoming

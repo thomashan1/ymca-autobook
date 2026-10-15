@@ -24,7 +24,8 @@ enum RepoSync {
     static var isEnabled: Bool { repo != nil }
     static func setRepo(_ r: String) { UserDefaults.standard.set(r.trimmingCharacters(in: .whitespaces), forKey: repoKey) }
 
-    /// A fine-grained token with Contents: Read-only on the private repo.
+    /// A fine-grained token with Contents: Read and write on the private repo
+    /// (write only for the skips it puts in swaps.yml; read-only still syncs).
     static var token: String? { Keychain.string(tokenKey).flatMap { $0.isEmpty ? nil : $0 } }
     static func setToken(_ t: String) {
         let t = t.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -32,11 +33,12 @@ enum RepoSync {
     }
 
     enum Failure: LocalizedError {
-        case noRepo, noToken, http(Int, String)
+        case noRepo, noToken, readOnly, http(Int, String)
         var errorDescription: String? {
             switch self {
             case .noRepo: return "No GitHub repo set"
             case .noToken: return "No GitHub token — add one in Settings → General"
+            case .readOnly: return "The GitHub token can't write to \(RepoSync.repo ?? "the repo") — give it Contents: Read and write"
             case .http(401, _), .http(403, _): return "GitHub refused the token (expired, or no access to \(RepoSync.repo ?? "the repo"))"
             case .http(let code, let path): return "GitHub returned \(code) for \(path)"
             }
@@ -59,6 +61,106 @@ enum RepoSync {
         if code == 404 { return nil }
         guard code == 200 else { throw Failure.http(code, path) }
         return String(decoding: data, as: UTF8.self)
+    }
+
+    /// Change a file in the repo: `edit` gets its text (nil if absent) and
+    /// returns the new text, or nil to leave it. Retries once if someone else
+    /// committed in between.
+    static func update(_ path: String, message: String, _ edit: (String?) -> String?) async throws {
+        guard let repo else { throw Failure.noRepo }
+        guard let token else { throw Failure.noToken }
+        let url = URL(string: "https://api.github.com/repos/\(repo)/contents/\(path)")!
+        func request(_ method: String) -> URLRequest {
+            var req = URLRequest(url: url)
+            req.httpMethod = method
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            req.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            req.cachePolicy = .reloadIgnoringLocalCacheData
+            req.timeoutInterval = 15
+            return req
+        }
+        struct Current: Decodable { let sha: String; let content: String }
+        for attempt in 1...2 {
+            let (data, resp) = try await URLSession.shared.data(for: request("GET"))
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            var sha: String?, text: String?
+            if code == 200 {
+                let c = try JSONDecoder().decode(Current.self, from: data)
+                sha = c.sha
+                text = Data(base64Encoded: c.content.replacingOccurrences(of: "\n", with: "")).map { String(decoding: $0, as: UTF8.self) }
+            } else if code != 404 {
+                throw Failure.http(code, path)
+            }
+            guard let new = edit(text), new != text else { return }
+            var put = request("PUT")
+            var body: [String: String] = ["message": message, "content": Data(new.utf8).base64EncodedString()]
+            if let sha { body["sha"] = sha }
+            put.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let (_, r) = try await URLSession.shared.data(for: put)
+            switch (r as? HTTPURLResponse)?.statusCode ?? 0 {
+            case 200, 201: return
+            case 403: throw Failure.readOnly
+            case 409 where attempt == 1: continue   // the file moved under us
+            case let c: throw Failure.http(c, path)
+            }
+        }
+    }
+
+    // MARK: Skips the Mac writes into swaps.yml for the GitHub backup
+
+    /// Marks the swaps.yml entries the Mac owns; it never touches any other.
+    static let skipNote = "Skipped in YMCA Booker"
+
+    /// swaps.yml with the Mac's skip entries made exactly `want` ("yyyy-MM-dd|class-key"):
+    /// stale ones removed, missing ones added at the end, everything else as it was.
+    static func mirrorSkips(_ yaml: String, want: Set<String>) -> String {
+        var lines = yaml.components(separatedBy: "\n")
+        while lines.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { lines.removeLast() }
+        func isEntry(_ l: String) -> Bool { l.hasPrefix("  - ") || l.hasPrefix("- ") }
+        func isTopLevel(_ l: String) -> Bool { !l.isEmpty && !l.hasPrefix(" ") && !l.hasPrefix("- ") }
+        func id(_ block: [String]) -> String? {
+            var date: String?, skip: String?
+            for l in block {
+                var t = stripComment(l).trimmingCharacters(in: .whitespaces)
+                if t.hasPrefix("- ") { t = String(t.dropFirst(2)) }
+                let kv = t.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+                guard kv.count == 2 else { continue }
+                if kv[0] == "date" { date = unquote(kv[1]) }
+                if kv[0] == "skip" { skip = unquote(kv[1]) }
+            }
+            guard let date, let skip else { return nil }
+            return "\(date)|\(skip)"
+        }
+        var out: [String] = [], have = Set<String>()
+        var i = 0
+        while i < lines.count {
+            guard isEntry(lines[i]) else { out.append(lines[i]); i += 1; continue }
+            var j = i + 1
+            while j < lines.count, !isEntry(lines[j]), !isTopLevel(lines[j]) { j += 1 }
+            let block = Array(lines[i..<j])
+            if block.contains(where: { $0.contains(skipNote) }), let k = id(block) {
+                if want.contains(k), !have.contains(k) { have.insert(k); out += block }
+            } else {
+                out += block
+            }
+            i = j
+        }
+        while out.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { out.removeLast() }
+        let missing = want.subtracting(have).sorted()
+        if !missing.isEmpty {
+            if let s = out.firstIndex(where: { $0.hasPrefix("swaps:") }) {
+                out[s] = "swaps:"   // `swaps: []` can't take entries
+            } else {
+                out.append("swaps:")
+            }
+            for m in missing {
+                let parts = m.split(separator: "|", maxSplits: 1).map(String.init)
+                guard parts.count == 2 else { continue }
+                out += ["", "  - date: \(parts[0])", "    skip: \(parts[1])", "    note: \"\(skipNote)\""]
+            }
+        }
+        return out.joined(separator: "\n") + "\n"
     }
 
     // MARK: pauses.yml — `- {start: 2026-10-23, end: 2026-10-23, except: [a, b]}  # note`

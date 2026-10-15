@@ -34,7 +34,7 @@ what each session offers:
 | open for booking, seats left | **Book** now |
 | not open yet | **Book**: queued, booked at the second its window opens, like the lineup |
 | queued | **Undo** |
-| in the weekly lineup, not open yet | **Skip** this one (Mac only; a GitHub backup still books it) |
+| in the weekly lineup, not open yet | **Skip** this one. With a GitHub repo set on the Mac, the skip is also written to `swaps.yml` so the GitHub backup skips it too (token needs Contents: Read and write) |
 | skipped | **Unskip** |
 
 The Mac does all the booking. The iPhone writes a `BookRequest` record to iCloud; the

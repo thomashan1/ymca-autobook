@@ -24,8 +24,15 @@ struct ClassesView: View {
         classes.classes.filter { $0.weekday == day }.sorted { $0.start < $1.start }
     }
 
+    /// Shown under a segmented control in a combined tab, which owns the
+    /// navigation stack.
+    var embedded = false
+
     var body: some View {
-        NavigationStack {
+        if embedded { content } else { NavigationStack { content } }
+    }
+
+    private var content: some View {
             List {
                 if auth.isCloud {
                     Section {
@@ -37,7 +44,7 @@ struct ClassesView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Label("Edits here change classes.yml", systemImage: "doc.text.fill")
                             .font(.footnote.weight(.semibold)).foregroundStyle(Theme.accent)
-                        Text("This is your recurring auto-book schedule, stored in **classes.yml** in the public repo **thomashan1/ymca-autobook**. Swiping a class to remove it opens a pull request against that file (main is protected) which merges automatically. Away dates live separately in **pauses.yml** (private repo) — edit those on the Away tab.")
+                        Text("This is your recurring auto-book schedule, stored in **classes.yml** in the public repo **thomashan1/ymca-autobook**. Swiping a class to remove it opens a pull request against that file (main is protected) which merges automatically. Away dates live separately in **pauses.yml** (private repo) — edit those under Upcoming → Away.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
@@ -97,7 +104,6 @@ struct ClassesView: View {
                 Text(resultMessage ?? "")
             }
             .sheet(item: $detail) { ClassDetailSheet(detail: $0) }
-        }
     }
 
     private func classDetail(_ c: GymClass) -> ClassDetail {

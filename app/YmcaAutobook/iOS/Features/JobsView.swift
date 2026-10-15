@@ -15,6 +15,9 @@ struct JobsView: View {
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private let weekdays: [Weekday] = [.mon, .tue, .wed, .thu, .fri]
+    /// Shown under a segmented control in a combined tab, which owns the
+    /// navigation stack.
+    var embedded = false
 
     @State private var bookTarget: BookingJob?
     @State private var booking = false
@@ -53,7 +56,10 @@ struct JobsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        if embedded { content } else { NavigationStack { content } }
+    }
+
+    private var content: some View {
             List {
                 if auth.isCloud {
                     Section { MacStatusRow() } footer: {
@@ -120,7 +126,6 @@ struct JobsView: View {
             } message: {
                 Text(resultMessage ?? "")
             }
-        }
     }
 
     private func book(_ job: BookingJob) {

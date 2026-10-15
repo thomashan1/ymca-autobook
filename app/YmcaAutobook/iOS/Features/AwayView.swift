@@ -30,8 +30,15 @@ struct AwayView: View {
         pauses.pauses.filter { $0.end < today }.sorted { $0.start > $1.start }
     }
 
+    /// Shown under a segmented control in a combined tab, which owns the
+    /// navigation stack.
+    var embedded = false
+
     var body: some View {
-        NavigationStack {
+        if embedded { content } else { NavigationStack { content } }
+    }
+
+    private var content: some View {
             List {
                 Section {
                     VStack(spacing: 16) {
@@ -109,7 +116,6 @@ struct AwayView: View {
             .alert("Away dates", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK") { errorMessage = nil }
             } message: { Text(errorMessage ?? "") }
-        }
     }
 
     @ViewBuilder

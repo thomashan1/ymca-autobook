@@ -172,7 +172,7 @@ struct ShadowEntry: Codable, Identifiable, Sendable {
     /// Would a real booking have gone out at the opening second?
     var verdict: String {
         if let b = booking { return b.outcome }
-        if paused { return "paused — would skip" }
+        if paused { return "away — would skip" }
         if let error { return "error — \(error)" }
         guard let s = atOpen else { return "pending" }
         if s.isJoined { return "already booked (another trigger won)" }

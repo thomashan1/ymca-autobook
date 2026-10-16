@@ -11,7 +11,7 @@ struct SettingsView: View {
             CatalogView(engine: engine).tabItem { Label("Browse", systemImage: "magnifyingglass") }
             ClassesEditor(engine: engine).tabItem { Label("My classes", systemImage: "list.bullet") }
             StatsView(engine: engine).tabItem { Label("Stats", systemImage: "chart.bar") }
-            PausesView(engine: engine).tabItem { Label("Away & swaps", systemImage: "pause.circle") }
+            PausesView(engine: engine).tabItem { Label("Away & swaps", systemImage: "airplane") }
             GeneralSettings(engine: engine).tabItem { Label("General", systemImage: "gearshape") }
             AdvancedSettings(engine: engine).tabItem { Label("Advanced", systemImage: "gearshape.2") }
         }

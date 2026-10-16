@@ -119,7 +119,7 @@ struct JobsView: View {
                 Button("Book now") { if let job = bookTarget { book(job) } }
                 Button("Cancel", role: .cancel) { bookTarget = nil }
             } message: {
-                Text("This triggers the booking workflow for this class immediately, ignoring any pause dates.")
+                Text("This triggers the booking workflow for this class immediately, ignoring any away dates.")
             }
             .alert("Booking", isPresented: Binding(get: { resultMessage != nil }, set: { if !$0 { resultMessage = nil } })) {
                 Button("OK") { resultMessage = nil }
@@ -186,7 +186,7 @@ private struct JobRow: View {
                 }
             }
             Text(paused
-                 ? "In a pause on \(job.classDate.formatted(.dateTime.weekday().month().day())) — the bot won't book it. Swipe to book anyway."
+                 ? "Away on \(job.classDate.formatted(.dateTime.weekday().month().day())) — the bot won't book it. Swipe to book anyway."
                  : "Books \(job.classDate.formatted(.dateTime.weekday().month().day())) · opens \(job.opensAt.formatted(date: .abbreviated, time: .shortened))")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -240,7 +240,7 @@ private struct OpeningRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: o.paused ? "pause.circle" : o.booked ? "checkmark.circle.fill" : o.live ? "xmark.circle.fill" : "eye")
+            Image(systemName: o.paused ? "airplane" : o.booked ? "checkmark.circle.fill" : o.live ? "xmark.circle.fill" : "eye")
                 .foregroundStyle(o.paused ? Color.secondary : o.booked ? Theme.booked : o.live ? Theme.accent : .secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(o.className).font(.body.weight(.medium))

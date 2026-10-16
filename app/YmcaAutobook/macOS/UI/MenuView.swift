@@ -55,7 +55,7 @@ struct MenuView: View {
                         Text(o.klass.name).lineLimit(1)
                         Text(o.klass.branch).font(.caption).foregroundStyle(.secondary)
                         Spacer()
-                        if o.paused { Text("paused").font(.caption).foregroundStyle(.orange) }
+                        if o.paused { Text("away").font(.caption).foregroundStyle(.orange) }
                         Text(o.openAt.formatted(.dateTime.weekday().hour().minute())).font(.caption).monospacedDigit()
                     }
                 }

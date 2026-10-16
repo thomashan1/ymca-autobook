@@ -255,6 +255,12 @@ enum ClassFilter {
         return ["swim", "aqua", "lap", "pool", "water"].contains { text.contains($0) }
     }
 
+    /// Classes that cost extra (the YMCA prefixes their names with "$", e.g.
+    /// "$ Les Mills Strength Development"), the same rule as the Python browse.
+    static func isPaid(name: String) -> Bool {
+        name.trimmingCharacters(in: .whitespaces).hasPrefix("$")
+    }
+
     /// Start-time choices for the From / Until filters, every half hour,
     /// as minutes after midnight. -1 means no limit.
     static let timeChoices: [Int] = Array(stride(from: 5 * 60, through: 21 * 60, by: 30))
@@ -266,10 +272,12 @@ enum ClassFilter {
 
     /// Keeps a class that starts at or after `from` and before `until`
     /// (minutes after midnight, -1 = no limit).
-    static func matches(_ i: ScheduleItem, hidePool: Bool, from: Int, until: Int, calendar: Calendar) -> Bool {
+    static func matches(_ i: ScheduleItem, hidePool: Bool, hidePaid: Bool = false, from: Int, until: Int,
+                        calendar: Calendar) -> Bool {
         let c = calendar.dateComponents([.hour, .minute], from: i.occursAt)
         let start = (c.hour ?? 0) * 60 + (c.minute ?? 0)
         return (!hidePool || !isPool(name: i.name, room: i.room))
+            && (!hidePaid || !isPaid(name: i.name))
             && (from < 0 || start >= from) && (until < 0 || start < until)
     }
 }

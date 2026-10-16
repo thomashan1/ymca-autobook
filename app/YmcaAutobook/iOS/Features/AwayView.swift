@@ -50,6 +50,10 @@ struct AwayView: View {
                     .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
                 }
                 Section {
+                    // A row, not a toolbar +: a + only on this page made the
+                    // Openings/Away switch above jump sideways.
+                    Button { showAdd = true } label: { Label("Add away dates", systemImage: "plus.circle.fill") }
+                        .disabled(busy)
                     if upcoming.isEmpty {
                         Text(awayRanges.awayRanges.isEmpty ? "No away dates set."
                                                    : "No upcoming away dates.")
@@ -64,7 +68,7 @@ struct AwayView: View {
                 } header: {
                     Text("Upcoming away dates")
                 } footer: {
-                    Text(auth.isCloud ? "Kept on your Mac. Tap + to add, tap one to edit, swipe to delete; your Mac applies it within a minute."
+                    Text(auth.isCloud ? "Kept on your Mac. Tap one to edit, swipe to delete; your Mac applies changes within a minute."
                                       : "Synced to ymca-private/away.yml — tap to edit, swipe to delete.")
                 }
 
@@ -104,13 +108,6 @@ struct AwayView: View {
                 }
             }
             .navigationTitle("Away Dates")
-            .toolbar {
-                // In iCloud mode the edit goes to the Mac, which keeps the away dates.
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showAdd = true } label: { Image(systemName: "plus") }
-                        .disabled(busy)
-                }
-            }
             .overlay { if busy { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
             .refreshable {
                 await awayRanges.load()

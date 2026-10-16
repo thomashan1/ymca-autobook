@@ -63,14 +63,28 @@ final class AwayRepository: ObservableObject {
     // MARK: Write-back (away.yml is in the private repo — direct commit, no PR)
 
     func add(start: Date, end: Date, except: [String] = [], note: String? = nil) async -> String? {
+        if DataSource.isCloud { return await viaMac(.add, start: start, end: end, note: note) }
         var next = awayRanges
         next.append(AwayRange(start: start, end: end, except: except, note: note))
         return await write(next, message: "Add away dates \(Self.df.string(from: start))–\(Self.df.string(from: end)) via iOS app")
     }
 
     func delete(_ awayRange: AwayRange) async -> String? {
+        if DataSource.isCloud { return await viaMac(.remove, start: awayRange.start, end: awayRange.end) }
         let next = Self.removing(awayRange, from: awayRanges)
         return await write(next, message: "Remove away dates \(Self.df.string(from: awayRange.start))–\(Self.df.string(from: awayRange.end)) via iOS app")
+    }
+
+    /// In iCloud mode the Mac keeps the away dates: send it the change, and
+    /// show it here at once (CloudSource counts requests still on their way).
+    private func viaMac(_ action: Cloud.AwayRequest.Action, start: Date, end: Date, note: String? = nil) async -> String? {
+        do {
+            try await CloudSource.shared.sendAway(action, start: start, end: end, note: note)
+            awayRanges = CloudSource.shared.awayRanges
+            return nil
+        } catch {
+            return "Couldn't reach iCloud: \(error.localizedDescription)"
+        }
     }
 
     /// Drop `awayRange` from `list`. If it owned a section header, hand the comment to

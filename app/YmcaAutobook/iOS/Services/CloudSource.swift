@@ -146,6 +146,7 @@ final class CloudSource: ObservableObject {
         case "OneOff": cache.picks[name] = Cloud.pick(r)
         case "Skip": cache.skips[name] = Cloud.pick(r)
         case Cloud.Request.recordType: cache.requests[name] = Cloud.Request(r)
+        case Cloud.AwayRequest.recordType: cache.awayRequests[name] = Cloud.AwayRequest(r)
         default: break
         }
     }
@@ -154,6 +155,7 @@ final class CloudSource: ObservableObject {
         cache.classes[name] = nil; cache.awayRanges[name] = nil; cache.swaps[name] = nil
         cache.openings[name] = nil; cache.stats[name] = nil; cache.bookings[name] = nil
         cache.picks[name] = nil; cache.skips[name] = nil; cache.requests[name] = nil
+        cache.awayRequests[name] = nil
         if name == Cloud.scheduleRecordName { cache.schedule = nil }
     }
 
@@ -173,12 +175,43 @@ final class CloudSource: ObservableObject {
         .sorted { ($0.weekday, $0.start) < ($1.weekday, $1.start) }
     }
 
+    /// The Mac's away dates, with this phone's changes that haven't reached the
+    /// Mac yet already applied, so an edit shows at once.
     var awayRanges: [AwayRange] {
-        cache.awayRanges.values.compactMap { p in
+        var ranges = cache.awayRanges.values.map { (start: $0.start, end: $0.end, except: $0.except, note: $0.note) }
+        for q in cache.awayRequests.values.sorted(by: { $0.requestedAt < $1.requestedAt }) {
+            let same = { (r: (start: String, end: String, except: [String], note: String?)) in r.start == q.start && r.end == q.end }
+            let except = ranges.first(where: same)?.except ?? []
+            ranges.removeAll(where: same)
+            if q.action == .add { ranges.append((q.start, q.end, except, q.note)) }
+        }
+        return ranges.compactMap { p in
             guard let s = Self.day.date(from: p.start), let e = Self.day.date(from: p.end) else { return nil }
             return AwayRange(start: s, end: e, except: p.except, note: p.note)
         }
         .sorted { $0.start < $1.start }
+    }
+
+    /// Away-date changes still on their way to the Mac.
+    var pendingAway: [Cloud.AwayRequest] { cache.awayRequests.values.sorted { $0.requestedAt < $1.requestedAt } }
+
+    /// Ask the Mac to add or remove away dates. It applies the change within
+    /// about half a minute and publishes the result.
+    func sendAway(_ action: Cloud.AwayRequest.Action, start: Date, end: Date, note: String? = nil) async throws {
+        if SampleMode.active { return }
+        let q = Cloud.AwayRequest(action: action, start: Self.day.string(from: start), end: Self.day.string(from: end),
+                                  note: note)
+        _ = try await database.save(q.record())
+        cache.awayRequests[q.id] = q
+        version += 1
+        if let d = try? JSONEncoder().encode(cache) { try? d.write(to: Self.cacheURL, options: .atomic) }
+        Task {
+            for delay in [20, 40, 60, 90] {
+                try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000)
+                await refresh()
+                if cache.awayRequests[q.id] == nil { break }
+            }
+        }
     }
 
     var swaps: [Swap] {
@@ -351,6 +384,7 @@ final class CloudSource: ObservableObject {
         var picks: [String: ClassPick] = [:]
         var skips: [String: ClassPick] = [:]
         var requests: [String: Cloud.Request] = [:]
+        var awayRequests: [String: Cloud.AwayRequest] = [:]
         var token: Data?
         var lastRefresh: Date?
     }

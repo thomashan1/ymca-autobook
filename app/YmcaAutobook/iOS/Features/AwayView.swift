@@ -60,7 +60,7 @@ struct AwayView: View {
                 } header: {
                     Text("Upcoming away dates")
                 } footer: {
-                    Text(auth.isCloud ? "From your Mac — change away dates there."
+                    Text(auth.isCloud ? "Kept on your Mac. Tap + to add, swipe to delete; your Mac applies it within a minute."
                                       : "Synced to ymca-private/away.yml — swipe to delete.")
                 }
 
@@ -99,12 +99,10 @@ struct AwayView: View {
             }
             .navigationTitle("Away Dates")
             .toolbar {
-                // Read-only from iCloud: the Mac is the only writer.
-                if !auth.isCloud {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { showAdd = true } label: { Image(systemName: "plus") }
-                            .disabled(busy)
-                    }
+                // In iCloud mode the edit goes to the Mac, which keeps the away dates.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showAdd = true } label: { Image(systemName: "plus") }
+                        .disabled(busy)
                 }
             }
             .overlay { if busy { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
@@ -120,10 +118,8 @@ struct AwayView: View {
 
     @ViewBuilder
     private func deleteButton(_ awayRange: AwayRange) -> some View {
-        if !auth.isCloud {
-            Button(role: .destructive) { remove(awayRange) } label: {
-                Label("Delete", systemImage: "trash")
-            }
+        Button(role: .destructive) { remove(awayRange) } label: {
+            Label("Delete", systemImage: "trash")
         }
     }
 

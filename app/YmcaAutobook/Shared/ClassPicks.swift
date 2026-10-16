@@ -133,6 +133,56 @@ extension Cloud {
     }
 }
 
+extension Cloud {
+    /// Add or remove away dates, asked for on the iPhone. The Mac keeps the away
+    /// dates, so it applies the change and publishes the result like any other
+    /// edit; the request is deleted once applied.
+    struct AwayRequest: Codable, Hashable, Identifiable, Sendable {
+        enum Action: String, Codable, Sendable { case add, remove }
+
+        static let recordType = "AwayRequest"
+
+        var id: String
+        let action: Action
+        /// yyyy-MM-dd in the club's timezone, inclusive.
+        let start, end: String
+        let note: String?
+        let requestedAt: Date
+
+        init(action: Action, start: String, end: String, note: String? = nil,
+             requestedAt: Date = Date(), id: String = UUID().uuidString) {
+            self.id = "\(Self.recordType).\(id)"
+            self.action = action
+            self.start = start
+            self.end = end
+            self.note = note
+            self.requestedAt = requestedAt
+        }
+
+        init?(_ r: CKRecord) {
+            guard r.recordType == Self.recordType,
+                  let a = (r["action"] as? String).flatMap(Action.init(rawValue:)),
+                  let s = r["start"] as? String, let e = r["end"] as? String else { return nil }
+            id = r.recordID.recordName
+            action = a
+            start = s
+            end = e
+            note = r["note"] as? String
+            requestedAt = (r["requestedAt"] as? Date) ?? r.creationDate ?? Date()
+        }
+
+        func record() -> CKRecord {
+            let r = CKRecord(recordType: Self.recordType, recordID: CKRecord.ID(recordName: id, zoneID: Cloud.zoneID))
+            r["action"] = action.rawValue as NSString
+            r["start"] = start as NSString
+            r["end"] = end as NSString
+            if let note, !note.isEmpty { r["note"] = note as NSString }
+            r["requestedAt"] = requestedAt as NSDate
+            return r
+        }
+    }
+}
+
 /// What to do with the queued picks, given a fresh read of the schedule. Pure,
 /// so the tests can drive it.
 enum PickTriage {

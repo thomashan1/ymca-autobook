@@ -100,4 +100,28 @@ final class PickTests: XCTestCase {
         XCTAssertEqual(Cloud.schedule(r), items)
         XCTAssertNil(Cloud.schedule(CKRecord(recordType: "Schedule")))
     }
+
+    /// The Book screen's "Hide pool" and time-of-day filters.
+    func testPoolAndTimeFilters() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        func item(_ name: String, room: String = "Studio 1", hour: Int) -> ScheduleItem {
+            let at = cal.date(from: DateComponents(year: 2026, month: 10, day: 22, hour: hour, minute: 15))!
+            return ScheduleItem(id: hour, name: name, occursAt: at, openAt: at.addingTimeInterval(-167 * 3600),
+                                minutes: 45, branchId: 1392, room: room, trainer: "", capacity: 30,
+                                full: false, joined: false, autoBook: false)
+        }
+        for pool in ["Indoor Lap/Rec Swim", "Aqua Zumba", "WaterInMotion Platinum", "Pool in Use - Aqua Class"] {
+            XCTAssertFalse(ClassFilter.matches(item(pool, hour: 9), hidePool: true, part: .any, calendar: cal), pool)
+            XCTAssertTrue(ClassFilter.matches(item(pool, hour: 9), hidePool: false, part: .any, calendar: cal), pool)
+        }
+        XCTAssertFalse(ClassFilter.matches(item("Shallow fun", room: "Pool", hour: 9), hidePool: true, part: .any, calendar: cal))
+        XCTAssertTrue(ClassFilter.matches(item("BODYPUMP", hour: 9), hidePool: true, part: .any, calendar: cal))
+
+        XCTAssertTrue(ClassFilter.matches(item("RPM", hour: 11), hidePool: false, part: .morning, calendar: cal))
+        XCTAssertFalse(ClassFilter.matches(item("RPM", hour: 12), hidePool: false, part: .morning, calendar: cal))
+        XCTAssertTrue(ClassFilter.matches(item("RPM", hour: 16), hidePool: false, part: .afternoon, calendar: cal))
+        XCTAssertFalse(ClassFilter.matches(item("RPM", hour: 17), hidePool: false, part: .afternoon, calendar: cal))
+        XCTAssertTrue(ClassFilter.matches(item("RPM", hour: 17), hidePool: false, part: .evening, calendar: cal))
+    }
 }

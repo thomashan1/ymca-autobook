@@ -18,6 +18,8 @@ struct BookView: View {
     /// Screenshots: start filtered to the Nth day (`-screenshotBookDay N`).
     @State private var startDay: Int? = UserDefaults.standard.object(forKey: "screenshotBookDay") == nil ? nil : UserDefaults.standard.integer(forKey: "screenshotBookDay")
     @State private var onlyMine = false
+    @AppStorage("bookHidePool") private var hidePool = false
+    @AppStorage("bookDayPart") private var dayPart = 0
     @State private var confirm: (ScheduleItem, Cloud.Request.Action)?
     @State private var error: String?
 
@@ -67,6 +69,9 @@ struct BookView: View {
                 MenuChip(options: [(0, "Both branches"), (1392, "Southwest"), (1388, "Northwest")],
                          selection: $branch, active: branch != 0)
                 Chip(title: "Mine", systemImage: "person.fill", selected: onlyMine) { onlyMine.toggle() }
+                MenuChip(options: ClassFilter.DayPart.allCases.map { ($0.rawValue, $0.title) },
+                         selection: $dayPart, active: dayPart != 0)
+                Chip(title: "Hide pool", systemImage: "drop.fill", selected: hidePool) { hidePool.toggle() }
                 Divider().frame(height: 20)
                 Chip(title: "All days", selected: day == nil) { day = nil }
                 ForEach(days, id: \.self) { d in
@@ -145,9 +150,11 @@ struct BookView: View {
     private var filtered: [ScheduleItem] {
         _ = cloud.version
         let q = search.lowercased().trimmingCharacters(in: .whitespaces)
+        let part = ClassFilter.DayPart(rawValue: dayPart) ?? .any
         return (cloud.schedule ?? []).filter { i in
             (branch == 0 || i.branchId == branch)
                 && (!onlyMine || isMine(cloud.state(of: i)))
+                && ClassFilter.matches(i, hidePool: hidePool, part: part, calendar: Self.cal)
                 && (q.isEmpty || i.name.lowercased().contains(q) || i.room.lowercased().contains(q)
                     || i.trainer.lowercased().contains(q))
         }

@@ -107,9 +107,16 @@ struct BookView: View {
                     Text(i.name).font(.body.weight(isMine(s) ? .semibold : .regular))
                     BranchChip(branch: branch)
                 }
+                // Time and instructor first, room on its own line: on one line the
+                // instructor was the part that got cut off.
                 Text("\(time(i.occursAt))–\(time(i.occursAt.addingTimeInterval(Double(i.minutes) * 60)))"
-                     + ([i.room, i.trainer].filter { !$0.isEmpty }.map { " · \($0)" }.joined()))
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                     + (i.trainer.isEmpty ? "" : " · \(i.trainer)"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !i.room.isEmpty {
+                    Text(i.room).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 status(i, s).font(.caption)
             }
             Spacer(minLength: 4)

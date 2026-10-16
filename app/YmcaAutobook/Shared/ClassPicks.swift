@@ -138,7 +138,7 @@ extension Cloud {
     /// dates, so it applies the change and publishes the result like any other
     /// edit; the request is deleted once applied.
     struct AwayRequest: Codable, Hashable, Identifiable, Sendable {
-        enum Action: String, Codable, Sendable { case add, remove }
+        enum Action: String, Codable, Sendable { case add, remove, change }
 
         static let recordType = "AwayRequest"
 
@@ -147,10 +147,16 @@ extension Cloud {
         /// yyyy-MM-dd in the club's timezone, inclusive.
         let start, end: String
         let note: String?
+        /// For `change`: the range being edited, as it was.
+        var fromStart: String? = nil
+        var fromEnd: String? = nil
         let requestedAt: Date
 
         init(action: Action, start: String, end: String, note: String? = nil,
+             from: (start: String, end: String)? = nil,
              requestedAt: Date = Date(), id: String = UUID().uuidString) {
+            fromStart = from?.start
+            fromEnd = from?.end
             self.id = "\(Self.recordType).\(id)"
             self.action = action
             self.start = start
@@ -168,6 +174,8 @@ extension Cloud {
             start = s
             end = e
             note = r["note"] as? String
+            fromStart = r["fromStart"] as? String
+            fromEnd = r["fromEnd"] as? String
             requestedAt = (r["requestedAt"] as? Date) ?? r.creationDate ?? Date()
         }
 
@@ -177,6 +185,8 @@ extension Cloud {
             r["start"] = start as NSString
             r["end"] = end as NSString
             if let note, !note.isEmpty { r["note"] = note as NSString }
+            if let fromStart { r["fromStart"] = fromStart as NSString }
+            if let fromEnd { r["fromEnd"] = fromEnd as NSString }
             r["requestedAt"] = requestedAt as NSDate
             return r
         }

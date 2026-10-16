@@ -299,18 +299,30 @@ final class Engine: ObservableObject {
         setAwayRanges(awayRanges.filter { $0.id != p.id } + [p])
     }
 
+    /// Edit away dates in place (from the Mac's Away tab).
+    func replaceAwayRange(_ old: AwayRange, with new: AwayRange) {
+        setAwayRanges(awayRanges.filter { $0.id != old.id && $0.id != new.id } + [new])
+    }
+
     func removeAwayRange(_ p: AwayRange) {
         setAwayRanges(awayRanges.filter { $0.id != p.id })
     }
 
-    /// Away dates after the iPhone's add/remove requests, oldest first. Adding a
-    /// range that's already there (same start and end) just updates its note;
-    /// removing drops every range with that start and end.
+    /// Away dates after the iPhone's add/remove/change requests, oldest first.
+    /// Adding a range that's already there (same start and end) just updates its
+    /// note; removing drops every range with that start and end; changing
+    /// replaces the edited range, keeping its "still book" classes.
     nonisolated static func applying(_ qs: [Cloud.AwayRequest], to ranges: [AwayRange]) -> [AwayRange] {
         var out = ranges
         for q in qs.sorted(by: { $0.requestedAt < $1.requestedAt }) {
             let same = { (r: AwayRange) in r.start == q.start && r.end == q.end }
+            let edited = { (r: AwayRange) in r.start == q.fromStart && r.end == q.fromEnd }
             switch q.action {
+            case .change:
+                guard q.start <= q.end else { continue }
+                let except = out.first(where: edited)?.except ?? out.first(where: same)?.except
+                out.removeAll(where: { edited($0) || same($0) })
+                out.append(AwayRange(start: q.start, end: q.end, except: except, note: q.note))
             case .add:
                 let except = out.first(where: same)?.except
                 out.removeAll(where: same)

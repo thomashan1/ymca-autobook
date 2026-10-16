@@ -86,10 +86,12 @@ struct MacAwayView: View {
     @State private var end = Date()
     @State private var note = ""
     @State private var keep: Set<String> = []
+    /// The range loaded into the form for editing; nil when adding.
+    @State private var editing: AwayRange?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            GroupBox("Add away dates") {
+            GroupBox(editing == nil ? "Add away dates" : "Edit away dates") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         DatePicker("From", selection: $start, displayedComponents: .date)
@@ -106,7 +108,10 @@ struct MacAwayView: View {
                         }
                         .fixedSize()
                         Spacer()
-                        Button("Add") { add() }.keyboardShortcut(.defaultAction)
+                        if editing != nil {
+                            Button("Cancel") { clearForm() }.keyboardShortcut(.cancelAction)
+                        }
+                        Button(editing == nil ? "Add" : "Save") { add() }.keyboardShortcut(.defaultAction)
                     }
                 }
                 .padding(4)
@@ -134,6 +139,9 @@ struct MacAwayView: View {
                                 }
                             }
                             Spacer()
+                            Button { load(p) } label: { Image(systemName: "pencil") }
+                                .buttonStyle(.borderless)
+                                .help("Edit these away dates")
                             Button(role: .destructive) { engine.removeAwayRange(p) } label: { Image(systemName: "trash") }
                                 .buttonStyle(.borderless)
                                 .help("Remove these away dates")
@@ -166,7 +174,26 @@ struct MacAwayView: View {
     private func add() {
         let s = AwayRange.day(start), e = AwayRange.day(max(start, end))
         let n = note.trimmingCharacters(in: .whitespaces)
-        engine.addAwayRange(AwayRange(start: s, end: e, except: keep.isEmpty ? nil : keep.sorted(), note: n.isEmpty ? nil : n))
+        let range = AwayRange(start: s, end: e, except: keep.isEmpty ? nil : keep.sorted(), note: n.isEmpty ? nil : n)
+        if let old = editing { engine.replaceAwayRange(old, with: range) } else { engine.addAwayRange(range) }
+        clearForm()
+    }
+
+    /// Put a range into the form to edit it.
+    private func load(_ p: AwayRange) {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.timeZone = FisikalClient.zone
+        f.dateFormat = "yyyy-MM-dd"
+        guard let s = f.date(from: p.start), let e = f.date(from: p.end) else { return }
+        editing = p
+        start = s; end = e
+        note = p.note ?? ""
+        keep = Set(p.except ?? [])
+    }
+
+    private func clearForm() {
+        editing = nil
         note = ""; keep = []
     }
 

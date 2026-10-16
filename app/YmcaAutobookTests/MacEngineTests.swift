@@ -201,6 +201,35 @@ final class LegacySettingsTests: XCTestCase {
         LegacySettings.migrate(into: d, from: ["lastSynced": Date()])
         XCTAssertNil(d.object(forKey: "lastSynced"))     // only the first launch copies
     }
-}
 
+    /// Away dates added and removed on the iPhone, applied by the Mac in order.
+    func testAwayRequestsFromThePhone() {
+        let t0 = Date(timeIntervalSince1970: 1_792_000_000)
+        let have = [AwayRange(start: "2026-10-23", end: "2026-10-23", except: ["core-fri"], note: "staff day"),
+                    AwayRange(start: "2026-11-23", end: "2026-11-27", except: nil, note: nil)]
+        let qs = [
+            Cloud.AwayRequest(action: .add, start: "2026-12-01", end: "2026-12-03", note: "trip", requestedAt: t0),
+            Cloud.AwayRequest(action: .remove, start: "2026-11-23", end: "2026-11-27", requestedAt: t0.addingTimeInterval(1)),
+            // Re-adding an existing range keeps its except list, updates the note.
+            Cloud.AwayRequest(action: .add, start: "2026-10-23", end: "2026-10-23", note: "no school", requestedAt: t0.addingTimeInterval(2)),
+            // A backwards range is ignored.
+            Cloud.AwayRequest(action: .add, start: "2026-12-10", end: "2026-12-09", requestedAt: t0.addingTimeInterval(3)),
+        ]
+        let out = Engine.applying(qs, to: have)
+        XCTAssertEqual(out.map(\.start), ["2026-10-23", "2026-12-01"])
+        XCTAssertEqual(out[0].except, ["core-fri"])
+        XCTAssertEqual(out[0].note, "no school")
+        XCTAssertEqual(out[1].note, "trip")
+    }
+
+    func testAwayRequestRecordRoundTrip() {
+        let q = Cloud.AwayRequest(action: .remove, start: "2026-12-01", end: "2026-12-03", note: nil)
+        let back = Cloud.AwayRequest(q.record())
+        XCTAssertEqual(back?.action, .remove)
+        XCTAssertEqual(back?.start, "2026-12-01")
+        XCTAssertEqual(back?.end, "2026-12-03")
+        XCTAssertEqual(back?.id, q.id)
+        XCTAssertNil(Cloud.Request(q.record()))
+    }
+}
 #endif

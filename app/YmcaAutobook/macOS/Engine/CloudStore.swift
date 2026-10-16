@@ -146,19 +146,22 @@ actor CloudStore {
     /// New "book this" / "never mind" requests since the last look, read from the
     /// zone's change feed (no queries, so no indexes to set up). The feed also
     /// carries this Mac's own writes; only requests are kept.
-    func inbox() async throws -> [Cloud.Request] {
+    func inbox() async throws -> (requests: [Cloud.Request], away: [Cloud.AwayRequest]) {
         let status = try await CKContainer(identifier: Self.containerId).accountStatus()
         guard status == .available else { throw Failure.account(status) }
         var token = (try? Data(contentsOf: Self.inboxURL)).flatMap {
             try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: $0)
         }
         var found: [Cloud.Request] = []
+        var away: [Cloud.AwayRequest] = []
         var more = true
         do {
             while more {
                 let changes = try await database.recordZoneChanges(inZoneWith: zoneID, since: token)
                 for (_, result) in changes.modificationResultsByID {
-                    if case .success(let m) = result, let q = Cloud.Request(m.record) { found.append(q) }
+                    guard case .success(let m) = result else { continue }
+                    if let q = Cloud.Request(m.record) { found.append(q) }
+                    if let q = Cloud.AwayRequest(m.record) { away.append(q) }
                 }
                 token = changes.changeToken
                 more = changes.moreComing
@@ -167,19 +170,19 @@ actor CloudStore {
             try? FileManager.default.removeItem(at: Self.inboxURL)
             return try await inbox()
         } catch let e as CKError where e.code == .zoneNotFound {
-            return []   // nothing pushed yet, so nothing can have been asked for
+            return ([], [])   // nothing pushed yet, so nothing can have been asked for
         }
         if let t = token, let d = try? NSKeyedArchiver.archivedData(withRootObject: t, requiringSecureCoding: true) {
             try? d.write(to: Self.inboxURL, options: .atomic)
         }
-        return found
+        return (found, away)
     }
 
     /// Requests are one-shot: once acted on they're removed, which also tells
     /// the iPhone the Mac has them.
-    func delete(requests: [Cloud.Request]) async {
-        guard !requests.isEmpty else { return }
-        let ids = requests.map { CKRecord.ID(recordName: $0.id, zoneID: zoneID) }
+    func delete(requests names: [String]) async {
+        guard !names.isEmpty else { return }
+        let ids = names.map { CKRecord.ID(recordName: $0, zoneID: zoneID) }
         _ = try? await database.modifyRecords(saving: [], deleting: ids, savePolicy: .allKeys, atomically: false)
     }
 

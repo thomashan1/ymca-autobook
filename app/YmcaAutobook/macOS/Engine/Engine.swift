@@ -277,15 +277,20 @@ final class Engine: ObservableObject {
         }
     }
 
-    /// Act on requests from the iPhone: add or remove picks, then delete them.
+    /// Act on requests from the iPhone (book/cancel/skip a session, add/remove
+    /// away dates), then delete them.
     private func checkInbox() async {
         guard !isFiring, signedInAs != nil else { return }
-        guard let requests = try? await CloudStore.shared.inbox(), !requests.isEmpty else { return }
-        let (newPicks, newSkips) = PickTriage.apply(requests, picks: picks, skips: skips)
-        setSkips(newSkips)
-        update(picks: newPicks)
-        for q in requests where q.action == .cancel { Task { await cancelBooking(q.pick) } }
-        await CloudStore.shared.delete(requests: requests)
+        guard let (requests, away) = try? await CloudStore.shared.inbox() else { return }
+        guard !(requests.isEmpty && away.isEmpty) else { return }
+        if !requests.isEmpty {
+            let (newPicks, newSkips) = PickTriage.apply(requests, picks: picks, skips: skips)
+            setSkips(newSkips)
+            update(picks: newPicks)
+            for q in requests where q.action == .cancel { Task { await cancelBooking(q.pick) } }
+        }
+        if !away.isEmpty { setAwayRanges(Self.applying(away, to: awayRanges)) }
+        await CloudStore.shared.delete(requests: requests.map(\.id) + away.map(\.id))
     }
 
     // MARK: Away dates
@@ -296,6 +301,26 @@ final class Engine: ObservableObject {
 
     func removeAwayRange(_ p: AwayRange) {
         setAwayRanges(awayRanges.filter { $0.id != p.id })
+    }
+
+    /// Away dates after the iPhone's add/remove requests, oldest first. Adding a
+    /// range that's already there (same start and end) just updates its note;
+    /// removing drops every range with that start and end.
+    nonisolated static func applying(_ qs: [Cloud.AwayRequest], to ranges: [AwayRange]) -> [AwayRange] {
+        var out = ranges
+        for q in qs.sorted(by: { $0.requestedAt < $1.requestedAt }) {
+            let same = { (r: AwayRange) in r.start == q.start && r.end == q.end }
+            switch q.action {
+            case .add:
+                let except = out.first(where: same)?.except
+                out.removeAll(where: same)
+                guard q.start <= q.end else { continue }
+                out.append(AwayRange(start: q.start, end: q.end, except: except, note: q.note))
+            case .remove:
+                out.removeAll(where: same)
+            }
+        }
+        return out.sorted { $0.start < $1.start }
     }
 
     private func setAwayRanges(_ new: [AwayRange]) {

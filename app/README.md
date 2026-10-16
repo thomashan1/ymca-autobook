@@ -49,8 +49,9 @@ opens also skips it, so the Mac doesn't book it back.
 - **Mac** (the default) reads iCloud container `iCloud.com.thomashan.ybooker`
   (private database, zone `YBooker`): classes, away dates, swaps, fill speed, the
   real booking list (refreshed on every Mac plan) and each booking window's result.
-  It needs no GitHub token. Booking and cancelling single classes go through the Mac
-  (above); removing lineup classes and away-date edits are hidden. A CloudKit
+  It needs no GitHub token. Booking and cancelling single classes and adding or
+  removing away dates go through the Mac (an `AwayRequest` record the Mac applies
+  and deletes); removing lineup classes is hidden. A CloudKit
   subscription sends an alert for every booking result
   (`iOS/Services/CloudSource.swift`; text via `Localizable.strings`).
 - **GitHub** (Settings → Advanced → **Use GitHub instead**) is the advanced setup
@@ -68,7 +69,8 @@ on or off.
   `com.thomashan.ybooker.mac`, a name kept from when the Mac app was separate. Local
   files live in `~/Library/Application Support/YBookerMac`.
 - **Classes, away dates and one-day changes** are kept and edited on the Mac
-  (My classes, Away & swaps, Book). It needs no GitHub account.
+  (My classes, Away & swaps, Book). It needs no GitHub account. Away dates can also
+  be added and removed on the iPhone and iPad (Upcoming → Away).
 - **GitHub backup (optional, Settings → Advanced):** off by default. Turned on with a
   private repo and a token (Contents: Read and write on that repo only), the Mac
   writes `classes.yml`, `away.yml` and `swaps.yml` there after every change, one

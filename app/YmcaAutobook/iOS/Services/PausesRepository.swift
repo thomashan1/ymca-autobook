@@ -65,12 +65,12 @@ final class PausesRepository: ObservableObject {
     func add(start: Date, end: Date, except: [String] = [], note: String? = nil) async -> String? {
         var next = pauses
         next.append(Pause(start: start, end: end, except: except, note: note))
-        return await write(next, message: "Add pause \(Self.df.string(from: start))–\(Self.df.string(from: end)) via iOS app")
+        return await write(next, message: "Add away dates \(Self.df.string(from: start))–\(Self.df.string(from: end)) via iOS app")
     }
 
     func delete(_ pause: Pause) async -> String? {
         let next = Self.removing(pause, from: pauses)
-        return await write(next, message: "Remove pause \(Self.df.string(from: pause.start))–\(Self.df.string(from: pause.end)) via iOS app")
+        return await write(next, message: "Remove away dates \(Self.df.string(from: pause.start))–\(Self.df.string(from: pause.end)) via iOS app")
     }
 
     /// Drop `pause` from `list`. If it owned a section header, hand the comment to

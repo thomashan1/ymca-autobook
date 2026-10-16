@@ -146,7 +146,7 @@ struct SettingsView: View {
             if let e = classes.error {
                 Text(e).font(.caption).foregroundStyle(.red)
             }
-            LabeledContent("Pauses loaded", value: "\(pauses.pauses.count)")
+            LabeledContent("Away dates loaded", value: "\(pauses.pauses.count)")
             if let e = pauses.error {
                 Text(e).font(.caption).foregroundStyle(.red)
             }

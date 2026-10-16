@@ -58,7 +58,7 @@ struct AwayView: View {
                             .swipeActions(edge: .trailing) { deleteButton(pause) }
                     }
                 } header: {
-                    Text("Upcoming pauses")
+                    Text("Upcoming away dates")
                 } footer: {
                     Text(auth.isCloud ? "From your Mac — change away dates there."
                                       : "Synced to ymca-private/pauses.yml — swipe to delete.")
@@ -91,7 +91,7 @@ struct AwayView: View {
                                     .swipeActions(edge: .trailing) { deleteButton(pause) }
                             }
                         } label: {
-                            Label("Past pauses (\(past.count))", systemImage: "clock.arrow.circlepath")
+                            Label("Past away dates (\(past.count))", systemImage: "clock.arrow.circlepath")
                                 .font(.subheadline)
                         }
                     }
@@ -315,7 +315,7 @@ private struct AddPauseSheet: View {
                 DatePicker("End", selection: $end, in: start..., displayedComponents: .date)
                 TextField("Note (optional)", text: $note)
             } // Form
-            .navigationTitle("Add pause")
+            .navigationTitle("Add away dates")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

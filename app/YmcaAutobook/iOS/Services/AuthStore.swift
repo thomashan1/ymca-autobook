@@ -17,6 +17,10 @@ final class AuthStore: ObservableObject {
     /// iCloud needs no token: the Mac app publishes to the user's own iCloud.
     var isConnected: Bool { hasToken || source == .icloud }
     var isCloud: Bool { source == .icloud && !SampleMode.active }
+    /// The mode the screens are worded for: iCloud even in the simulator's sample
+    /// mode (whose data loads through the GitHub path), so screenshots match what
+    /// a new user sees.
+    var looksCloud: Bool { source == .icloud }
 
     func save(token: String) {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -65,7 +65,7 @@ struct JobsView: View {
                     Section { MacStatusRow() } footer: {
                         if let e = cloud.error { Text(e).foregroundStyle(Theme.accent) }
                     }
-                } else {
+                } else if !auth.looksCloud {
                     Section {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "info.circle.fill").foregroundStyle(Theme.accent)
@@ -79,9 +79,10 @@ struct JobsView: View {
                     Section {
                         ForEach(group.jobs) { job in
                             JobRow(job: job, now: now,
-                                   away: awayRanges.isAway(job.classDate, classKey: job.classKey))
+                                   away: awayRanges.isAway(job.classDate, classKey: job.classKey),
+                                   canSwipeToBook: !auth.looksCloud)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    if !auth.isCloud {
+                                    if !auth.looksCloud {
                                     Button {
                                         bookTarget = job
                                     } label: {
@@ -168,6 +169,8 @@ private struct JobRow: View {
     let job: BookingJob
     let now: Date
     var away: Bool = false
+    /// GitHub mode only: a swipe books it now.
+    var canSwipeToBook = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -186,7 +189,8 @@ private struct JobRow: View {
                 }
             }
             Text(away
-                 ? "Away on \(job.classDate.formatted(.dateTime.weekday().month().day())) — the bot won't book it. Swipe to book anyway."
+                 ? "Away on \(job.classDate.formatted(.dateTime.weekday().month().day())), so it won't be booked."
+                   + (canSwipeToBook ? " Swipe to book anyway." : "")
                  : "Books \(job.classDate.formatted(.dateTime.weekday().month().day())) · opens \(job.opensAt.formatted(date: .abbreviated, time: .shortened))")
                 .font(.caption).foregroundStyle(.secondary)
         }

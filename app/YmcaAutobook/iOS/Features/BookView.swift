@@ -19,7 +19,8 @@ struct BookView: View {
     @State private var startDay: Int? = UserDefaults.standard.object(forKey: "screenshotBookDay") == nil ? nil : UserDefaults.standard.integer(forKey: "screenshotBookDay")
     @State private var onlyMine = false
     @AppStorage("bookHidePool") private var hidePool = false
-    @AppStorage("bookDayPart") private var dayPart = 0
+    @AppStorage("bookFrom") private var from = -1
+    @AppStorage("bookUntil") private var until = -1
     @State private var confirm: (ScheduleItem, Cloud.Request.Action)?
     @State private var error: String?
 
@@ -69,8 +70,10 @@ struct BookView: View {
                 MenuChip(options: [(0, "Both branches"), (1392, "Southwest"), (1388, "Northwest")],
                          selection: $branch, active: branch != 0)
                 Chip(title: "Mine", systemImage: "person.fill", selected: onlyMine) { onlyMine.toggle() }
-                MenuChip(options: ClassFilter.DayPart.allCases.map { ($0.rawValue, $0.title) },
-                         selection: $dayPart, active: dayPart != 0)
+                MenuChip(options: [(-1, "From any time")] + ClassFilter.timeChoices.map { ($0, "From \(ClassFilter.timeLabel($0))") },
+                         selection: $from, active: from >= 0)
+                MenuChip(options: [(-1, "Until any time")] + ClassFilter.timeChoices.map { ($0, "Before \(ClassFilter.timeLabel($0))") },
+                         selection: $until, active: until >= 0)
                 Chip(title: "Hide pool", systemImage: "drop.fill", selected: hidePool) { hidePool.toggle() }
                 Divider().frame(height: 20)
                 Chip(title: "All days", selected: day == nil) { day = nil }
@@ -150,11 +153,10 @@ struct BookView: View {
     private var filtered: [ScheduleItem] {
         _ = cloud.version
         let q = search.lowercased().trimmingCharacters(in: .whitespaces)
-        let part = ClassFilter.DayPart(rawValue: dayPart) ?? .any
         return (cloud.schedule ?? []).filter { i in
             (branch == 0 || i.branchId == branch)
                 && (!onlyMine || isMine(cloud.state(of: i)))
-                && ClassFilter.matches(i, hidePool: hidePool, part: part, calendar: Self.cal)
+                && ClassFilter.matches(i, hidePool: hidePool, from: from, until: until, calendar: Self.cal)
                 && (q.isEmpty || i.name.lowercased().contains(q) || i.room.lowercased().contains(q)
                     || i.trainer.lowercased().contains(q))
         }

@@ -255,42 +255,21 @@ enum ClassFilter {
         return ["swim", "aqua", "lap", "pool", "water"].contains { text.contains($0) }
     }
 
-    /// Part of the day a class starts in, for the time filter.
-    enum DayPart: Int, CaseIterable, Identifiable {
-        case any, morning, afternoon, evening
-        var id: Int { rawValue }
+    /// Start-time choices for the From / Until filters, every half hour,
+    /// as minutes after midnight. -1 means no limit.
+    static let timeChoices: [Int] = Array(stride(from: 5 * 60, through: 21 * 60, by: 30))
 
-        var title: String {
-            switch self {
-            case .any: "Any time"
-            case .morning: "Morning"
-            case .afternoon: "Afternoon"
-            case .evening: "Evening"
-            }
-        }
-
-        /// Shown in the picker so the cut-offs aren't a guess.
-        var detail: String {
-            switch self {
-            case .any: "Any time"
-            case .morning: "Morning (before noon)"
-            case .afternoon: "Afternoon (noon–5 pm)"
-            case .evening: "Evening (5 pm on)"
-            }
-        }
-
-        func contains(hour: Int) -> Bool {
-            switch self {
-            case .any: true
-            case .morning: hour < 12
-            case .afternoon: (12..<17).contains(hour)
-            case .evening: hour >= 17
-            }
-        }
+    static func timeLabel(_ m: Int) -> String {
+        let h = m / 60, mm = m % 60
+        return "\(h % 12 == 0 ? 12 : h % 12)\(mm == 0 ? "" : String(format: ":%02d", mm)) \(h < 12 ? "AM" : "PM")"
     }
 
-    static func matches(_ i: ScheduleItem, hidePool: Bool, part: DayPart, calendar: Calendar) -> Bool {
-        (!hidePool || !isPool(name: i.name, room: i.room))
-            && part.contains(hour: calendar.component(.hour, from: i.occursAt))
+    /// Keeps a class that starts at or after `from` and before `until`
+    /// (minutes after midnight, -1 = no limit).
+    static func matches(_ i: ScheduleItem, hidePool: Bool, from: Int, until: Int, calendar: Calendar) -> Bool {
+        let c = calendar.dateComponents([.hour, .minute], from: i.occursAt)
+        let start = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        return (!hidePool || !isPool(name: i.name, room: i.room))
+            && (from < 0 || start >= from) && (until < 0 || start < until)
     }
 }

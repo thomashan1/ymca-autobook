@@ -101,27 +101,33 @@ final class PickTests: XCTestCase {
         XCTAssertNil(Cloud.schedule(CKRecord(recordType: "Schedule")))
     }
 
-    /// The Book screen's "Hide pool" and time-of-day filters.
+    /// The Book screen's "Hide pool" and From / Before time filters.
     func testPoolAndTimeFilters() {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "America/Los_Angeles")!
-        func item(_ name: String, room: String = "Studio 1", hour: Int) -> ScheduleItem {
-            let at = cal.date(from: DateComponents(year: 2026, month: 10, day: 22, hour: hour, minute: 15))!
-            return ScheduleItem(id: hour, name: name, occursAt: at, openAt: at.addingTimeInterval(-167 * 3600),
+        func item(_ name: String, room: String = "Studio 1", _ h: Int, _ m: Int = 0) -> ScheduleItem {
+            let at = cal.date(from: DateComponents(year: 2026, month: 10, day: 22, hour: h, minute: m))!
+            return ScheduleItem(id: h * 60 + m, name: name, occursAt: at, openAt: at.addingTimeInterval(-167 * 3600),
                                 minutes: 45, branchId: 1392, room: room, trainer: "", capacity: 30,
                                 full: false, joined: false, autoBook: false)
         }
-        for pool in ["Indoor Lap/Rec Swim", "Aqua Zumba", "WaterInMotion Platinum", "Pool in Use - Aqua Class"] {
-            XCTAssertFalse(ClassFilter.matches(item(pool, hour: 9), hidePool: true, part: .any, calendar: cal), pool)
-            XCTAssertTrue(ClassFilter.matches(item(pool, hour: 9), hidePool: false, part: .any, calendar: cal), pool)
+        func keeps(_ i: ScheduleItem, pool: Bool = false, from: Int = -1, until: Int = -1) -> Bool {
+            ClassFilter.matches(i, hidePool: pool, from: from, until: until, calendar: cal)
         }
-        XCTAssertFalse(ClassFilter.matches(item("Shallow fun", room: "Pool", hour: 9), hidePool: true, part: .any, calendar: cal))
-        XCTAssertTrue(ClassFilter.matches(item("BODYPUMP", hour: 9), hidePool: true, part: .any, calendar: cal))
+        for pool in ["Indoor Lap/Rec Swim", "Aqua Zumba", "WaterInMotion Platinum", "Pool in Use - Aqua Class"] {
+            XCTAssertFalse(keeps(item(pool, 9), pool: true), pool)
+            XCTAssertTrue(keeps(item(pool, 9)), pool)
+        }
+        XCTAssertFalse(keeps(item("Shallow fun", room: "Pool", 9), pool: true))
+        XCTAssertTrue(keeps(item("BODYPUMP", 9), pool: true))
 
-        XCTAssertTrue(ClassFilter.matches(item("RPM", hour: 11), hidePool: false, part: .morning, calendar: cal))
-        XCTAssertFalse(ClassFilter.matches(item("RPM", hour: 12), hidePool: false, part: .morning, calendar: cal))
-        XCTAssertTrue(ClassFilter.matches(item("RPM", hour: 16), hidePool: false, part: .afternoon, calendar: cal))
-        XCTAssertFalse(ClassFilter.matches(item("RPM", hour: 17), hidePool: false, part: .afternoon, calendar: cal))
-        XCTAssertTrue(ClassFilter.matches(item("RPM", hour: 17), hidePool: false, part: .evening, calendar: cal))
+        // From 8:30, before noon.
+        XCTAssertFalse(keeps(item("RPM", 8, 15), from: 510, until: 720))
+        XCTAssertTrue(keeps(item("RPM", 8, 30), from: 510, until: 720))
+        XCTAssertTrue(keeps(item("RPM", 11, 20), from: 510, until: 720))
+        XCTAssertFalse(keeps(item("RPM", 12), from: 510, until: 720))
+        XCTAssertTrue(keeps(item("RPM", 18), from: 510))
+        XCTAssertEqual(ClassFilter.timeLabel(510), "8:30 AM")
+        XCTAssertEqual(ClassFilter.timeLabel(720), "12 PM")
     }
 }

@@ -217,6 +217,13 @@ final class LegacySettingsTests: XCTestCase {
         ]
         let out = Engine.applying(qs, to: have)
         XCTAssertEqual(out.map(\.start), ["2026-10-23", "2026-12-01"])
+
+        // Editing moves a range and keeps its "still book" classes.
+        let moved = Engine.applying([Cloud.AwayRequest(action: .change, start: "2026-10-22", end: "2026-10-23",
+                                                        note: "long weekend", from: ("2026-10-23", "2026-10-23"))], to: have)
+        XCTAssertEqual(moved.map(\.start), ["2026-10-22", "2026-11-23"])
+        XCTAssertEqual(moved[0].except, ["core-fri"])
+        XCTAssertEqual(moved[0].note, "long weekend")
         XCTAssertEqual(out[0].except, ["core-fri"])
         XCTAssertEqual(out[0].note, "no school")
         XCTAssertEqual(out[1].note, "trip")
@@ -230,6 +237,9 @@ final class LegacySettingsTests: XCTestCase {
         XCTAssertEqual(back?.end, "2026-12-03")
         XCTAssertEqual(back?.id, q.id)
         XCTAssertNil(Cloud.Request(q.record()))
+        let c = Cloud.AwayRequest(action: .change, start: "2026-12-02", end: "2026-12-04", from: ("2026-12-01", "2026-12-03"))
+        XCTAssertEqual(Cloud.AwayRequest(c.record())?.fromStart, "2026-12-01")
+        XCTAssertEqual(Cloud.AwayRequest(c.record())?.fromEnd, "2026-12-03")
     }
 }
 #endif

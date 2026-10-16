@@ -181,9 +181,12 @@ final class CloudSource: ObservableObject {
         var ranges = cache.awayRanges.values.map { (start: $0.start, end: $0.end, except: $0.except, note: $0.note) }
         for q in cache.awayRequests.values.sorted(by: { $0.requestedAt < $1.requestedAt }) {
             let same = { (r: (start: String, end: String, except: [String], note: String?)) in r.start == q.start && r.end == q.end }
-            let except = ranges.first(where: same)?.except ?? []
-            ranges.removeAll(where: same)
-            if q.action == .add { ranges.append((q.start, q.end, except, q.note)) }
+            let edited = { (r: (start: String, end: String, except: [String], note: String?)) in
+                q.action == .change && r.start == q.fromStart && r.end == q.fromEnd
+            }
+            let except = ranges.first(where: edited)?.except ?? ranges.first(where: same)?.except ?? []
+            ranges.removeAll(where: { same($0) || edited($0) })
+            if q.action != .remove { ranges.append((q.start, q.end, except, q.note)) }
         }
         return ranges.compactMap { p in
             guard let s = Self.day.date(from: p.start), let e = Self.day.date(from: p.end) else { return nil }
@@ -197,10 +200,12 @@ final class CloudSource: ObservableObject {
 
     /// Ask the Mac to add or remove away dates. It applies the change within
     /// about half a minute and publishes the result.
-    func sendAway(_ action: Cloud.AwayRequest.Action, start: Date, end: Date, note: String? = nil) async throws {
+    func sendAway(_ action: Cloud.AwayRequest.Action, start: Date, end: Date, note: String? = nil,
+                  replacing old: AwayRange? = nil) async throws {
         if SampleMode.active { return }
         let q = Cloud.AwayRequest(action: action, start: Self.day.string(from: start), end: Self.day.string(from: end),
-                                  note: note)
+                                  note: note,
+                                  from: old.map { (Self.day.string(from: $0.start), Self.day.string(from: $0.end)) })
         _ = try await database.save(q.record())
         cache.awayRequests[q.id] = q
         version += 1

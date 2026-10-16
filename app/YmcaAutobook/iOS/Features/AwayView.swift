@@ -8,6 +8,8 @@ struct AwayView: View {
     @EnvironmentObject var swaps: SwapsRepository
     @EnvironmentObject var auth: AuthStore
     @State private var showAdd = false
+    /// The range open in the edit sheet.
+    @State private var editing: AwayRange?
     @State private var showPast = false
     @State private var busy = false
     @State private var errorMessage: String?
@@ -55,13 +57,15 @@ struct AwayView: View {
                     }
                     ForEach(upcoming) { awayRange in
                         AwayRow(awayRange: awayRange)
+                            .contentShape(Rectangle())
+                            .onTapGesture { editing = awayRange }
                             .swipeActions(edge: .trailing) { deleteButton(awayRange) }
                     }
                 } header: {
                     Text("Upcoming away dates")
                 } footer: {
-                    Text(auth.isCloud ? "Kept on your Mac. Tap + to add, swipe to delete; your Mac applies it within a minute."
-                                      : "Synced to ymca-private/away.yml — swipe to delete.")
+                    Text(auth.isCloud ? "Kept on your Mac. Tap + to add, tap one to edit, swipe to delete; your Mac applies it within a minute."
+                                      : "Synced to ymca-private/away.yml — tap to edit, swipe to delete.")
                 }
 
                 // One-off swaps are the other kind of schedule exception, so they
@@ -88,6 +92,8 @@ struct AwayView: View {
                             ForEach(past) { awayRange in
                                 AwayRow(awayRange: awayRange)
                                     .foregroundStyle(.secondary)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { editing = awayRange }
                                     .swipeActions(edge: .trailing) { deleteButton(awayRange) }
                             }
                         } label: {
@@ -111,6 +117,9 @@ struct AwayView: View {
                 await swaps.load()
             }
             .sheet(isPresented: $showAdd) { AddAwaySheet(onSave: add) }
+            .sheet(item: $editing) { old in
+                AddAwaySheet(existing: old) { start, end, note in update(old, start: start, end: end, note: note) }
+            }
             .alert("Away dates", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK") { errorMessage = nil }
             } message: { Text(errorMessage ?? "") }
@@ -120,6 +129,14 @@ struct AwayView: View {
     private func deleteButton(_ awayRange: AwayRange) -> some View {
         Button(role: .destructive) { remove(awayRange) } label: {
             Label("Delete", systemImage: "trash")
+        }
+    }
+
+    private func update(_ old: AwayRange, start: Date, end: Date, note: String?) {
+        busy = true
+        Task {
+            if let err = await awayRanges.update(old, start: start, end: end, note: note) { errorMessage = err }
+            busy = false
         }
     }
 
@@ -296,11 +313,21 @@ private struct AwayRow: View {
 
 /// Add-range editor. Commits to away.yml via the `onSave` callback.
 private struct AddAwaySheet: View {
+    /// Set when editing a range rather than adding one.
+    var existing: AwayRange? = nil
     let onSave: (_ start: Date, _ end: Date, _ note: String?) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var start = Date()
     @State private var end = Date()
     @State private var note = ""
+
+    init(existing: AwayRange? = nil, onSave: @escaping (_ start: Date, _ end: Date, _ note: String?) -> Void) {
+        self.existing = existing
+        self.onSave = onSave
+        _start = State(initialValue: existing?.start ?? Date())
+        _end = State(initialValue: existing?.end ?? Date())
+        _note = State(initialValue: existing?.note ?? "")
+    }
 
     private var validRange: Bool { end >= Calendar.current.startOfDay(for: start) }
 
@@ -311,7 +338,7 @@ private struct AddAwaySheet: View {
                 DatePicker("End", selection: $end, in: start..., displayedComponents: .date)
                 TextField("Note (optional)", text: $note)
             } // Form
-            .navigationTitle("Add away dates")
+            .navigationTitle(existing == nil ? "Add away dates" : "Edit away dates")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

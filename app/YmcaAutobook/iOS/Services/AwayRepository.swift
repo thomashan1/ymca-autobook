@@ -69,6 +69,14 @@ final class AwayRepository: ObservableObject {
         return await write(next, message: "Add away dates \(Self.df.string(from: start))–\(Self.df.string(from: end)) via iOS app")
     }
 
+    /// Edit a range's dates or note, keeping its "still book" classes.
+    func update(_ old: AwayRange, start: Date, end: Date, note: String?) async -> String? {
+        if DataSource.isCloud { return await viaMac(.change, start: start, end: end, note: note, replacing: old) }
+        var next = awayRanges.filter { $0.id != old.id }
+        next.append(AwayRange(start: start, end: end, except: old.except, note: note, header: old.header))
+        return await write(next, message: "Change away dates \(Self.df.string(from: start))–\(Self.df.string(from: end)) via iOS app")
+    }
+
     func delete(_ awayRange: AwayRange) async -> String? {
         if DataSource.isCloud { return await viaMac(.remove, start: awayRange.start, end: awayRange.end) }
         let next = Self.removing(awayRange, from: awayRanges)
@@ -77,9 +85,10 @@ final class AwayRepository: ObservableObject {
 
     /// In iCloud mode the Mac keeps the away dates: send it the change, and
     /// show it here at once (CloudSource counts requests still on their way).
-    private func viaMac(_ action: Cloud.AwayRequest.Action, start: Date, end: Date, note: String? = nil) async -> String? {
+    private func viaMac(_ action: Cloud.AwayRequest.Action, start: Date, end: Date, note: String? = nil,
+                        replacing old: AwayRange? = nil) async -> String? {
         do {
-            try await CloudSource.shared.sendAway(action, start: start, end: end, note: note)
+            try await CloudSource.shared.sendAway(action, start: start, end: end, note: note, replacing: old)
             awayRanges = CloudSource.shared.awayRanges
             return nil
         } catch {

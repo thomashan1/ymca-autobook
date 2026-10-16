@@ -1,10 +1,10 @@
 #if os(iOS)
 import SwiftUI
 
-/// Away dates synced to the private repo's `pauses.yml`. Add/remove ranges;
-/// paused days grey out on the Week screen and skip their jobs.
+/// Away dates synced to the private repo's `away.yml`. Add/remove ranges;
+/// away days grey out on the Week screen and skip their jobs.
 struct AwayView: View {
-    @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var awayRanges: AwayRepository
     @EnvironmentObject var swaps: SwapsRepository
     @EnvironmentObject var auth: AuthStore
     @State private var showAdd = false
@@ -21,13 +21,13 @@ struct AwayView: View {
     }
 
     /// Ranges that haven't finished yet, soonest first.
-    private var upcoming: [Pause] {
-        pauses.pauses.filter { $0.end >= today }.sorted { $0.start < $1.start }
+    private var upcoming: [AwayRange] {
+        awayRanges.awayRanges.filter { $0.end >= today }.sorted { $0.start < $1.start }
     }
 
     /// Ranges that ended before today, most recent first — collapsed by default.
-    private var past: [Pause] {
-        pauses.pauses.filter { $0.end < today }.sorted { $0.start > $1.start }
+    private var past: [AwayRange] {
+        awayRanges.awayRanges.filter { $0.end < today }.sorted { $0.start > $1.start }
     }
 
     /// Shown under a segmented control in a combined tab, which owns the
@@ -42,30 +42,30 @@ struct AwayView: View {
             List {
                 Section {
                     VStack(spacing: 16) {
-                        MonthGrid(monthOffset: 0) { pauses.isPaused($0) }
-                        MonthGrid(monthOffset: 1) { pauses.isPaused($0) }
+                        MonthGrid(monthOffset: 0) { awayRanges.isAway($0) }
+                        MonthGrid(monthOffset: 1) { awayRanges.isAway($0) }
                     }
                     .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
                 }
                 Section {
                     if upcoming.isEmpty {
-                        Text(pauses.pauses.isEmpty ? "No away dates set."
+                        Text(awayRanges.awayRanges.isEmpty ? "No away dates set."
                                                    : "No upcoming away dates.")
                             .foregroundStyle(.secondary)
                     }
-                    ForEach(upcoming) { pause in
-                        PauseRow(pause: pause)
-                            .swipeActions(edge: .trailing) { deleteButton(pause) }
+                    ForEach(upcoming) { awayRange in
+                        AwayRow(awayRange: awayRange)
+                            .swipeActions(edge: .trailing) { deleteButton(awayRange) }
                     }
                 } header: {
                     Text("Upcoming away dates")
                 } footer: {
                     Text(auth.isCloud ? "From your Mac — change away dates there."
-                                      : "Synced to ymca-private/pauses.yml — swipe to delete.")
+                                      : "Synced to ymca-private/away.yml — swipe to delete.")
                 }
 
                 // One-off swaps are the other kind of schedule exception, so they
-                // belong next to pauses. Read-only: securing a swap means booking
+                // belong next to away dates. Read-only: securing a swap means booking
                 // the replacement before releasing the original, against a live
                 // booking window — that's the Actions engine's job, not the app's.
                 if !swaps.upcoming().isEmpty {
@@ -85,10 +85,10 @@ struct AwayView: View {
                 if !past.isEmpty {
                     Section {
                         DisclosureGroup(isExpanded: $showPast) {
-                            ForEach(past) { pause in
-                                PauseRow(pause: pause)
+                            ForEach(past) { awayRange in
+                                AwayRow(awayRange: awayRange)
                                     .foregroundStyle(.secondary)
-                                    .swipeActions(edge: .trailing) { deleteButton(pause) }
+                                    .swipeActions(edge: .trailing) { deleteButton(awayRange) }
                             }
                         } label: {
                             Label("Past away dates (\(past.count))", systemImage: "clock.arrow.circlepath")
@@ -109,19 +109,19 @@ struct AwayView: View {
             }
             .overlay { if busy { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
             .refreshable {
-                await pauses.load()
+                await awayRanges.load()
                 await swaps.load()
             }
-            .sheet(isPresented: $showAdd) { AddPauseSheet(onSave: add) }
+            .sheet(isPresented: $showAdd) { AddAwaySheet(onSave: add) }
             .alert("Away dates", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK") { errorMessage = nil }
             } message: { Text(errorMessage ?? "") }
     }
 
     @ViewBuilder
-    private func deleteButton(_ pause: Pause) -> some View {
+    private func deleteButton(_ awayRange: AwayRange) -> some View {
         if !auth.isCloud {
-            Button(role: .destructive) { remove(pause) } label: {
+            Button(role: .destructive) { remove(awayRange) } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
@@ -130,15 +130,15 @@ struct AwayView: View {
     private func add(start: Date, end: Date, note: String?) {
         busy = true
         Task {
-            if let err = await pauses.add(start: start, end: end, note: note) { errorMessage = err }
+            if let err = await awayRanges.add(start: start, end: end, note: note) { errorMessage = err }
             busy = false
         }
     }
 
-    private func remove(_ pause: Pause) {
+    private func remove(_ awayRange: AwayRange) {
         busy = true
         Task {
-            if let err = await pauses.delete(pause) { errorMessage = err }
+            if let err = await awayRanges.delete(awayRange) { errorMessage = err }
             busy = false
         }
     }
@@ -248,7 +248,7 @@ private struct SwapRow: View {
         }
     }
 
-    /// Matches PauseRow: month/day this year, with the year once it isn't.
+    /// Matches AwayRow: month/day this year, with the year once it isn't.
     private var dateLabel: String {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = Config.timeZone
@@ -260,16 +260,16 @@ private struct SwapRow: View {
     }
 }
 
-private struct PauseRow: View {
-    let pause: Pause
+private struct AwayRow: View {
+    let awayRange: AwayRange
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(range).font(.body.weight(.medium))
-            if let note = pause.note {
+            if let note = awayRange.note {
                 Text(note).font(.caption).foregroundStyle(.secondary)
             }
-            if !pause.except.isEmpty {
-                Text("Still booking: \(pause.except.joined(separator: ", "))")
+            if !awayRange.except.isEmpty {
+                Text("Still booking: \(awayRange.except.joined(separator: ", "))")
                     .font(.caption2).foregroundStyle(Theme.booked)
             }
         }
@@ -280,26 +280,26 @@ private struct PauseRow: View {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = Config.timeZone
         let thisYear = cal.component(.year, from: Date())
-        let startYear = cal.component(.year, from: pause.start)
-        let endYear = cal.component(.year, from: pause.end)
+        let startYear = cal.component(.year, from: awayRange.start)
+        let endYear = cal.component(.year, from: awayRange.end)
 
         let md = Date.FormatStyle().month(.abbreviated).day()
         let mdy = Date.FormatStyle().month(.abbreviated).day().year()
 
-        if pause.start == pause.end {
-            return pause.start.formatted(startYear == thisYear ? md : mdy)
+        if awayRange.start == awayRange.end {
+            return awayRange.start.formatted(startYear == thisYear ? md : mdy)
         }
         if startYear != endYear {
             // Crosses New Year — without both years the range reads backwards.
-            return "\(pause.start.formatted(mdy)) – \(pause.end.formatted(mdy))"
+            return "\(awayRange.start.formatted(mdy)) – \(awayRange.end.formatted(mdy))"
         }
         // Same year on both ends: one trailing year covers it.
-        return "\(pause.start.formatted(md)) – \(pause.end.formatted(startYear == thisYear ? md : mdy))"
+        return "\(awayRange.start.formatted(md)) – \(awayRange.end.formatted(startYear == thisYear ? md : mdy))"
     }
 }
 
-/// Add-range editor. Commits to pauses.yml via the `onSave` callback.
-private struct AddPauseSheet: View {
+/// Add-range editor. Commits to away.yml via the `onSave` callback.
+private struct AddAwaySheet: View {
     let onSave: (_ start: Date, _ end: Date, _ note: String?) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var start = Date()

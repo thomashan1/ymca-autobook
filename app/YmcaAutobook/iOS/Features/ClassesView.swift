@@ -36,7 +36,7 @@ struct ClassesView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Label("Edits here change classes.yml", systemImage: "doc.text.fill")
                             .font(.footnote.weight(.semibold)).foregroundStyle(Theme.accent)
-                        Text("This is your recurring auto-book schedule, stored in **classes.yml** in your private repo, next to **pauses.yml** (away dates, under Upcoming → Away). Swiping a class to remove it edits that file.")
+                        Text("This is your recurring auto-book schedule, stored in **classes.yml** in your private repo, next to **away.yml** (away dates, under Upcoming → Away). Swiping a class to remove it edits that file.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }

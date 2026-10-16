@@ -6,10 +6,10 @@ import SwiftUI
 /// one-offs not in classes.yml. A two-week calendar grid (tap to zoom) sits on
 /// top; below, a dated agenda grouped by week with blue dividers. Tap any class
 /// for a detail popup. Past classes are hidden from the agenda, dimmed in the
-/// grid; pause days marked skipped.
+/// grid; away days marked skipped.
 struct WeekView: View {
     @EnvironmentObject var classes: ClassesRepository
-    @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var awayRanges: AwayRepository
     @EnvironmentObject var swaps: SwapsRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
@@ -70,7 +70,7 @@ struct WeekView: View {
             .navigationTitle("This & Next Week")
             .navigationBarTitleDisplayMode(.inline)
             .refreshable {
-                await classes.load(); await pauses.load(); await swaps.load()
+                await classes.load(); await awayRanges.load(); await swaps.load()
                 await snapshot.load(); await bookings.load()
                 await fullClasses.load()
             }
@@ -90,7 +90,7 @@ struct WeekView: View {
     private func daySection(_ day: Day) -> some View {
         Section {
             ForEach(day.items) { occ in
-                let away = occ.classKey.map { pauses.isAway(day.date, classKey: $0) } ?? false
+                let away = occ.classKey.map { awayRanges.isAway(day.date, classKey: $0) } ?? false
                 let role = swaps.role(name: occ.name, start: occ.start,
                                       classKey: occ.classKey, on: day.date)
                 Button {
@@ -250,7 +250,7 @@ struct Occurrence: Identifiable {
 
 private struct TwoWeekGrid: View {
     @EnvironmentObject var classes: ClassesRepository
-    @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var awayRanges: AwayRepository
     @EnvironmentObject var swaps: SwapsRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
@@ -298,7 +298,7 @@ private struct TwoWeekGrid: View {
                     .font(.system(size: labelFont - 2)).foregroundStyle(.secondary)
             }
             ForEach(occs) { occ in
-                let away = occ.classKey.map { pauses.isAway(date, classKey: $0) } ?? false
+                let away = occ.classKey.map { awayRanges.isAway(date, classKey: $0) } ?? false
                 GridCell(occ: occ, away: away,
                          swapRole: swaps.role(name: occ.name, start: occ.start,
                                               classKey: occ.classKey, on: date),
@@ -399,7 +399,7 @@ private struct OccurrenceRow: View {
     let away: Bool
     var swapRole: SwapRole? = nil
 
-    /// Displaced by a swap, or paused — either way it isn't happening that day.
+    /// Displaced by a swap, or away — either way it isn't happening that day.
     private var dropped: Bool { away || swapRole == .displaced }
 
     private var timeRange: String { occ.end.map { "\(occ.start)–\($0)" } ?? occ.start }

@@ -7,7 +7,7 @@ struct YmcaAutobookApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var auth = AuthStore()
     @StateObject private var classes = ClassesRepository()
-    @StateObject private var pauses = PausesRepository()
+    @StateObject private var awayRanges = AwayRepository()
     @StateObject private var swaps = SwapsRepository()
     @StateObject private var snapshot = SnapshotRepository()
     @StateObject private var bookings = BookingsRepository()
@@ -19,7 +19,7 @@ struct YmcaAutobookApp: App {
             RootView()
                 .environmentObject(auth)
                 .environmentObject(classes)
-                .environmentObject(pauses)
+                .environmentObject(awayRanges)
                 .environmentObject(swaps)
                 .environmentObject(snapshot)
                 .environmentObject(bookings)

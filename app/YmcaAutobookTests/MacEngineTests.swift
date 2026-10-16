@@ -3,14 +3,14 @@ import XCTest
 @testable import YMCA_Booker
 
 final class RepoSyncTests: XCTestCase {
-    func testParsePauses() {
+    func testParseAway() {
         let yaml = """
-        pauses:
+        awayRanges:
           # Fall
           - {start: 2026-10-23, end: 2026-10-23}                              # teacher day
           - {start: 2026-11-23, end: 2026-11-27, except: [core-mon, lift-hiit-mon]}
         """
-        let ps = RepoSync.parsePauses(yaml)
+        let ps = RepoSync.parseAway(yaml)
         XCTAssertEqual(ps.count, 2)
         XCTAssertEqual(ps[0].start, "2026-10-23")
         XCTAssertEqual(ps[0].note, "teacher day")
@@ -30,11 +30,11 @@ final class RepoSyncTests: XCTestCase {
         XCTAssertTrue(c.contains("    name: \"Core \\\"Conditioning\\\"\"\n"))
         XCTAssertTrue(c.contains("    extra_leads: [50, 10, 5]"))
 
-        let pauses = [Pause(start: "2026-11-23", end: "2026-11-27", except: ["core-mon"], note: "Thanksgiving recess"),
-                      Pause(start: "2026-10-23", end: "2026-10-23", except: nil)]
-        let p = RepoMirror.pausesYAML(pauses)
-        XCTAssertEqual(RepoSync.parsePauses(p), [pauses[1], pauses[0]])
-        XCTAssertEqual(RepoMirror.pausesYAML([]).hasSuffix("pauses: []\n"), true)
+        let awayRanges = [AwayRange(start: "2026-11-23", end: "2026-11-27", except: ["core-mon"], note: "Thanksgiving recess"),
+                      AwayRange(start: "2026-10-23", end: "2026-10-23", except: nil)]
+        let p = RepoMirror.awayYAML(awayRanges)
+        XCTAssertEqual(RepoSync.parseAway(p), [awayRanges[1], awayRanges[0]])
+        XCTAssertEqual(RepoMirror.awayYAML([]).hasSuffix("away: []\n"), true)
 
         let at = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-23T15:45:00Z"))   // Fri 8:45 PDT
         let pick = ClassPick(occurrenceId: 1, name: "BODYCOMBAT", occursAt: at, openAt: at.addingTimeInterval(-167 * 3600),
@@ -114,9 +114,9 @@ final class GitHubBackupTests: XCTestCase {
     }
 
     func testOnlyChangedFilesAreWritten() {
-        let files = ["classes.yml": "c2", "pauses.yml": "p", "swaps.yml": "s"]
+        let files = ["classes.yml": "c2", "away.yml": "p", "swaps.yml": "s"]
         XCTAssertEqual(RepoMirror.pendingWrites(files, written: [:], force: false), RepoMirror.paths)
-        XCTAssertEqual(RepoMirror.pendingWrites(files, written: ["classes.yml": "c1", "pauses.yml": "p", "swaps.yml": "s"],
+        XCTAssertEqual(RepoMirror.pendingWrites(files, written: ["classes.yml": "c1", "away.yml": "p", "swaps.yml": "s"],
                                                 force: false), ["classes.yml"])
         XCTAssertEqual(RepoMirror.pendingWrites(files, written: files, force: false), [])
         XCTAssertEqual(RepoMirror.pendingWrites(files, written: files, force: true), RepoMirror.paths)
@@ -147,18 +147,18 @@ final class ModelTests: XCTestCase {
     func testSkipReasonFromTheMacsOwnData() throws {
         let k = RecurringClass(key: "bodypump-thu", name: "BODYPUMP", weekday: "Thu", start: "09:00", locationIds: [1392])
         let thu = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-22T16:00:00Z"))   // Thu 9:00 PDT
-        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [], swaps: []))
-        XCTAssertEqual(Engine.skipReason(k, on: thu, pauses: [Pause(start: "2026-10-19", end: "2026-10-23", except: nil)],
+        XCTAssertNil(Engine.skipReason(k, on: thu, awayRanges: [], swaps: []))
+        XCTAssertEqual(Engine.skipReason(k, on: thu, awayRanges: [AwayRange(start: "2026-10-19", end: "2026-10-23", except: nil)],
                                          swaps: []), "away")
-        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [Pause(start: "2026-10-22", end: "2026-10-22", except: ["bodypump-thu"])],
+        XCTAssertNil(Engine.skipReason(k, on: thu, awayRanges: [AwayRange(start: "2026-10-22", end: "2026-10-22", except: ["bodypump-thu"])],
                                        swaps: []), "kept by except:")
-        XCTAssertEqual(Engine.skipReason(k, on: thu, pauses: [], swaps: [Swap(date: "2026-10-22", skip: "bodypump-thu")]),
+        XCTAssertEqual(Engine.skipReason(k, on: thu, awayRanges: [], swaps: [Swap(date: "2026-10-22", skip: "bodypump-thu")]),
                        "swap: skip")
-        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [], swaps: [Swap(date: "2026-10-22", skip: "bodypump-thu",
+        XCTAssertNil(Engine.skipReason(k, on: thu, awayRanges: [], swaps: [Swap(date: "2026-10-22", skip: "bodypump-thu",
                                                                             bookName: "BODYCOMBAT")]),
                      "with a replacement the original stays booked until the replacement lands")
-        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [], swaps: [Swap(date: "2026-10-29", skip: "bodypump-thu")]))
-        XCTAssertNil(Engine.skipReason(k, on: thu, pauses: [], swaps: [Swap(date: "2026-10-22", skip: "cycle-sculpt-thu")]))
+        XCTAssertNil(Engine.skipReason(k, on: thu, awayRanges: [], swaps: [Swap(date: "2026-10-29", skip: "bodypump-thu")]))
+        XCTAssertNil(Engine.skipReason(k, on: thu, awayRanges: [], swaps: [Swap(date: "2026-10-22", skip: "cycle-sculpt-thu")]))
     }
 
     /// A seat won at the opening reaches the phone with the alert, not ~5 min later.
@@ -180,8 +180,8 @@ final class ModelTests: XCTestCase {
         XCTAssertNil(none)                                    // before the first plan, nothing to add to
     }
 
-    func testPauseCoversRespectsExcept() {
-        let p = Pause(start: "2026-11-23", end: "2026-11-27", except: ["core-mon"])
+    func testAwayRangeCoversRespectsExcept() {
+        let p = AwayRange(start: "2026-11-23", end: "2026-11-27", except: ["core-mon"])
         let mon = try! XCTUnwrap(ISO8601DateFormatter().date(from: "2026-11-23T17:45:00Z"))   // Mon 9:45 PST
         XCTAssertTrue(p.covers(mon, key: "vinyasa-yoga-mon"))
         XCTAssertFalse(p.covers(mon, key: "core-mon"))

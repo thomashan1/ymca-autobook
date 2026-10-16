@@ -48,11 +48,11 @@ extension RecurringClass {
 }
 
 /// An away range; `except` keeps specific classes bookable on those days.
-struct Pause: Codable, Hashable, Identifiable, Sendable {
+struct AwayRange: Codable, Hashable, Identifiable, Sendable {
     let start: String        // yyyy-MM-dd
     let end: String
     let except: [String]?
-    /// The inline `# comment` from pauses.yml, if any.
+    /// The inline `# comment` from away.yml, if any.
     var note: String? = nil
     var id: String { "\(start)…\(end)…\((except ?? []).joined(separator: ","))" }
 
@@ -64,7 +64,7 @@ struct Pause: Codable, Hashable, Identifiable, Sendable {
         return f.string(from: date)
     }
 
-    var isPast: Bool { end < Pause.day(Date()) }
+    var isPast: Bool { end < AwayRange.day(Date()) }
 
     func covers(_ date: Date, key: String) -> Bool {
         let f = DateFormatter()
@@ -88,7 +88,7 @@ struct Swap: Codable, Hashable, Identifiable, Sendable {
     var note: String? = nil
     var id: String { "\(date)|\(skip ?? "")|\(bookName ?? "")" }
 
-    var isPast: Bool { date < Pause.day(Date()) }
+    var isPast: Bool { date < AwayRange.day(Date()) }
     /// A skip with no replacement: nothing to wait for, so the class just isn't booked.
     /// With a replacement the original stays booked until GitHub's swap-check has
     /// secured the replacement and released it — never an empty slot.
@@ -123,7 +123,7 @@ struct CatalogSlot: Identifiable, Hashable, Sendable {
 struct Opening: Identifiable, Hashable, Sendable {
     let klass: RecurringClass
     let occurrence: Occurrence
-    let paused: Bool
+    let away: Bool
     var id: String { "\(klass.key)-\(occurrence.id)" }
     var openAt: Date { occurrence.openAt }
 }
@@ -145,7 +145,7 @@ struct ShadowEntry: Codable, Identifiable, Sendable {
     let occurrenceId: Int
     let occursAt: Date
     let openAt: Date
-    let paused: Bool
+    let away: Bool
     var sessionPath: FisikalClient.SessionPath?
     var sessionReadyAt: Date?
     var firedAt: Date?
@@ -172,7 +172,7 @@ struct ShadowEntry: Codable, Identifiable, Sendable {
     /// Would a real booking have gone out at the opening second?
     var verdict: String {
         if let b = booking { return b.outcome }
-        if paused { return "away — would skip" }
+        if away { return "away — would skip" }
         if let error { return "error — \(error)" }
         guard let s = atOpen else { return "pending" }
         if s.isJoined { return "already booked (another trigger won)" }

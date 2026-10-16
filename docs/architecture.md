@@ -35,7 +35,7 @@ flowchart TB
     subgraph state["🗂️ State — plain files in two GitHub repos"]
         direction LR
         classes[("ymca-autobook (public)<br/>classes.yml")]
-        privfiles[("ymca-private<br/>pauses.yml · swaps.yml")]
+        privfiles[("ymca-private<br/>away.yml · swaps.yml")]
         snaps[("ymca-private<br/>bookings.json · schedule_snapshot.json<br/>ledger.json")]
     end
 
@@ -44,7 +44,7 @@ flowchart TB
 
     perclass -- "POST dispatch {class_key}" --> api
     swapcheck -- "POST dispatch {}" --> api
-    app -- "read files · PR to classes.yml · commit pauses.yml · Book now" --> api
+    app -- "read files · PR to classes.yml · commit away.yml · Book now" --> api
     api --> route
 
     engine -- "login · book · cancel" --> ymca
@@ -73,8 +73,8 @@ sequenceDiagram
     C->>G: 11:00 AM — POST workflow_dispatch {class_key: cycle-sculpt-thu}
     G->>Y: egym SSO login over plain HTTP, read CSRF token
     G->>Y: list occurrences, match name + weekday + start + branch
-    G->>P: read pauses.yml
-    alt class date is paused (and not in except:)
+    G->>P: read away.yml
+    alt class date is an away day (and not in except:)
         G-->>G: skip quietly
     else
         G-->>G: sleep until open = start − 167h (11:15:00)
@@ -113,7 +113,7 @@ Key properties:
    the Fisikal CSRF token. Session cookies are reused for all API calls.
 2. **Find** (`src/fisikal.py`) — lists occurrences for the target branch and matches by
    **name + weekday + start time** (room and instructor ignored — they vary week to week).
-3. **Pause check** (`src/pauses.py`) — if the class date falls in an away-range (see
+3. **Away check** (`src/away.py`) — if the class date falls in an away-range (see
    [away dates](../README.md#away-dates-and-swaps)), skip it silently.
 4. **Wait** (`src/schedule.py`) — computes `open = occurs_at − 167h` and waits for it.
 5. **Book** (`src/fisikal.py`) — POSTs the booking; retries up to 3 times (5s apart) to

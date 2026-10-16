@@ -1,6 +1,6 @@
 """Read/write small files in the PRIVATE repo via the GitHub Contents API.
 
-Uses the same repo/ref/token as the pause config (see pauses.py). Used to
+Uses the same repo/ref/token as the away dates (see away.py). Used to
 persist the bookings ledger. Reads need PRIVATE_REPO_TOKEN with contents:read;
 writes need contents:write.
 """
@@ -12,8 +12,8 @@ import os
 
 import httpx
 
-REPO = os.environ.get("PAUSE_REPO", "thomashan1/ymca-private")
-REF = os.environ.get("PAUSE_REF", "main")
+REPO = os.environ.get("PRIVATE_REPO", "thomashan1/ymca-private")
+REF = os.environ.get("PRIVATE_REF", "main")
 _API = "https://api.github.com"
 
 

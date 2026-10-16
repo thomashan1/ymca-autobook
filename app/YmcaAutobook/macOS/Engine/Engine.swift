@@ -20,7 +20,7 @@ final class Engine: ObservableObject {
     @Published private(set) var history: [FillRecord] = Store.fillHistory()
     /// Away dates, kept here (and in iCloud). `swaps` are hand-written one-day
     /// swaps carried over from the private repo's swaps.yml before 10/14.
-    @Published private(set) var pauses = Store.pauses()
+    @Published private(set) var awayRanges = Store.awayRanges()
     @Published private(set) var swaps = Store.swaps()
     /// When the GitHub backup's copy was last brought up to date, and why not.
     @Published private(set) var lastSynced = UserDefaults.standard.object(forKey: "lastSynced") as? Date
@@ -31,7 +31,7 @@ final class Engine: ObservableObject {
     private var lineupKeys: [Int: String] = [:]
     /// Modification dates of the JSON files as the app last read or wrote them.
     private var diskStamps: [String: Date] = ["classes.json": Store.modified("classes.json"),
-                                              "pauses.json": Store.modified("pauses.json")].compactMapValues { $0 }
+                                              "away.json": Store.modified("away.json")].compactMapValues { $0 }
 
     /// Sessions picked to book outside the lineup, here or from the iPhone.
     @Published private(set) var picks = Store.picks()
@@ -230,7 +230,7 @@ final class Engine: ObservableObject {
 
         let k = RecurringClass.oneOff(p)
         var entry = ShadowEntry(classKey: k.key, className: p.name, occurrenceId: p.occurrenceId,
-                                occursAt: p.occursAt, openAt: p.openAt, paused: false)
+                                occursAt: p.occursAt, openAt: p.openAt, away: false)
         do {
             entry.sessionPath = try await FisikalClient.shared.ensureSession()
             entry.sessionReadyAt = Date()
@@ -244,7 +244,7 @@ final class Engine: ObservableObject {
                 dropPicks([p.id])
                 return
             }
-            let opening = Opening(klass: k, occurrence: o, paused: false)
+            let opening = Opening(klass: k, occurrence: o, away: false)
             entry.booking = await Self.book(opening)
             if entry.booking?.booked == true { noteBooked([(o, p.branchId)]) }
             let (_, s, fullAt, _) = await Self.sample(opening, index: 0)
@@ -290,18 +290,18 @@ final class Engine: ObservableObject {
 
     // MARK: Away dates
 
-    func addPause(_ p: Pause) {
-        setPauses(pauses.filter { $0.id != p.id } + [p])
+    func addAwayRange(_ p: AwayRange) {
+        setAwayRanges(awayRanges.filter { $0.id != p.id } + [p])
     }
 
-    func removePause(_ p: Pause) {
-        setPauses(pauses.filter { $0.id != p.id })
+    func removeAwayRange(_ p: AwayRange) {
+        setAwayRanges(awayRanges.filter { $0.id != p.id })
     }
 
-    private func setPauses(_ new: [Pause]) {
-        pauses = new.sorted { $0.start < $1.start }
-        Store.save(pauses: pauses)
-        noteOwnWrite("pauses.json")
+    private func setAwayRanges(_ new: [AwayRange]) {
+        awayRanges = new.sorted { $0.start < $1.start }
+        Store.save(awayRanges: awayRanges)
+        noteOwnWrite("away.json")
         replanSoon()
         pushToCloudSoon()
         publishToRepoSoon()
@@ -315,10 +315,10 @@ final class Engine: ObservableObject {
     private func importFromRepoOnce() async {
         guard RepoSync.isEnabled, !UserDefaults.standard.bool(forKey: "repoImported") else { return }
         do {
-            async let p = RepoSync.fetch("pauses.yml")
+            async let p = RepoSync.fetch("away.yml")
             async let w = RepoSync.fetch("swaps.yml")
             let (pText, wText) = try await (p, w)
-            if let pText { pauses = RepoSync.parsePauses(pText); Store.save(pauses: pauses); noteOwnWrite("pauses.json") }
+            if let pText { awayRanges = RepoSync.parseAway(pText); Store.save(awayRanges: awayRanges); noteOwnWrite("away.json") }
             swaps = wText.map(RepoSync.parseSwaps)?.filter { !$0.isPast && $0.note != "Skipped in YMCA Booker" } ?? []
             Store.save(swaps: swaps)
             UserDefaults.standard.set(true, forKey: "repoImported")
@@ -328,16 +328,16 @@ final class Engine: ObservableObject {
         }
     }
 
-    /// Write classes.yml, pauses.yml and swaps.yml into the repo where they differ
+    /// Write classes.yml, away.yml and swaps.yml into the repo where they differ
     /// from what was last written. Cheap when nothing changed (no network).
     func publishToRepo(force: Bool = false) async {
         guard RepoSync.isEnabled, !isFiring else { return }
         await importFromRepoOnce()
         guard UserDefaults.standard.bool(forKey: "repoImported") else { return }   // never overwrite unread edits
-        let skipPairs = skips.compactMap { s in lineupKeys[s.id].map { (date: Pause.day(s.occursAt), key: $0) } }
+        let skipPairs = skips.compactMap { s in lineupKeys[s.id].map { (date: AwayRange.day(s.occursAt), key: $0) } }
         let files = [
             "classes.yml": RepoMirror.classesYAML(classes, timeZone: FisikalClient.zone.identifier),
-            "pauses.yml": RepoMirror.pausesYAML(pauses),
+            "away.yml": RepoMirror.awayYAML(awayRanges),
             "swaps.yml": RepoMirror.swapsYAML(swaps: swaps, skips: skipPairs, picks: picks),
         ]
         var written = UserDefaults.standard.dictionary(forKey: "repoWritten") as? [String: String] ?? [:]
@@ -385,7 +385,7 @@ final class Engine: ObservableObject {
 
     // MARK: Edits made to the JSON files on disk (e.g. by Claude)
 
-    /// classes.json and pauses.json can be edited in place while the app runs;
+    /// classes.json and away.json can be edited in place while the app runs;
     /// the loop picks a change up on its next pass. The app's own saves are noted
     /// so they don't count as outside edits.
     private func noteOwnWrite(_ name: String) { diskStamps[name] = Store.modified(name) }
@@ -397,10 +397,10 @@ final class Engine: ObservableObject {
             let c = Store.classes()
             if c != classes { classes = c; changed = true }
         }
-        if Store.modified("pauses.json") != diskStamps["pauses.json"] {
-            noteOwnWrite("pauses.json")
-            let p = Store.pauses()
-            if p != pauses { pauses = p; changed = true }
+        if Store.modified("away.json") != diskStamps["away.json"] {
+            noteOwnWrite("away.json")
+            let p = Store.awayRanges()
+            if p != awayRanges { awayRanges = p; changed = true }
         }
         if changed { lastPlanned = nil; pushToCloudSoon(); publishToRepoSoon() }
     }
@@ -408,12 +408,12 @@ final class Engine: ObservableObject {
     /// Why this class won't be booked on this date, if it won't: an away date
     /// (unless the class is in its `except:`), or a skip-only swap.
     func skipReason(_ k: RecurringClass, on date: Date) -> String? {
-        Self.skipReason(k, on: date, pauses: pauses, swaps: swaps)
+        Self.skipReason(k, on: date, awayRanges: awayRanges, swaps: swaps)
     }
 
-    nonisolated static func skipReason(_ k: RecurringClass, on date: Date, pauses: [Pause], swaps: [Swap]) -> String? {
-        if pauses.contains(where: { $0.covers(date, key: k.key) }) { return "away" }
-        let day = Pause.day(date)
+    nonisolated static func skipReason(_ k: RecurringClass, on date: Date, awayRanges: [AwayRange], swaps: [Swap]) -> String? {
+        if awayRanges.contains(where: { $0.covers(date, key: k.key) }) { return "away" }
+        let day = AwayRange.day(date)
         if swaps.contains(where: { $0.date == day && $0.skip == k.key && $0.isSkipOnly }) { return "swap: skip" }
         return nil
     }
@@ -565,7 +565,7 @@ final class Engine: ObservableObject {
 
     func pushToCloud() async {
         let snap = CloudStore.Snapshot(
-            classes: classes, pauses: pauses, swaps: swaps, log: log, stats: slotStats(), bookings: bookings,
+            classes: classes, awayRanges: awayRanges, swaps: swaps, log: log, stats: slotStats(), bookings: bookings,
             picks: picks, skips: skips, schedule: schedule,
             status: .init(updatedAt: Date(), status: status, signedInAs: signedInAs,
                           liveClasses: classes.count,
@@ -646,7 +646,7 @@ final class Engine: ObservableObject {
                 for k in classes where k.locationIds.contains(branch) {
                     for o in occs where k.matches(o) && o.openAt > now {
                         found.append(Opening(klass: k, occurrence: o,
-                                             paused: skipReason(k, on: o.occursAt) != nil || isSkipped(o.id)))
+                                             away: skipReason(k, on: o.occursAt) != nil || isSkipped(o.id)))
                     }
                 }
                 for o in occs where o.capacity >= 5 && o.occursAt > now {
@@ -658,10 +658,10 @@ final class Engine: ObservableObject {
                 }
             }
             // Picked sessions: wait for the opening, book now, or let go.
-            let lineup = Set(found.filter { !$0.paused }.map(\.occurrence.id))
+            let lineup = Set(found.filter { !$0.away }.map(\.occurrence.id))
             let triage = PickTriage.run(picks, seen: byId.mapValues { ($0.isJoined, $0.openAt) }, lineup: lineup, now: now)
             for p in picks where triage.atOpening.contains(p.id) {
-                if let o = byId[p.id] { found.append(Opening(klass: .oneOff(p), occurrence: o, paused: false)) }
+                if let o = byId[p.id] { found.append(Opening(klass: .oneOff(p), occurrence: o, away: false)) }
             }
             dropPicks(triage.drop)
             setSkips(skips)   // let past ones go
@@ -705,32 +705,32 @@ final class Engine: ObservableObject {
             isFiring = false
         }
 
-        // An away date written into pauses.json a minute ago still counts.
+        // An away date written into away.json a minute ago still counts.
         reloadEditedFiles()
         let group = planned.map {
             Opening(klass: $0.klass, occurrence: $0.occurrence,
-                    paused: !$0.klass.isOneOff && (skipReason($0.klass, on: $0.occurrence.occursAt) != nil
+                    away: !$0.klass.isOneOff && (skipReason($0.klass, on: $0.occurrence.occursAt) != nil
                                                    || isSkipped($0.occurrence.id)))
         }
 
         var entries = group.map {
             ShadowEntry(classKey: $0.klass.key, className: $0.klass.name, occurrenceId: $0.occurrence.id,
-                        occursAt: $0.occurrence.occursAt, openAt: $0.openAt, paused: $0.paused,
+                        occursAt: $0.occurrence.occursAt, openAt: $0.openAt, away: $0.away,
                         capacity: $0.occurrence.capacity)
         }
-        let live = group.filter { !$0.paused }
+        let live = group.filter { !$0.away }
         status = "Opening soon: \(group.map(\.klass.name).joined(separator: " + "))"
 
         // Warm the session now, so the opening second is a single request.
         if !live.isEmpty {
             do {
                 let path = try await FisikalClient.shared.ensureSession()
-                for i in entries.indices where !entries[i].paused {
+                for i in entries.indices where !entries[i].away {
                     entries[i].sessionPath = path
                     entries[i].sessionReadyAt = Date()
                 }
             } catch {
-                for i in entries.indices where !entries[i].paused { entries[i].error = error.localizedDescription }
+                for i in entries.indices where !entries[i].away { entries[i].error = error.localizedDescription }
             }
         }
 
@@ -741,13 +741,13 @@ final class Engine: ObservableObject {
 
         // The opening second: send the join first, then read back.
         await withTaskGroup(of: (Int, ShadowEntry.BookingLog?).self) { tg in
-            for (i, o) in group.enumerated() where !o.paused && entries[i].error == nil {
+            for (i, o) in group.enumerated() where !o.away && entries[i].error == nil {
                 tg.addTask { (i, await Self.book(o)) }
             }
             for await (i, log) in tg { entries[i].booking = log }
         }
         await withTaskGroup(of: (Int, ShadowEntry.Sample?, Date?, String?).self) { tg in
-            for (i, o) in group.enumerated() where !o.paused && entries[i].error == nil {
+            for (i, o) in group.enumerated() where !o.away && entries[i].error == nil {
                 tg.addTask { await Self.sample(o, index: i) }
             }
             for await (i, s, fullAt, err) in tg {
@@ -776,7 +776,7 @@ final class Engine: ObservableObject {
         let dense = Array(stride(from: 2.0, through: 59.0, by: 3.0))
         for delay in dense + [120, 300] {
             let live = group.indices.filter { i in
-                !group[i].paused && entries[i].error == nil
+                !group[i].away && entries[i].error == nil
                     // Once full, stop the 3 s polling; the +2 m / +5 m checks still track the waitlist.
                     && (delay > 60 || !(entries[i].followUps.last?.isFull ?? entries[i].atOpen?.isFull ?? false))
             }

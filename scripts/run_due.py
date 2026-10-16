@@ -14,7 +14,7 @@ false-safe default over silently checking nothing. A dispatch with no fired cron
 all is cron-job.org's swap-check sweep: it applies swaps only (RUN_DUE_ALL=1 to
 check every class instead), and skips the login entirely when no swap is pending.
 
-Away-periods (vacations) live in a private repo (see src/pauses.py). We load them
+Away-periods (vacations) live in a private repo (see src/away.py). We load them
 once and skip booking any class whose own date falls in a range — matching the
 class date, not today, because booking opens ~7 days ahead.
 
@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src import fisikal            # noqa: E402
 from src import main as m          # noqa: E402
-from src import pauses             # noqa: E402
+from src import away               # noqa: E402
 from src import swaps              # noqa: E402
 from src.http_context import HttpContext  # noqa: E402
 from src.login import login        # noqa: E402
@@ -54,7 +54,7 @@ OPEN_BY_DAYS = 6
 
 def _secured(ok: bool, detail: str) -> bool:
     """True only for a real booking — book() also returns ok for cheap no-ops."""
-    return ok and not detail.startswith(("Nothing to book", "Full:", "Paused"))
+    return ok and not detail.startswith(("Nothing to book", "Full:", "Away"))
 
 
 def _release_original(context, csrf, cfg, sw) -> str | None:
@@ -121,13 +121,13 @@ def run() -> int:
     cfg = m.load_config()
 
     # Away-dates kept in a private repo; skip booking classes that land in one.
-    pause_ranges = pauses.load_ranges()
-    if pause_ranges:
-        print(f"Loaded {len(pause_ranges)} pause range(s): "
+    away_ranges = away.load_ranges()
+    if away_ranges:
+        print(f"Loaded {len(away_ranges)} away range(s): "
               + ", ".join(
                   f"{r.start}..{r.end}"
                   + (f" except {sorted(r.except_keys)}" if r.except_keys else "")
-                  for r in pause_ranges))
+                  for r in away_ranges))
 
     # One-off swaps that haven't happened yet. Local time, not the runner's UTC:
     # a swap is retired the moment its class starts, and UTC's midnight lands at
@@ -210,7 +210,7 @@ def run() -> int:
                 try:
                     ok, detail = m.book(context, csrf, cfg, klass,
                                         dry_run=False, book_now=False,
-                                        pause_ranges=pause_ranges,
+                                        away_ranges=away_ranges,
                                         skip_dates=skip_dates.get(klass["key"]))
                 except Exception as exc:  # one class failing must not kill the rest
                     ok, detail = False, f"{label}\nException: {exc!r}"
@@ -221,7 +221,7 @@ def run() -> int:
                 # "Already booked" is a redundant trigger finding the class taken
                 # by one of its own siblings — the winner already reported it, so
                 # a second mail would just be an echo.
-                if (detail.startswith("Nothing to book") or detail.startswith("Paused")
+                if (detail.startswith("Nothing to book") or detail.startswith("Away")
                         or detail.startswith("Full:") or detail.startswith("Swapped out:")
                         or detail.startswith("Already booked")):
                     continue

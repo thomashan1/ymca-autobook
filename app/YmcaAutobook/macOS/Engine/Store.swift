@@ -1,7 +1,7 @@
 #if os(macOS)
 import Foundation
 
-/// Local files in ~/Library/Application Support/YBookerMac. Classes and pauses are
+/// Local files in ~/Library/Application Support/YBookerMac. Classes and away dates are
 /// seeded from JSON bundled with the build on first launch; the shadow log is
 /// appended as the app runs.
 enum Store {
@@ -9,6 +9,9 @@ enum Store {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let d = base.appendingPathComponent("YBookerMac", isDirectory: true)
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+        // Away dates were kept in pauses.json before 2026-10-15.
+        let old = d.appendingPathComponent("pauses.json"), new = d.appendingPathComponent("away.json")
+        if !FileManager.default.fileExists(atPath: new.path) { try? FileManager.default.moveItem(at: old, to: new) }
         return d
     }()
 
@@ -19,7 +22,7 @@ enum Store {
     }
 
     static func classes() -> [RecurringClass] { load("classes.json", as: [RecurringClass].self) ?? [] }
-    static func pauses() -> [Pause] { load("pauses.json", as: [Pause].self) ?? [] }
+    static func awayRanges() -> [AwayRange] { load("away.json", as: [AwayRange].self) ?? [] }
 
     static func swaps() -> [Swap] {
         (try? Data(contentsOf: url("swaps.json"))).flatMap { try? JSONDecoder().decode([Swap].self, from: $0) } ?? []
@@ -50,7 +53,7 @@ enum Store {
     }
 
     static func save(classes: [RecurringClass]) { write(classes, to: "classes.json") }
-    static func save(pauses: [Pause]) { write(pauses.sorted { $0.start < $1.start }, to: "pauses.json") }
+    static func save(awayRanges: [AwayRange]) { write(awayRanges.sorted { $0.start < $1.start }, to: "away.json") }
 
     private static func write<T: Encodable>(_ value: T, to name: String) {
         let e = JSONEncoder()

@@ -11,7 +11,7 @@ struct SettingsView: View {
             CatalogView(engine: engine).tabItem { Label("Browse", systemImage: "magnifyingglass") }
             ClassesEditor(engine: engine).tabItem { Label("My classes", systemImage: "list.bullet") }
             StatsView(engine: engine).tabItem { Label("Stats", systemImage: "chart.bar") }
-            PausesView(engine: engine).tabItem { Label("Away & swaps", systemImage: "airplane") }
+            MacAwayView(engine: engine).tabItem { Label("Away & swaps", systemImage: "airplane") }
             GeneralSettings(engine: engine).tabItem { Label("General", systemImage: "gearshape") }
             AdvancedSettings(engine: engine).tabItem { Label("Advanced", systemImage: "gearshape.2") }
         }
@@ -79,7 +79,7 @@ struct ClassesEditor: View {
 
 // MARK: Away dates (edited here; the GitHub backup gets a copy)
 
-struct PausesView: View {
+struct MacAwayView: View {
     @ObservedObject var engine: Engine
     @State private var showPast = false
     @State private var start = Date()
@@ -119,9 +119,9 @@ struct PausesView: View {
             }
             List {
                 Section("Away dates — no booking on these days") {
-                    let pauses = engine.pauses.filter { showPast || !$0.isPast }.sorted { $0.start < $1.start }
-                    if pauses.isEmpty { Text("None").foregroundStyle(.secondary) }
-                    ForEach(pauses) { p in
+                    let awayRanges = engine.awayRanges.filter { showPast || !$0.isPast }.sorted { $0.start < $1.start }
+                    if awayRanges.isEmpty { Text("None").foregroundStyle(.secondary) }
+                    ForEach(awayRanges) { p in
                         HStack(alignment: .firstTextBaseline) {
                             Text(p.start == p.end ? withWeekday(p.start) : "\(withWeekday(p.start)) → \(withWeekday(p.end))")
                                 .monospacedDigit()
@@ -134,7 +134,7 @@ struct PausesView: View {
                                 }
                             }
                             Spacer()
-                            Button(role: .destructive) { engine.removePause(p) } label: { Image(systemName: "trash") }
+                            Button(role: .destructive) { engine.removeAwayRange(p) } label: { Image(systemName: "trash") }
                                 .buttonStyle(.borderless)
                                 .help("Remove these away dates")
                         }
@@ -164,9 +164,9 @@ struct PausesView: View {
     }
 
     private func add() {
-        let s = Pause.day(start), e = Pause.day(max(start, end))
+        let s = AwayRange.day(start), e = AwayRange.day(max(start, end))
         let n = note.trimmingCharacters(in: .whitespaces)
-        engine.addPause(Pause(start: s, end: e, except: keep.isEmpty ? nil : keep.sorted(), note: n.isEmpty ? nil : n))
+        engine.addAwayRange(AwayRange(start: s, end: e, except: keep.isEmpty ? nil : keep.sorted(), note: n.isEmpty ? nil : n))
         note = ""; keep = []
     }
 
@@ -311,7 +311,7 @@ struct AdvancedSettings: View {
                             .disabled(repo.trimmingCharacters(in: .whitespaces).isEmpty
                                       || (repo.trimmingCharacters(in: .whitespaces) == (RepoSync.repo ?? "") && token.isEmpty))
                     }
-                    Text("After each change the Mac writes a copy of your classes, away dates and one-day changes into that private repo's classes.yml, pauses.yml and swaps.yml, for the backup to follow. It never reads them back, so keep editing here or on the iPhone, not in the repo. Use a fine-grained token for that repo only, with Contents: Read and write. It's stored in this Mac's Keychain. Turning the backup off forgets the repo and token.")
+                    Text("After each change the Mac writes a copy of your classes, away dates and one-day changes into that private repo's classes.yml, away.yml and swaps.yml, for the backup to follow. It never reads them back, so keep editing here or on the iPhone, not in the repo. Use a fine-grained token for that repo only, with Contents: Read and write. It's stored in this Mac's Keychain. Turning the backup off forgets the repo and token.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

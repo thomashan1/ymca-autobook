@@ -37,33 +37,33 @@ final class ClassesParsingTests: XCTestCase {
 }
 
 @MainActor
-final class PausesParsingTests: XCTestCase {
+final class AwayParsingTests: XCTestCase {
     func testParseAndSerializeRoundTrip() {
         let yaml = """
-        pauses:
+        awayRanges:
 
           # Thanksgiving
           - {start: 2026-11-23, end: 2026-11-27, except: [core-mon, lift-hiit-mon]}
           - {start: 2026-10-23, end: 2026-10-23}                                # teacher day
         """
-        let ps = PausesRepository.parse(yaml)
+        let ps = AwayRepository.parse(yaml)
         XCTAssertEqual(ps.count, 2)
         XCTAssertEqual(ps[0].except, ["core-mon", "lift-hiit-mon"])
         XCTAssertEqual(ps[0].header, ["Thanksgiving"])
         XCTAssertEqual(ps[1].note, "teacher day")
-        let again = PausesRepository.parse(PausesRepository.serialize(ps))
+        let again = AwayRepository.parse(AwayRepository.serialize(ps))
         XCTAssertEqual(again.map(\.id).sorted(), ps.map(\.id).sorted())
         XCTAssertEqual(again.first { $0.note != nil }?.note, "teacher day")
     }
 
     func testRemovingKeepsSectionHeader() {
-        let ps = PausesRepository.parse("""
-        pauses:
+        let ps = AwayRepository.parse("""
+        awayRanges:
           # Winter
           - {start: 2026-12-21, end: 2027-01-01}
           - {start: 2027-01-18, end: 2027-01-18}
         """)
-        let left = PausesRepository.removing(ps[0], from: ps)
+        let left = AwayRepository.removing(ps[0], from: ps)
         XCTAssertEqual(left.count, 1)
         XCTAssertEqual(left[0].header, ["Winter"])
     }

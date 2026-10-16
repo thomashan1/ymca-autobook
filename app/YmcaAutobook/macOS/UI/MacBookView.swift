@@ -118,14 +118,14 @@ struct MacBookView: View {
     }
 
     private var days: [String] {
-        Array(Set((engine.schedule ?? []).map { Pause.day($0.occursAt) })).sorted()
+        Array(Set((engine.schedule ?? []).map { AwayRange.day($0.occursAt) })).sorted()
     }
 
     private var filtered: [ScheduleItem] {
         let q = search.lowercased().trimmingCharacters(in: .whitespaces)
         return (engine.schedule ?? []).filter { i in
             i.occursAt > Date()
-                && (day == "All" || Pause.day(i.occursAt) == day)
+                && (day == "All" || AwayRange.day(i.occursAt) == day)
                 && (branch == 0 || i.branchId == branch)
                 && (!onlyMine || isMine(i))
                 && ClassFilter.matches(i, hidePool: hidePool, hidePaid: hidePaid, from: from, until: until, calendar: Self.cal)

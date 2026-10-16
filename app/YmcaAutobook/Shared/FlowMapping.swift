@@ -1,6 +1,6 @@
 import Foundation
 
-/// The `{key: value, key: [a, b]}` entries in pauses.yml, split into fields at
+/// The `{key: value, key: [a, b]}` entries in away.yml, split into fields at
 /// the commas that aren't inside a `[...]` list. Used by both platforms' parsers.
 enum FlowMapping {
     static func fields(_ inner: String) -> [(key: String, value: String)] {

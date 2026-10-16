@@ -1,25 +1,25 @@
-"""Away-period ("pause") windows, fetched from a PRIVATE repo at runtime.
+"""Away dates (away ranges), fetched from a PRIVATE repo at runtime.
 
 Personal away-dates must never live in this public repo, so they're kept in a
-separate private repo (default: thomashan1/ymca-private) as a small pauses.yml:
+separate private repo (default: thomashan1/ymca-private) as a small away.yml:
 
     # inclusive start..end, local schedule timezone; resume = day after `end`
-    pauses:
+    away:
       - {start: 2026-07-03, end: 2026-07-03}   # single day
       - {start: 2026-07-06, end: 2026-07-06, except: [lift-hiit-mon]}  # keep one class
       - {start: 2026-07-07, end: 2026-07-12}   # away, resume 7/13
 
 `except` (optional) lists class keys (from classes.yml) to keep booking despite
-the pause — handy when you're "off" but still want one specific class that day.
+the away range — handy when you're "off" but still want one specific class that day.
 
 Each range lists the dates of CLASSES you won't attend. run_due.py loads the
 ranges once per scheduled run and skips booking any occurrence whose own date
 falls inside one — NOT the run date. Booking opens ~7 days ahead, so the run
-that books a paused class fires a week earlier; matching on the class date
+that books a class on an away day fires a week earlier; matching on the class date
 (not "today") is what actually keeps you off the roster while you're away.
 
 FAIL-OPEN by design: a missing token, network error, or unparseable file means
-"no pauses" so a misconfiguration can never silently stop bookings — the worst
+"no away dates" so a misconfiguration can never silently stop bookings — the worst
 case is booking a class during a week you're away, which you can still cancel.
 """
 
@@ -33,16 +33,16 @@ import httpx
 import yaml
 
 
-class PauseRange(NamedTuple):
+class AwayRange(NamedTuple):
     """An inclusive away-window. `except_keys` are class keys still booked anyway."""
     start: date
     end: date
     except_keys: frozenset[str] = frozenset()
 
 # The private file's location. Overridable via env (handy for tests).
-PAUSE_REPO = os.environ.get("PAUSE_REPO", "thomashan1/ymca-private")
-PAUSE_PATH = os.environ.get("PAUSE_PATH", "pauses.yml")
-PAUSE_REF = os.environ.get("PAUSE_REF", "main")
+PRIVATE_REPO = os.environ.get("PRIVATE_REPO", "thomashan1/ymca-private")
+AWAY_PATH = os.environ.get("AWAY_PATH", "away.yml")
+PRIVATE_REF = os.environ.get("PRIVATE_REF", "main")
 
 
 def _as_date(v) -> date:
@@ -55,11 +55,11 @@ def _as_date(v) -> date:
 
 
 def _fetch_yaml(token: str) -> str:
-    """Download the raw pauses.yml from the private repo via the contents API."""
-    url = f"https://api.github.com/repos/{PAUSE_REPO}/contents/{PAUSE_PATH}"
+    """Download the raw away.yml from the private repo via the contents API."""
+    url = f"https://api.github.com/repos/{PRIVATE_REPO}/contents/{AWAY_PATH}"
     resp = httpx.get(
         url,
-        params={"ref": PAUSE_REF},
+        params={"ref": PRIVATE_REF},
         headers={
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github.raw+json",
@@ -71,38 +71,38 @@ def _fetch_yaml(token: str) -> str:
     return resp.text
 
 
-def parse_ranges(text: str) -> list[PauseRange]:
-    """Parse pauses.yml text into inclusive PauseRanges (with any exceptions)."""
+def parse_ranges(text: str) -> list[AwayRange]:
+    """Parse away.yml text into inclusive AwayRanges (with any exceptions)."""
     data = yaml.safe_load(text) or {}
     ranges = []
-    for p in data.get("pauses", []) or []:
+    for p in data.get("away", []) or []:
         start = _as_date(p["start"])
         end = _as_date(p.get("end", p["start"]))
         if end < start:
             start, end = end, start
-        # `except` (optional): class key(s) to keep booking despite the pause.
+        # `except` (optional): class key(s) to keep booking despite the away range.
         raw = p.get("except") or []
         if isinstance(raw, str):
             raw = [raw]
         except_keys = frozenset(str(k).strip() for k in raw)
-        ranges.append(PauseRange(start, end, except_keys))
+        ranges.append(AwayRange(start, end, except_keys))
     return ranges
 
 
-def load_ranges(token: str | None = None) -> list[PauseRange]:
+def load_ranges(token: str | None = None) -> list[AwayRange]:
     """Fetch + parse the away-ranges from the private repo. Fail-open -> []."""
     token = token or os.environ.get("PRIVATE_REPO_TOKEN")
     if not token:
-        print("[pause] PRIVATE_REPO_TOKEN not set; skipping pause check.")
+        print("[away] PRIVATE_REPO_TOKEN not set; skipping away check.")
         return []
     try:
         return parse_ranges(_fetch_yaml(token))
     except Exception as exc:  # network / auth / parse — never block booking
-        print(f"[pause] could not read pauses ({exc!r}); proceeding to book.")
+        print(f"[away] could not read away dates ({exc!r}); proceeding to book.")
         return []
 
 
-def covering(ranges: list[PauseRange], day: date) -> PauseRange | None:
+def covering(ranges: list[AwayRange], day: date) -> AwayRange | None:
     """Return the range covering `day`, or None."""
     for r in ranges:
         if r.start <= day <= r.end:

@@ -22,7 +22,7 @@ enum Cloud {
         }
     }
 
-    struct Pause: Codable, Hashable {
+    struct AwayRange: Codable, Hashable {
         let start, end: String
         let except: [String]
         let note: String?
@@ -89,21 +89,21 @@ enum Cloud {
         let className: String
         let occursAt: Date
         let openAt: Date
-        let paused: Bool
+        let away: Bool
         let live: Bool          // a real booking went out (not shadow-only)
         let booked: Bool
         let verdict: String
         let sendLagMs: Int?
         let fillSeconds: Double?
 
-        var failed: Bool { live && !booked && !paused }
+        var failed: Bool { live && !booked && !away }
 
         init?(_ r: CKRecord) {
             guard let key = r["classKey"] as? String, let name = r["className"] as? String,
                   let occ = r["occursAt"] as? Date, let open = r["openAt"] as? Date else { return nil }
             id = r.recordID.recordName
             classKey = key; className = name; occursAt = occ; openAt = open
-            paused = (r["paused"] as? Bool) ?? false
+            away = (r["away"] as? Bool) ?? false
             live = (r["live"] as? Bool) ?? false
             booked = (r["booked"] as? Bool) ?? false
             verdict = (r["verdict"] as? String) ?? ""

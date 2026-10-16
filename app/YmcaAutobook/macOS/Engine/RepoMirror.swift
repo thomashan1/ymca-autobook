@@ -3,11 +3,11 @@ import Foundation
 
 /// The Mac is where classes, away dates and one-day changes are kept and edited
 /// (since 2026-10-14), synced to the iPhone through iCloud. With a GitHub repo
-/// set, the Mac also writes them into that repo as classes.yml, pauses.yml and
+/// set, the Mac also writes them into that repo as classes.yml, away.yml and
 /// swaps.yml after every change, so the GitHub booker can act as a backup. One
 /// way only: the Mac never reads these files back.
 enum RepoMirror {
-    static let paths = ["classes.yml", "pauses.yml", "swaps.yml"]
+    static let paths = ["classes.yml", "away.yml", "swaps.yml"]
 
     private static let header = """
         # Written by YMCA Booker on the Mac, where this is edited (or from the iPhone).
@@ -41,10 +41,10 @@ enum RepoMirror {
         return out + "\n"
     }
 
-    static func pausesYAML(_ pauses: [Pause]) -> String {
-        var out = header + "\npauses:"
-        if pauses.isEmpty { return out + " []\n" }
-        for p in pauses.sorted(by: { $0.start < $1.start }) {
+    static func awayYAML(_ awayRanges: [AwayRange]) -> String {
+        var out = header + "\naway:"
+        if awayRanges.isEmpty { return out + " []\n" }
+        for p in awayRanges.sorted(by: { $0.start < $1.start }) {
             var line = "  - {start: \(p.start), end: \(p.end)"
             if let ex = p.except, !ex.isEmpty { line += ", except: [\(ex.joined(separator: ", "))]" }
             line += "}"
@@ -78,7 +78,7 @@ enum RepoMirror {
             entries.append((s.date, "  - date: \(s.date)\n    skip: \(s.key)\n    note: \"Skipped in YMCA Booker\""))
         }
         for p in picks {
-            let date = Pause.day(p.occursAt)
+            let date = AwayRange.day(p.occursAt)
             entries.append((date, """
                   - date: \(date)
                     book:

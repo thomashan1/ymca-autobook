@@ -10,7 +10,7 @@ occurrence id:
     status="cancelled" (a dropped / gym-cancelled / waitlisted booking)
 
 Git history on the private repo is the audit trail — each run is one commit.
-Fail-LOUD: unlike pauses (which fail open so booking never stops), the ledger
+Fail-LOUD: unlike away dates (which fail open so booking never stops), the ledger
 raises on a missing token so a silent permissions problem is visible.
 """
 

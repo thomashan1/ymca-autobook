@@ -8,7 +8,7 @@ import Combine
 /// immediately via a book.yml workflow_dispatch (issue #47).
 struct JobsView: View {
     @EnvironmentObject var classes: ClassesRepository
-    @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var awayRanges: AwayRepository
     @EnvironmentObject var auth: AuthStore
     @ObservedObject private var cloud = CloudSource.shared
     @State private var now = Date()
@@ -79,7 +79,7 @@ struct JobsView: View {
                     Section {
                         ForEach(group.jobs) { job in
                             JobRow(job: job, now: now,
-                                   paused: pauses.isAway(job.classDate, classKey: job.classKey))
+                                   away: awayRanges.isAway(job.classDate, classKey: job.classKey))
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     if !auth.isCloud {
                                     Button {
@@ -108,7 +108,7 @@ struct JobsView: View {
             .onReceive(tick) { now = $0 }
             .refreshable {
                 if auth.isCloud { await cloud.refresh() }
-                await classes.load(); await pauses.load()
+                await classes.load(); await awayRanges.load()
             }
             .overlay { if booking { ProgressView("Booking…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
             .confirmationDialog(
@@ -167,15 +167,15 @@ struct JobsView: View {
 private struct JobRow: View {
     let job: BookingJob
     let now: Date
-    var paused: Bool = false
+    var away: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(job.className).font(.body.weight(.medium))
-                    .strikethrough(paused, color: Theme.away)
+                    .strikethrough(away, color: Theme.away)
                 Spacer()
-                if paused {
+                if away {
                     Text("Away · skipped").font(.caption2.weight(.bold))
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .background(Theme.away.opacity(0.18), in: Capsule())
@@ -185,12 +185,12 @@ private struct JobRow: View {
                         .foregroundStyle(Theme.accent)
                 }
             }
-            Text(paused
+            Text(away
                  ? "Away on \(job.classDate.formatted(.dateTime.weekday().month().day())) — the bot won't book it. Swipe to book anyway."
                  : "Books \(job.classDate.formatted(.dateTime.weekday().month().day())) · opens \(job.opensAt.formatted(date: .abbreviated, time: .shortened))")
                 .font(.caption).foregroundStyle(.secondary)
         }
-        .opacity(paused ? 0.65 : 1)
+        .opacity(away ? 0.65 : 1)
     }
 
     private var countdownText: String {
@@ -240,8 +240,8 @@ private struct OpeningRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: o.paused ? "airplane" : o.booked ? "checkmark.circle.fill" : o.live ? "xmark.circle.fill" : "eye")
-                .foregroundStyle(o.paused ? Color.secondary : o.booked ? Theme.booked : o.live ? Theme.accent : .secondary)
+            Image(systemName: o.away ? "airplane" : o.booked ? "checkmark.circle.fill" : o.live ? "xmark.circle.fill" : "eye")
+                .foregroundStyle(o.away ? Color.secondary : o.booked ? Theme.booked : o.live ? Theme.accent : .secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(o.className).font(.body.weight(.medium))
                 Text("for \(o.occursAt.formatted(.dateTime.weekday().month().day().hour().minute()))")

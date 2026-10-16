@@ -4,7 +4,7 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject var auth: AuthStore
     @EnvironmentObject var classes: ClassesRepository
-    @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var awayRanges: AwayRepository
     @EnvironmentObject var swaps: SwapsRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
@@ -36,7 +36,7 @@ struct RootView: View {
             // otherwise the sample lineup could never actually be seen.
             guard auth.isConnected || SampleMode.active else { return }
             await classes.load()
-            await pauses.load()
+            await awayRanges.load()
             await swaps.load()
             await snapshot.load()
             await bookings.load()
@@ -58,7 +58,7 @@ struct RootView: View {
         guard auth.isCloud else { return }
         Task {
             await CloudSource.shared.refresh()
-            await classes.load(); await pauses.load(); await swaps.load()
+            await classes.load(); await awayRanges.load(); await swaps.load()
             await bookings.load(); await fullClasses.load(); await fillStats.load()
         }
     }

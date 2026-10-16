@@ -2,10 +2,10 @@
 import Foundation
 
 /// The Mac's link to the GitHub backup's private repo. Since 10/14 the Mac
-/// writes classes.yml, pauses.yml and swaps.yml there (RepoMirror) and reads
-/// pauses.yml / swaps.yml only once, to carry over what was edited there before.
+/// writes classes.yml, away.yml and swaps.yml there (RepoMirror) and reads
+/// away.yml / swaps.yml only once, to carry over what was edited there before.
 ///
-/// The parsers are ports of the iOS app's (PausesRepository / SwapsRepository):
+/// The parsers are ports of the iOS app's (AwayRepository / SwapsRepository):
 /// just enough YAML for the two files' fixed shapes. The Python engine uses a
 /// real YAML parser and stays the authority on what the files mean.
 enum RepoSync {
@@ -24,7 +24,7 @@ enum RepoSync {
         return t
     }
 
-    /// The one-time read of pauses.yml / swaps.yml carries over what a Mac that
+    /// The one-time read of away.yml / swaps.yml carries over what a Mac that
     /// used to read its away dates from the repo had there. A Mac with no repo
     /// set when this runs (at launch) has nothing to carry over, so it's marked
     /// done: turning the backup on later only writes, and never replaces the
@@ -116,10 +116,10 @@ enum RepoSync {
         }
     }
 
-    // MARK: pauses.yml — `- {start: 2026-10-23, end: 2026-10-23, except: [a, b]}  # note`
+    // MARK: away.yml — `- {start: 2026-10-23, end: 2026-10-23, except: [a, b]}  # note`
 
-    static func parsePauses(_ yaml: String) -> [Pause] {
-        var result: [Pause] = []
+    static func parseAway(_ yaml: String) -> [AwayRange] {
+        var result: [AwayRange] = []
         for raw in yaml.components(separatedBy: .newlines) {
             var line = raw
             var note: String?
@@ -141,7 +141,7 @@ enum RepoSync {
                 }
             }
             if let s = start, let e = end, isDay(s), isDay(e) {
-                result.append(Pause(start: s, end: e, except: except.isEmpty ? nil : except, note: note))
+                result.append(AwayRange(start: s, end: e, except: except.isEmpty ? nil : except, note: note))
             }
         }
         return result

@@ -11,7 +11,8 @@ struct MacBookView: View {
     @State private var branch = 0
     @State private var onlyMine = false
     @AppStorage("bookHidePool") private var hidePool = false
-    @AppStorage("bookDayPart") private var dayPart = 0
+    @AppStorage("bookFrom") private var from = -1
+    @AppStorage("bookUntil") private var until = -1
     @State private var confirm: (ScheduleItem, Cloud.Request.Action)?
 
     var body: some View {
@@ -59,10 +60,18 @@ struct MacBookView: View {
                 Text("Northwest").tag(1388)
             }
             .frame(width: 130)
-            Picker("", selection: $dayPart) {
-                ForEach(ClassFilter.DayPart.allCases) { Text($0.detail).tag($0.rawValue) }
+            Picker("", selection: $from) {
+                Text("From any time").tag(-1)
+                ForEach(ClassFilter.timeChoices, id: \.self) { Text("From \(ClassFilter.timeLabel($0))").tag($0) }
             }
-            .frame(width: 170)
+            .frame(width: 140)
+            .help("Classes starting at or after this time")
+            Picker("", selection: $until) {
+                Text("Until any time").tag(-1)
+                ForEach(ClassFilter.timeChoices, id: \.self) { Text("Before \(ClassFilter.timeLabel($0))").tag($0) }
+            }
+            .frame(width: 150)
+            .help("Classes starting before this time")
             Toggle("Only mine", isOn: $onlyMine)
             Toggle("Hide pool", isOn: $hidePool)
                 .help("Hides swim, lap, aqua and other pool sessions")
@@ -111,13 +120,12 @@ struct MacBookView: View {
 
     private var filtered: [ScheduleItem] {
         let q = search.lowercased().trimmingCharacters(in: .whitespaces)
-        let part = ClassFilter.DayPart(rawValue: dayPart) ?? .any
         return (engine.schedule ?? []).filter { i in
             i.occursAt > Date()
                 && (day == "All" || Pause.day(i.occursAt) == day)
                 && (branch == 0 || i.branchId == branch)
                 && (!onlyMine || isMine(i))
-                && ClassFilter.matches(i, hidePool: hidePool, part: part, calendar: Self.cal)
+                && ClassFilter.matches(i, hidePool: hidePool, from: from, until: until, calendar: Self.cal)
                 && (q.isEmpty || i.name.lowercased().contains(q) || i.room.lowercased().contains(q)
                     || i.trainer.lowercased().contains(q))
         }

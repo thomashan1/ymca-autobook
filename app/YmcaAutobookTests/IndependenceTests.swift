@@ -20,7 +20,7 @@ final class IndependenceTests: XCTestCase {
                                   allowed: { false })
         do { _ = try await client.readFile(repo: "r", path: "classes.yml"); XCTFail("read went through") }
         catch GitHubClient.GitHubError.notInGitHubMode {} catch { XCTFail("\(error)") }
-        do { try await client.writeFile(repo: "r", path: "pauses.yml", text: "", message: "m", sha: "s"); XCTFail("write went through") }
+        do { try await client.writeFile(repo: "r", path: "away.yml", text: "", message: "m", sha: "s"); XCTFail("write went through") }
         catch GitHubClient.GitHubError.notInGitHubMode {} catch { XCTFail("\(error)") }
         do { try await client.dispatchBook(classKey: "k"); XCTFail("dispatch went through") }
         catch GitHubClient.GitHubError.notInGitHubMode {} catch { XCTFail("\(error)") }

@@ -22,7 +22,7 @@ actor CloudStore {
     /// Everything the companion shows, captured on the main actor.
     struct Snapshot: Sendable {
         var classes: [RecurringClass]
-        var pauses: [Pause]
+        var awayRanges: [AwayRange]
         var swaps: [Swap]
         var log: [ShadowEntry]
         var stats: [SlotStats]
@@ -224,8 +224,8 @@ actor CloudStore {
                 "start": c.start as NSString, "locationIds": c.locationIds.map { NSNumber(value: $0) } as NSArray,
             ])
         }
-        for p in s.pauses {
-            add("Pause", p.id, [
+        for p in s.awayRanges {
+            add("AwayRange", p.id, [
                 "start": p.start as NSString, "end": p.end as NSString,
                 "except": (p.except ?? []) as NSArray, "note": p.note as NSString?,
             ])
@@ -246,7 +246,7 @@ actor CloudStore {
             f["occurrenceId"] = NSNumber(value: e.occurrenceId)
             f["occursAt"] = e.occursAt as NSDate
             f["openAt"] = e.openAt as NSDate
-            f["paused"] = NSNumber(value: e.paused)
+            f["away"] = NSNumber(value: e.away)
             f["live"] = NSNumber(value: e.booking != nil)
             f["booked"] = NSNumber(value: e.booking?.booked ?? e.atOpen?.isJoined ?? false)
             f["verdict"] = e.verdict as NSString

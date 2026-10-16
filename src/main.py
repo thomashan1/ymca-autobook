@@ -23,7 +23,7 @@ import yaml
 
 from . import fisikal
 from . import full_log
-from . import pauses
+from . import away
 from . import private_store
 from . import swaps
 from .http_context import HttpContext
@@ -371,7 +371,7 @@ def book_by_id(context, csrf, occurrence_id: int, book_now: bool = False) -> tup
 
 
 def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
-         pause_ranges: list | None = None, on_date=None,
+         away_ranges: list | None = None, on_date=None,
          skip_dates: set | None = None) -> tuple[bool, str]:
     tz = cfg["timezone"]
     label = f"{klass['name']} {klass['weekday']} {klass['start']}"
@@ -390,17 +390,17 @@ def book(context, csrf, cfg, klass, dry_run: bool, book_now: bool,
 
     # Skip if the class we'd book falls on an away-date. We match on the
     # occurrence's own (local) date, not "today" — booking opens ~7 days ahead,
-    # so the run booking a paused class fires the week before.
-    if pause_ranges:
+    # so the run booking a class on an away day fires the week before.
+    if away_ranges:
         occ_local = _local_date(target, tz)
-        for rng in pause_ranges:
+        for rng in away_ranges:
             if rng.start <= occ_local <= rng.end:
                 # An `except` entry keeps this specific class bookable while away.
                 if klass["key"] in rng.except_keys:
-                    print(f"Paused {rng.start}..{rng.end}, but '{klass['key']}' is "
+                    print(f"Away {rng.start}..{rng.end}, but '{klass['key']}' is "
                           f"an exception — booking {occ_local}.")
                     break
-                return True, (f"Paused {rng.start}..{rng.end}: skipping '{label}' on "
+                return True, (f"Away {rng.start}..{rng.end}: skipping '{label}' on "
                               f"{occ_local} (away).")
 
     open_dt = _open_dt(target)
@@ -505,8 +505,8 @@ def main(argv=None) -> int:
     ap.add_argument("--cancel-id", type=int, help="cancel a booking by occurrence id")
     ap.add_argument("--cancel-class", help="cancel the next booked occurrence of this class key")
     ap.add_argument("--on", help="with --cancel-class: target this class date (YYYY-MM-DD, local)")
-    ap.add_argument("--cancel-paused", action="store_true",
-                    help="cancel every booked occurrence that now falls in a pause range")
+    ap.add_argument("--cancel-away", action="store_true",
+                    help="cancel every booked occurrence that now falls in an away range")
     ap.add_argument("--book-id", type=int,
                     help="book a specific occurrence by id, independent of classes.yml "
                          "(one-off exception, e.g. a configured class is full this week)")
@@ -571,15 +571,15 @@ def main(argv=None) -> int:
                 print(("OK: " if ok else "FAILED: ") + detail)
                 return 0 if ok else 1
 
-            if args.cancel_paused:
+            if args.cancel_away:
                 # Reconcile: cancel any upcoming booked occurrence of a configured
-                # class whose date now falls in a pause range (respecting `except`).
+                # class whose date now falls in an away range (respecting `except`).
                 tz = cfg["timezone"]
-                ranges = pauses.load_ranges()
+                ranges = away.load_ranges()
                 if not ranges:
-                    print("No pause ranges loaded; nothing to cancel.")
+                    print("No away ranges loaded; nothing to cancel.")
                     return 0
-                print("Pause ranges: " + ", ".join(
+                print("Away ranges: " + ", ".join(
                     f"{r.start}..{r.end}" + (f" except {sorted(r.except_keys)}"
                                              if r.except_keys else "") for r in ranges))
                 now = datetime.now(timezone.utc)
@@ -599,18 +599,18 @@ def main(argv=None) -> int:
                         if occ <= now or not o.get("is_joined"):
                             continue
                         occ_date = occ.astimezone(ZoneInfo(tz)).date()
-                        rng = pauses.covering(ranges, occ_date)
+                        rng = away.covering(ranges, occ_date)
                         if not rng or klass["key"] in rng.except_keys:
                             continue
                         resp = fisikal.cancel(context, csrf, o["id"])
                         line = f"{klass['key']} {occ_date} occ={o['id']} -> HTTP {resp.status}"
                         print(("  cancelled " if resp.ok else "  FAILED   ") + line)
                         (cancelled if resp.ok else failed).append(line)
-                summary = (f"Cancelled {len(cancelled)} paused booking(s)"
+                summary = (f"Cancelled {len(cancelled)} away-day booking(s)"
                            + (f", {len(failed)} FAILED" if failed else "") + ".")
                 print(summary)
                 if cancelled or failed:
-                    notify(not failed, "Cancel paused bookings",
+                    notify(not failed, "Cancel away-day bookings",
                            summary + "\n" + "\n".join(cancelled + failed))
                 return 0 if not failed else 1
 
@@ -626,7 +626,7 @@ def main(argv=None) -> int:
                 raise SystemExit("Provide --class <key> (or --list).")
 
             klass = get_class(cfg, args.klass)
-            pause_ranges = pauses.load_ranges()
+            away_ranges = away.load_ranges()
             # Skip-only swaps for this class (incl. the Mac app's Skips, which it
             # writes there), so the backup doesn't book what was skipped. A swap
             # with a replacement stays run_due.py's: the original is kept until
@@ -634,7 +634,7 @@ def main(argv=None) -> int:
             skip_dates = {s.date for s in swaps.load_swaps()
                           if s.skip_key == klass["key"] and not s.book_name}
             success, detail = book(context, csrf, cfg, klass, args.dry_run, args.book_now,
-                                    pause_ranges=pause_ranges, skip_dates=skip_dates)
+                                    away_ranges=away_ranges, skip_dates=skip_dates)
             if not args.dry_run:
                 # "Nothing to book now" is a no-op (already booked / window not open
                 # yet, always success=True) — not a real attempt, so no alert either way.

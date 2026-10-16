@@ -1,6 +1,6 @@
 """Record of scheduled classes that filled up before we could book them.
 
-Kept in the PRIVATE repo as full.json, alongside pauses.yml and the snapshots,
+Kept in the PRIVATE repo as full.json, alongside away.yml and the snapshots,
 because it names the classes and dates you personally planned to attend.
 
     {
@@ -25,7 +25,7 @@ Entries clear themselves: if a spot frees up and the occurrence is no longer
 full, the record is dropped and normal booking resumes. We never stop *checking*
 a class — only stop hammering a door that is currently shut.
 
-FAIL-OPEN, like pauses.py: no token, network error, or unparseable file means
+FAIL-OPEN, like away.py: no token, network error, or unparseable file means
 "nothing known to be full", which at worst costs one extra booking attempt.
 """
 

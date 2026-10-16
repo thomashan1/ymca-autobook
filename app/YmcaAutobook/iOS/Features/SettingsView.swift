@@ -7,7 +7,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var auth: AuthStore
     @EnvironmentObject var classes: ClassesRepository
-    @EnvironmentObject var pauses: PausesRepository
+    @EnvironmentObject var awayRanges: AwayRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
     @EnvironmentObject var fullClasses: FullRepository
@@ -135,7 +135,7 @@ struct SettingsView: View {
             Button("Sign out", role: .destructive) {
                 auth.signOut()
                 classes.classes = []
-                pauses.pauses = []
+                awayRanges.awayRanges = []
             }
         }
     }
@@ -146,8 +146,8 @@ struct SettingsView: View {
             if let e = classes.error {
                 Text(e).font(.caption).foregroundStyle(.red)
             }
-            LabeledContent("Away dates loaded", value: "\(pauses.pauses.count)")
-            if let e = pauses.error {
+            LabeledContent("Away dates loaded", value: "\(awayRanges.awayRanges.count)")
+            if let e = awayRanges.error {
                 Text(e).font(.caption).foregroundStyle(.red)
             }
         }
@@ -193,7 +193,7 @@ struct SettingsView: View {
 
     /// The repository permissions the token needs. All four are Read and write:
     /// every one of them backs a write path — Contents edits classes.yml and
-    /// pauses.yml in the private repo, Actions dispatches a booking run, Workflows
+    /// away.yml in the private repo, Actions dispatches a booking run, Workflows
     /// covers book.yml living under .github/workflows.
     static let tokenPermissions = ["Contents", "Actions", "Workflows"]
 
@@ -261,21 +261,21 @@ struct SettingsView: View {
             }
             token = ""
             await classes.load()
-            await pauses.load()
+            await awayRanges.load()
             connecting = false
             if onboarding { dismiss() }
         }
     }
 
     /// Reloads everything the app shows. It used to fetch only classes and
-    /// pauses, so "Reload data" left the Week view's real bookings untouched —
+    /// away dates, so "Reload data" left the Week view's real bookings untouched —
     /// exactly the thing you'd hit the button to update.
     private func reload() {
         reloading = true
         Task {
             if auth.isCloud { await CloudSource.shared.refresh() }
             await classes.load()
-            await pauses.load()
+            await awayRanges.load()
             await snapshot.load()
             await bookings.load()
             await fullClasses.load()

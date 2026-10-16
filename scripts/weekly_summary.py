@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import email_theme         # noqa: E402
 from src import fisikal              # noqa: E402
-from src import pauses              # noqa: E402
+from src import away                # noqa: E402
 from src.http_context import HttpContext  # noqa: E402
 from src.login import login         # noqa: E402
 from src.main import load_config    # noqa: E402
@@ -110,7 +110,7 @@ def _room_only(sub_location: str) -> str:
 
 
 def _html(rows: list[dict], title: str, count: int, today: date,
-          paused_dates: frozenset[date] = frozenset()) -> str:
+          away_dates: frozenset[date] = frozenset()) -> str:
     GREEN    = email_theme.BLUE      # kept as local names to limit the diff
     DGREEN   = email_theme.DBLUE
     WKND_BG  = email_theme.WKND_BG
@@ -120,7 +120,7 @@ def _html(rows: list[dict], title: str, count: int, today: date,
     ROW_H    = 28  # px per row (30-min slot)
 
     days = [today + timedelta(days=i) for i in range(7)]
-    away_days = [d for d in days if d in paused_dates]
+    away_days = [d for d in days if d in away_dates]
 
     # Nothing to show only when there are neither bookings nor away markers.
     if not rows and not away_days:
@@ -147,8 +147,8 @@ def _html(rows: list[dict], title: str, count: int, today: date,
         else:
             col_groups.append([d])
     num_cols = len(col_groups)
-    # A column is "away" when every date in it is paused.
-    col_away = [all(d in paused_dates for d in grp) for grp in col_groups]
+    # A column is "away" when every date in it is an away day.
+    col_away = [all(d in away_dates for d in grp) for grp in col_groups]
 
     def _col_header(grp: list[date]) -> tuple[str, str]:
         if len(grp) == 1:
@@ -406,12 +406,12 @@ def run() -> int:
     next_title = f"YMCA classes: {next_mon.strftime('%a %-m/%-d')} – {next_fri.strftime('%a %-m/%-d')}"
 
     # Away-dates (private repo) to block out in the calendar. Fail-open -> none.
-    pause_ranges = pauses.load_ranges()
+    away_ranges = away.load_ranges()
 
     def _away_for(mon: date) -> frozenset[date]:
         return frozenset(
             d for i in range(7)
-            if pauses.covering(pause_ranges, d := mon + timedelta(days=i))
+            if away.covering(away_ranges, d := mon + timedelta(days=i))
         )
 
     this_away = _away_for(this_mon)

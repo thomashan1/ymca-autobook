@@ -4,7 +4,7 @@
 # A swap is a ONE-OFF exception to classes.yml: on a single date, miss a
 # recurring class and take a different one instead. Anything you want every
 # week belongs in classes.yml; anything that's "I'm out that day" belongs in
-# pauses.yml. This file is only for "that day, do THIS instead".
+# away.yml. This file is only for "that day, do THIS instead".
 #
 # `date` is the CLASS date, not the date the booking run fires — booking opens
 # ~7 days ahead, so the run that acts on a swap happens about a week earlier.

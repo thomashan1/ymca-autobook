@@ -11,7 +11,7 @@ platform:
   `YmcaAutobook/iOS/`.
 
 Both platforms share `YmcaAutobook/Shared/`: the iCloud record shapes
-(`CloudRecords.swift`), the entry point (`AppMain.swift`), the pauses.yml splitter
+(`CloudRecords.swift`), the entry point (`AppMain.swift`), the away.yml splitter
 and the resources. iOS can't wake an app at a precise instant, which is why the
 booking happens on the Mac.
 
@@ -54,9 +54,9 @@ opens also skips it, so the Mac doesn't book it back.
   subscription sends an alert for every booking result
   (`iOS/Services/CloudSource.swift`; text via `Localizable.strings`).
 - **GitHub** (Settings → Advanced → **Use GitHub instead**) is the advanced setup
-  (README Option B). The app then reads `classes.yml`, `pauses.yml`, `swaps.yml` (all in the private repo),
+  (README Option B). The app then reads `classes.yml`, `away.yml`, `swaps.yml` (all in the private repo),
   `bookings.json` and `schedule_snapshot.json` from the two repos, writes
-  `pauses.yml`, opens auto-merging PRs to remove classes, and dispatches `book.yml`
+  `away.yml`, opens auto-merging PRs to remove classes, and dispatches `book.yml`
   for "Book now".
 
 Switching sources changes only what the app shows. It doesn't turn either booker
@@ -71,7 +71,7 @@ on or off.
   (My classes, Away & swaps, Book). It needs no GitHub account.
 - **GitHub backup (optional, Settings → Advanced):** off by default. Turned on with a
   private repo and a token (Contents: Read and write on that repo only), the Mac
-  writes `classes.yml`, `pauses.yml` and `swaps.yml` there after every change, one
+  writes `classes.yml`, `away.yml` and `swaps.yml` there after every change, one
   way, so the Option B GitHub booker can back it up. Turning it off forgets the repo
   and token.
 - **Open at login:** on by default. The app re-registers itself on every launch,

@@ -1,7 +1,7 @@
 """One-off schedule swaps ("skip X that day, book Y instead"), from a PRIVATE repo.
 
 A swap is a single-date exception to classes.yml: on one specific date you want to
-miss a recurring class and take a different one instead. Like pauses, the dates
+miss a recurring class and take a different one instead. Like away dates, the dates
 are personal, so the file lives in the private repo (default thomashan1/ymca-private)
 as swaps.yml:
 
@@ -89,7 +89,7 @@ class Swap(NamedTuple):
 
 
 # The private file's location. Overridable via env (handy for tests).
-SWAP_REPO = os.environ.get("SWAP_REPO", os.environ.get("PAUSE_REPO", "thomashan1/ymca-private"))
+SWAP_REPO = os.environ.get("SWAP_REPO", os.environ.get("PRIVATE_REPO", "thomashan1/ymca-private"))
 SWAP_PATH = os.environ.get("SWAP_PATH", "swaps.yml")
 SWAP_REF = os.environ.get("SWAP_REF", "main")
 

@@ -8,7 +8,7 @@ there's nothing to say on an unchanged week. Reads classes.yml only — no live
 Fisikal login needed. Pulls each class's end time
 from the cached schedule_snapshot.json in the private repo (matched by
 day/start/name) for a proper calendar-grid look; falls back to a 60-minute
-default if a class isn't found there (fail-open, same spirit as pauses.py).
+default if a class isn't found there (fail-open, same spirit as away.py).
 """
 
 from __future__ import annotations

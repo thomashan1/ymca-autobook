@@ -9,7 +9,7 @@ import UserNotifications
 /// `.icloud` (the default) reads what the YMCA Booker Mac app publishes to the
 /// user's own iCloud — no GitHub account or token needed — and is read-only
 /// here: the Mac is the booker and the only writer. `.github` is the advanced
-/// setup: classes.yml, pauses.yml and the snapshots in the two repos, with
+/// setup: classes.yml, away.yml and the snapshots in the two repos, with
 /// GitHub Actions doing the booking.
 enum DataSource: String {
     case github, icloud
@@ -136,7 +136,7 @@ final class CloudSource: ObservableObject {
         let name = r.recordID.recordName
         switch r.recordType {
         case "Class": cache.classes[name] = Cloud.Class(r)
-        case "Pause": cache.pauses[name] = Cloud.Pause(r)
+        case "AwayRange": cache.awayRanges[name] = Cloud.AwayRange(r)
         case "Swap": cache.swaps[name] = Cloud.Swap(r)
         case "Opening": cache.openings[name] = Opening(r)
         case "SlotStat": cache.stats[name] = Cloud.Slot(r)
@@ -151,7 +151,7 @@ final class CloudSource: ObservableObject {
     }
 
     private func remove(_ name: String) {
-        cache.classes[name] = nil; cache.pauses[name] = nil; cache.swaps[name] = nil
+        cache.classes[name] = nil; cache.awayRanges[name] = nil; cache.swaps[name] = nil
         cache.openings[name] = nil; cache.stats[name] = nil; cache.bookings[name] = nil
         cache.picks[name] = nil; cache.skips[name] = nil; cache.requests[name] = nil
         if name == Cloud.scheduleRecordName { cache.schedule = nil }
@@ -173,10 +173,10 @@ final class CloudSource: ObservableObject {
         .sorted { ($0.weekday, $0.start) < ($1.weekday, $1.start) }
     }
 
-    var pauses: [Pause] {
-        cache.pauses.values.compactMap { p in
+    var awayRanges: [AwayRange] {
+        cache.awayRanges.values.compactMap { p in
             guard let s = Self.day.date(from: p.start), let e = Self.day.date(from: p.end) else { return nil }
-            return Pause(start: s, end: e, except: p.except, note: p.note)
+            return AwayRange(start: s, end: e, except: p.except, note: p.note)
         }
         .sorted { $0.start < $1.start }
     }
@@ -231,7 +231,7 @@ final class CloudSource: ObservableObject {
     /// Classes that filled before we got a seat — the "not bookable" case.
     var full: [FullRepository.FullClass] {
         cache.openings.values.compactMap { o in
-            guard !o.booked, !o.paused, o.fillSeconds != nil else { return nil }
+            guard !o.booked, !o.away, o.fillSeconds != nil else { return nil }
             return FullRepository.FullClass(class_key: o.classKey, name: o.className,
                                             date: Self.day.string(from: o.occursAt),
                                             start: Self.time.string(from: o.occursAt),
@@ -341,7 +341,7 @@ final class CloudSource: ObservableObject {
 
     private struct Cache: Codable {
         var classes: [String: Cloud.Class] = [:]
-        var pauses: [String: Cloud.Pause] = [:]
+        var awayRanges: [String: Cloud.AwayRange] = [:]
         var swaps: [String: Cloud.Swap] = [:]
         var openings: [String: Cloud.Opening] = [:]
         var stats: [String: Cloud.Slot] = [:]

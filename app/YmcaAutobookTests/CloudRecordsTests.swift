@@ -11,7 +11,7 @@ final class CloudRecordsTests: XCTestCase {
 
     private func snapshot(bookings: [CloudStore.Booking]? = nil) -> CloudStore.Snapshot {
         var entry = ShadowEntry(classKey: "bodypump-tue", className: "BODYPUMP", occurrenceId: 308671,
-                                occursAt: occursAt, openAt: occursAt.addingTimeInterval(-167 * 3600), paused: false)
+                                occursAt: occursAt, openAt: occursAt.addingTimeInterval(-167 * 3600), away: false)
         entry.fullGroupAt = entry.openAt.addingTimeInterval(42)
         entry.capacity = 41
         var log = ShadowEntry.BookingLog()
@@ -22,8 +22,8 @@ final class CloudRecordsTests: XCTestCase {
         entry.booking = log
         return CloudStore.Snapshot(
             classes: [RecurringClass(key: "bodypump-tue", name: "BODYPUMP", weekday: "Tue", start: "09:00", locationIds: [1392])],
-            pauses: [Pause(start: "2026-11-23", end: "2026-11-27", except: nil, note: "Thanksgiving"),
-                     Pause(start: "2026-10-23", end: "2026-10-23", except: ["lift-hiit-fri"])],
+            awayRanges: [AwayRange(start: "2026-11-23", end: "2026-11-27", except: nil, note: "Thanksgiving"),
+                     AwayRange(start: "2026-10-23", end: "2026-10-23", except: ["lift-hiit-fri"])],
             swaps: [Swap(date: "2026-10-02", skip: "lift-hiit-fri", bookName: "BODYCOMBAT", bookStart: "09:50",
                          bookLocationIds: [1388], note: "try it"),
                     Swap(date: "2026-10-01", skip: "cycle-sculpt-thu")],
@@ -78,8 +78,8 @@ final class CloudRecordsTests: XCTestCase {
         XCTAssertEqual(c.locationIds, [1392])
     }
 
-    func testPausesRoundTrip() {
-        let ps = records(snapshot(), "Pause").compactMap(Cloud.Pause.init).sorted { $0.start < $1.start }
+    func testAwayRangesRoundTrip() {
+        let ps = records(snapshot(), "AwayRange").compactMap(Cloud.AwayRange.init).sorted { $0.start < $1.start }
         XCTAssertEqual(ps.count, 2)
         XCTAssertEqual(ps[0].start, "2026-10-23")
         XCTAssertEqual(ps[0].except, ["lift-hiit-fri"])
@@ -166,7 +166,7 @@ final class CloudRecordsTests: XCTestCase {
         old.id = UUID()
         s.log.append(ShadowEntry(classKey: old.classKey, className: old.className, occurrenceId: 1,
                                  occursAt: Date().addingTimeInterval(-200 * 86400),
-                                 openAt: Date().addingTimeInterval(-207 * 86400), paused: false))
+                                 openAt: Date().addingTimeInterval(-207 * 86400), away: false))
         XCTAssertEqual(records(s, "Opening").count, 1)
     }
 }

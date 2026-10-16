@@ -164,8 +164,8 @@ classes:
     location_ids: [1392]      # Southwest = 1392, Northwest = 1388
 ```
 
-- **`pauses.yml`**: dates to skip, optionally keeping specific classes
-  ([example](pauses.example.yml)).
+- **`away.yml`**: dates to skip, optionally keeping specific classes
+  ([example](away.example.yml)).
 - **`swaps.yml`**: on one date, take a different class instead of a recurring one
   ([example](swaps.example.yml)). Your original class is only cancelled once the
   replacement is actually booked.

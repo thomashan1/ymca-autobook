@@ -67,7 +67,8 @@ struct BookView: View {
 
     @ViewBuilder private var header: some View {
         Section {
-            ChipRow(scrollTo: day) {
+            ChipRow {
+                MenuChip(options: dayOptions, selection: $day, active: day != nil)
                 MenuChip(options: [(0, "Both branches"), (1392, "Southwest"), (1388, "Northwest")],
                          selection: $branch, active: branch != 0)
                 Chip(title: "Mine", systemImage: "person.fill", selected: onlyMine) { onlyMine.toggle() }
@@ -77,12 +78,6 @@ struct BookView: View {
                          selection: $until, active: until >= 0)
                 Chip(title: "Hide pool", systemImage: "drop.fill", selected: hidePool) { hidePool.toggle() }
                 Chip(title: "Hide paid", systemImage: "dollarsign.circle", selected: hidePaid) { hidePaid.toggle() }
-                Divider().frame(height: 20)
-                Chip(title: "All days", selected: day == nil) { day = nil }
-                ForEach(days, id: \.self) { d in
-                    Chip(title: d.formatted(.dateTime.weekday(.abbreviated).day()), selected: day == d) { day = d }
-                        .id(d)
-                }
             }
         }
         if (cloud.mac?.looksDown ?? false) || cloud.schedule == nil {
@@ -174,6 +169,13 @@ struct BookView: View {
     /// Days with any class matching the other filters (the chips).
     private var days: [Date] {
         Array(Set(filtered.map { Self.cal.startOfDay(for: $0.occursAt) })).sorted()
+    }
+
+    /// The day dropdown: every day with a matching class, plus the chosen one
+    /// even if the other filters have just emptied it, so its label stays.
+    private var dayOptions: [(Date?, String)] {
+        let list = day.map { d in days.contains(d) ? days : (days + [d]).sorted() } ?? days
+        return [(nil, "All days")] + list.map { ($0, $0.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())) }
     }
 
     private var shownDays: [Date] { day.map { d in days.filter { $0 == d } } ?? days }

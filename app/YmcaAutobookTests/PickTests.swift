@@ -127,6 +127,11 @@ final class PickTests: XCTestCase {
         XCTAssertTrue(keeps(item("RPM", 11, 20), from: 510, until: 720))
         XCTAssertFalse(keeps(item("RPM", 12), from: 510, until: 720))
         XCTAssertTrue(keeps(item("RPM", 18), from: 510))
+        XCTAssertFalse(ClassFilter.matches(item("$ Les Mills Strength Development", 10), hidePool: false, hidePaid: true,
+                                           from: -1, until: -1, calendar: cal))
+        XCTAssertTrue(ClassFilter.matches(item("$ Karate", 10), hidePool: false, from: -1, until: -1, calendar: cal))
+        XCTAssertTrue(ClassFilter.matches(item("BODYPUMP", 10), hidePool: false, hidePaid: true,
+                                          from: -1, until: -1, calendar: cal))
         XCTAssertEqual(ClassFilter.timeLabel(510), "8:30 AM")
         XCTAssertEqual(ClassFilter.timeLabel(720), "12 PM")
     }

@@ -11,6 +11,7 @@ struct MacBookView: View {
     @State private var branch = 0
     @State private var onlyMine = false
     @AppStorage("bookHidePool") private var hidePool = false
+    @AppStorage("bookHidePaid") private var hidePaid = false
     @AppStorage("bookFrom") private var from = -1
     @AppStorage("bookUntil") private var until = -1
     @State private var confirm: (ScheduleItem, Cloud.Request.Action)?
@@ -75,6 +76,8 @@ struct MacBookView: View {
             Toggle("Only mine", isOn: $onlyMine)
             Toggle("Hide pool", isOn: $hidePool)
                 .help("Hides swim, lap, aqua and other pool sessions")
+            Toggle("Hide paid", isOn: $hidePaid)
+                .help("Hides classes that cost extra (names starting with $)")
             Spacer()
             Button { Task { await engine.plan() } } label: { Image(systemName: "arrow.clockwise") }
                 .help("Reload from the YMCA")
@@ -125,7 +128,7 @@ struct MacBookView: View {
                 && (day == "All" || Pause.day(i.occursAt) == day)
                 && (branch == 0 || i.branchId == branch)
                 && (!onlyMine || isMine(i))
-                && ClassFilter.matches(i, hidePool: hidePool, from: from, until: until, calendar: Self.cal)
+                && ClassFilter.matches(i, hidePool: hidePool, hidePaid: hidePaid, from: from, until: until, calendar: Self.cal)
                 && (q.isEmpty || i.name.lowercased().contains(q) || i.room.lowercased().contains(q)
                     || i.trainer.lowercased().contains(q))
         }

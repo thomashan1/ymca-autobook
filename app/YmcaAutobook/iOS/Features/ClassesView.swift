@@ -41,6 +41,14 @@ struct ClassesView: View {
                     }
                 }
                 }
+                if !classes.classes.isEmpty {
+                    Section {
+                        WeeklyGrid(weekdays: weekdays, items: items(on:), endTime: snapshot.endTime(for:)) {
+                            detail = classDetail($0)
+                        }
+                        .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10))
+                    }
+                }
                 ForEach(weekdays, id: \.self) { day in
                     let dayItems = items(on: day)
                     if !dayItems.isEmpty {
@@ -119,6 +127,45 @@ struct ClassesView: View {
             }
             deleting = false
         }
+    }
+}
+
+/// The lineup as a Mon–Fri calendar, one column per day, like the Week tab's
+/// calendar but for the recurring classes rather than dated sessions.
+private struct WeeklyGrid: View {
+    let weekdays: [Weekday]
+    let items: (Weekday) -> [GymClass]
+    let endTime: (GymClass) -> String?
+    let onTap: (GymClass) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 5) {
+            ForEach(weekdays, id: \.self) { day in
+                VStack(spacing: 4) {
+                    Text(day.fullName.prefix(3)).font(.system(size: 11, weight: .bold))
+                    ForEach(items(day)) { c in
+                        Button { onTap(c) } label: { cell(c) }.buttonStyle(.plain)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+        }
+    }
+
+    private func cell(_ c: GymClass) -> some View {
+        let color = Theme.color(for: c.branch)
+        return VStack(alignment: .leading, spacing: 1) {
+            Text(c.start).font(.system(size: 10, weight: .bold)).monospacedDigit()
+            if let end = endTime(c) {
+                Text("–" + end).font(.system(size: 8)).foregroundStyle(.secondary).monospacedDigit()
+            }
+            Text(c.name).font(.system(size: 9)).lineLimit(3)
+            Text(c.branch.short).font(.system(size: 8, weight: .bold)).foregroundStyle(color)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(5)
+        .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+        .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(color.opacity(0.4), lineWidth: 1))
     }
 }
 

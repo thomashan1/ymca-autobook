@@ -244,3 +244,53 @@ extension Cloud.Request.Action {
         }
     }
 }
+
+/// Book-screen filters shared by the Mac and the iPhone.
+enum ClassFilter {
+    /// Pool sessions (lap swim, aqua classes, lessons…), which most people
+    /// browsing for a class want out of the way. Matched on the name and room
+    /// because the YMCA has no category field for them.
+    static func isPool(name: String, room: String) -> Bool {
+        let text = (name + " " + room).lowercased()
+        return ["swim", "aqua", "lap", "pool", "water"].contains { text.contains($0) }
+    }
+
+    /// Part of the day a class starts in, for the time filter.
+    enum DayPart: Int, CaseIterable, Identifiable {
+        case any, morning, afternoon, evening
+        var id: Int { rawValue }
+
+        var title: String {
+            switch self {
+            case .any: "Any time"
+            case .morning: "Morning"
+            case .afternoon: "Afternoon"
+            case .evening: "Evening"
+            }
+        }
+
+        /// Shown in the picker so the cut-offs aren't a guess.
+        var detail: String {
+            switch self {
+            case .any: "Any time"
+            case .morning: "Morning (before noon)"
+            case .afternoon: "Afternoon (noon–5 pm)"
+            case .evening: "Evening (5 pm on)"
+            }
+        }
+
+        func contains(hour: Int) -> Bool {
+            switch self {
+            case .any: true
+            case .morning: hour < 12
+            case .afternoon: (12..<17).contains(hour)
+            case .evening: hour >= 17
+            }
+        }
+    }
+
+    static func matches(_ i: ScheduleItem, hidePool: Bool, part: DayPart, calendar: Calendar) -> Bool {
+        (!hidePool || !isPool(name: i.name, room: i.room))
+            && part.contains(hour: calendar.component(.hour, from: i.occursAt))
+    }
+}

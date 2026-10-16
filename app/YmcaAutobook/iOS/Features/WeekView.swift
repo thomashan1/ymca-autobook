@@ -343,7 +343,9 @@ private struct GridCell: View {
                         .foregroundStyle(Theme.booked)
                 }
             }
-            Text(occ.name).font(.system(size: font)).lineLimit(3)
+            Text(occ.name).font(.system(size: font))
+                // One long word ("BODYBALANCE") shrinks rather than breaking mid-word.
+                .lineLimit(occ.name.contains(" ") ? 3 : 1).minimumScaleFactor(occ.name.contains(" ") ? 1 : 0.6)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(5)

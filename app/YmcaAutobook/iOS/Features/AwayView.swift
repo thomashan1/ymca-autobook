@@ -68,7 +68,7 @@ struct AwayView: View {
                 } header: {
                     Text("Upcoming away dates")
                 } footer: {
-                    Text(auth.isCloud ? "Kept on your Mac. Tap one to edit, swipe to delete; your Mac applies changes within a minute."
+                    Text(auth.looksCloud ? "Kept on your Mac. Tap one to edit, swipe to delete; your Mac applies changes within a minute."
                                       : "Synced to ymca-private/away.yml — tap to edit, swipe to delete.")
                 }
 
@@ -84,7 +84,7 @@ struct AwayView: View {
                     } header: {
                         Text("One-off swaps")
                     } footer: {
-                        Text(auth.isCloud ? "From your Mac."
+                        Text(auth.looksCloud ? "From your Mac."
                                           : "From ymca-private/swaps.yml. Booked by Actions — the original class is kept until its replacement is secured.")
                     }
                 }

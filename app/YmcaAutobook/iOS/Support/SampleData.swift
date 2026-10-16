@@ -15,28 +15,27 @@ enum SampleMode {
 }
 
 enum SampleData {
+    /// A made-up lineup (not the owner's: theirs is private), built from slots
+    /// FillStatsRepository's sample has stats for.
     static let classes: [GymClass] = [
-        GymClass(key: "core-mon", name: "Les Mills CORE", weekday: .mon, start: "09:45", locationIds: [1392], firstLive: nil),
-        GymClass(key: "vinyasa-yoga-mon", name: "Vinyasa Yoga", weekday: .mon, start: "10:15", locationIds: [1392], firstLive: nil),
-        GymClass(key: "lift-hiit-mon", name: "Lift & H.I.I.T.", weekday: .mon, start: "11:20", locationIds: [1392], firstLive: nil),
-        GymClass(key: "bodypump-tue", name: "BODYPUMP", weekday: .tue, start: "09:00", locationIds: [1392], firstLive: nil),
-        GymClass(key: "cycle-tue", name: "Cycle", weekday: .tue, start: "10:15", locationIds: [1392], firstLive: nil),
-        GymClass(key: "rpm-wed", name: "RPM", weekday: .wed, start: "09:30", locationIds: [1388], firstLive: nil),
-        GymClass(key: "core-wed", name: "Les Mills CORE", weekday: .wed, start: "10:30", locationIds: [1388], firstLive: nil),
-        GymClass(key: "bodypump-thu", name: "BODYPUMP", weekday: .thu, start: "09:00", locationIds: [1392], firstLive: nil),
-        GymClass(key: "cycle-sculpt-thu", name: "Cycle Sculpt", weekday: .thu, start: "10:15", locationIds: [1392], firstLive: nil),
-        GymClass(key: "core-fri", name: "Les Mills CORE", weekday: .fri, start: "09:45", locationIds: [1388], firstLive: nil),
-        GymClass(key: "lift-hiit-fri", name: "Lift & H.I.I.T.", weekday: .fri, start: "11:20", locationIds: [1392], firstLive: nil),
+        GymClass(key: "pilates-mon", name: "Pilates", weekday: .mon, start: "09:00", locationIds: [1392], firstLive: nil),
+        GymClass(key: "trx-mon", name: "TRX", weekday: .mon, start: "10:10", locationIds: [1388], firstLive: nil),
+        GymClass(key: "bodybalance-tue", name: "BODYBALANCE", weekday: .tue, start: "10:15", locationIds: [1392], firstLive: nil),
+        GymClass(key: "pilates-wed", name: "Pilates", weekday: .wed, start: "09:00", locationIds: [1392], firstLive: nil),
+        GymClass(key: "barre-wed", name: "Upbeat Barre", weekday: .wed, start: "09:50", locationIds: [1392], firstLive: nil),
+        GymClass(key: "trx-thu", name: "TRX", weekday: .thu, start: "10:10", locationIds: [1388], firstLive: nil),
+        GymClass(key: "bodybalance-thu", name: "BODYBALANCE", weekday: .thu, start: "10:15", locationIds: [1392], firstLive: nil),
+        GymClass(key: "boot-camp-fri", name: "Boot Camp", weekday: .fri, start: "09:00", locationIds: [1392], firstLive: nil),
+        GymClass(key: "barre-fri", name: "Upbeat Barre", weekday: .fri, start: "09:20", locationIds: [1388], firstLive: nil),
     ]
 
     /// name|weekday|start  ->  end time, for durations.
     static let ends: [String: String] = [
-        "Les Mills CORE|Mon|09:45": "10:15",
-        "Vinyasa Yoga|Mon|10:15": "11:15", "Lift & H.I.I.T.|Mon|11:20": "12:00",
-        "BODYPUMP|Tue|09:00": "10:00", "Cycle|Tue|10:15": "11:15",
-        "RPM|Wed|09:30": "10:20", "Les Mills CORE|Wed|10:30": "11:00",
-        "BODYPUMP|Thu|09:00": "10:00", "Cycle Sculpt|Thu|10:15": "11:15",
-        "Les Mills CORE|Fri|09:45": "10:15", "Lift & H.I.I.T.|Fri|11:20": "12:00",
+        "Pilates|Mon|09:00": "09:45", "TRX|Mon|10:10": "10:55",
+        "BODYBALANCE|Tue|10:15": "11:15",
+        "Pilates|Wed|09:00": "09:45", "Upbeat Barre|Wed|09:50": "10:45",
+        "TRX|Thu|10:10": "10:55", "BODYBALANCE|Thu|10:15": "11:15",
+        "Boot Camp|Fri|09:00": "10:00", "Upbeat Barre|Fri|09:20": "10:15",
     ]
 
     /// Booked classes, fictional instructors/rooms. Keyed [weekdayOffset from
@@ -46,25 +45,23 @@ enum SampleData {
     /// around, next week's classes have genuinely all been through their own booking
     /// window already, same as this data models.
     private static let mon: [(String, String, String, Int, String, String)] = [
-        ("09:45", "10:15", "Les Mills CORE", 1392, "Southwest – Rec Room", "Jordan A."),
-        ("10:15", "11:15", "Vinyasa Yoga", 1392, "Southwest – Studio 2", "Priya M."),
-        ("11:20", "12:00", "Lift & H.I.I.T.", 1392, "Southwest – Group Exercise Room", "Marcus D."),
+        ("09:00", "09:45", "Pilates", 1392, "Southwest – Studio 1", "Ana C."),
+        ("10:10", "10:55", "TRX", 1388, "Northwest – Rec Room", "Chris L."),
     ]
     private static let tue: [(String, String, String, Int, String, String)] = [
-        ("09:00", "10:00", "BODYPUMP", 1392, "Southwest – Group Exercise Room", "Gini B."),
-        ("10:15", "11:15", "Cycle", 1392, "Southwest – Rec Room", "Dana K."),
+        ("10:15", "11:15", "BODYBALANCE", 1392, "Southwest – Studio 2", "Priya M."),
     ]
     private static let wed: [(String, String, String, Int, String, String)] = [
-        ("09:30", "10:20", "RPM", 1388, "Northwest – Group Exercise Room", "Sam R."),
-        ("10:30", "11:00", "Les Mills CORE", 1388, "Northwest – Family Pavilion", "Jordan A."),
+        ("09:00", "09:45", "Pilates", 1392, "Southwest – Studio 1", "Ana C."),
+        ("09:50", "10:45", "Upbeat Barre", 1392, "Southwest – Studio 2", "Dana K."),
     ]
     private static let thu: [(String, String, String, Int, String, String)] = [
-        ("09:00", "10:00", "BODYPUMP", 1392, "Southwest – Group Exercise Room", "Sophia B."),
-        ("10:15", "11:15", "Cycle Sculpt", 1392, "Southwest – Group Exercise Room", "Nina T."),
+        ("10:10", "10:55", "TRX", 1388, "Northwest – Rec Room", "Chris L."),
+        ("10:15", "11:15", "BODYBALANCE", 1392, "Southwest – Studio 2", "Priya M."),
     ]
     private static let fri: [(String, String, String, Int, String, String)] = [
-        ("09:45", "10:15", "Les Mills CORE", 1388, "Northwest – Family Pavilion", "Eyal B."),
-        ("11:20", "12:00", "Lift & H.I.I.T.", 1392, "Southwest – Group Exercise Room", "Marcus D."),
+        ("09:00", "10:00", "Boot Camp", 1392, "Southwest – Group Exercise Room", "Theo W."),
+        ("09:20", "10:15", "Upbeat Barre", 1388, "Northwest – Studio 1", "Dana K."),
     ]
     static let weekBookings: [Int: [(String, String, String, Int, String, String)]] = [
         0: mon, 1: tue, 2: wed, 3: thu, 4: fri,
@@ -76,7 +73,7 @@ enum SampleData {
     /// upcoming to show.
     static let awayNotes: [(offsetFromThisMon: Int, days: Int, note: String, except: [String])] = [
         (14, 3, "Away Mon–Wed", []),
-        (17, 1, "Half day — keep morning class", ["cycle-sculpt-thu"]),
+        (17, 1, "Half day — keep morning class", ["trx-thu"]),
     ]
 
     /// One-off swaps, dated relative to this week's Monday so screenshots always
@@ -87,10 +84,10 @@ enum SampleData {
         let mon = CalendarHelper.currentMonday
         func day(_ offset: Int) -> Date { cal.date(byAdding: .day, value: offset, to: mon) ?? mon }
         return [
-            Swap(date: day(8), skipKey: "cycle-tue", bookName: "BODYCOMBAT",
+            Swap(date: day(8), skipKey: "bodybalance-tue", bookName: "BODYCOMBAT",
                  bookStart: "09:50", bookLocationIDs: [1388],
-                 note: "Northwest BODYCOMBAT instead of Cycle"),
-            Swap(date: day(15), skipKey: "cycle-tue", note: "dentist"),
+                 note: "Northwest BODYCOMBAT instead of BODYBALANCE"),
+            Swap(date: day(15), skipKey: "bodybalance-tue", note: "dentist"),
         ]
     }
 
@@ -104,26 +101,26 @@ enum SampleData {
         // weekday (1=Sun) | start | minutes | name | branch | room | instructor | lineup | popular
         let week: [(Int, String, Int, String, Int, String, String, Bool, Bool)] = [
             (2, "08:30", 45, "Zumba", 1388, "Group Exercise Room", "Lena V.", false, false),
-            (2, "09:45", 30, "Les Mills CORE", 1392, "Rec Room", "Jordan A.", true, false),
-            (2, "10:15", 60, "Vinyasa Yoga", 1392, "Studio 2", "Priya M.", true, true),
-            (2, "11:20", 40, "Lift & H.I.I.T.", 1392, "Group Exercise Room", "Marcus D.", true, false),
-            (2, "12:15", 45, "Pilates", 1388, "Studio 1", "Ana C.", false, false),
-            (3, "09:00", 60, "BODYPUMP", 1392, "Group Exercise Room", "Gini B.", true, true),
+            (2, "09:00", 45, "Pilates", 1392, "Studio 1", "Ana C.", true, false),
+            (2, "10:10", 45, "TRX", 1388, "Rec Room", "Chris L.", true, false),
+            (2, "11:30", 45, "Aqua Fit", 1388, "Pool", "Lena V.", false, false),
+            (2, "12:15", 45, "$ Strength Development", 1392, "Weight Room", "Theo W.", false, false),
+            (3, "09:00", 60, "BODYPUMP", 1392, "Group Exercise Room", "Jordan A.", false, true),
             (3, "09:50", 60, "BODYCOMBAT", 1388, "Group Exercise Room", "Sam R.", false, true),
-            (3, "10:15", 60, "Cycle", 1392, "Rec Room", "Dana K.", true, false),
-            (3, "11:30", 45, "Aqua Fit", 1388, "Pool", "Lena V.", false, false),
-            (4, "09:30", 50, "RPM", 1388, "Group Exercise Room", "Sam R.", true, true),
-            (4, "10:30", 30, "Les Mills CORE", 1388, "Family Pavilion", "Jordan A.", true, false),
+            (3, "10:15", 60, "BODYBALANCE", 1392, "Studio 2", "Priya M.", true, false),
+            (3, "17:30", 45, "Lap Swim", 1392, "Pool", "", false, false),
+            (4, "09:00", 45, "Pilates", 1392, "Studio 1", "Ana C.", true, false),
+            (4, "09:50", 55, "Upbeat Barre", 1392, "Studio 2", "Dana K.", true, false),
             (4, "10:30", 60, "Gentle Yoga", 1392, "Studio 2", "Priya M.", false, false),
-            (4, "12:00", 45, "TRX for Beginners", 1392, "Rec Room", "Marcus D.", false, false),
-            (5, "09:00", 60, "BODYPUMP", 1392, "Group Exercise Room", "Sophia B.", true, true),
-            (5, "09:15", 45, "Barre", 1388, "Studio 1", "Ana C.", false, false),
-            (5, "10:15", 60, "Cycle Sculpt", 1392, "Group Exercise Room", "Nina T.", true, true),
-            (5, "11:30", 60, "Vinyasa Yoga", 1388, "Studio 1", "Priya M.", false, false),
-            (6, "08:45", 60, "BODYCOMBAT", 1388, "Group Exercise Room", "Eyal B.", false, true),
-            (6, "09:45", 30, "Les Mills CORE", 1388, "Family Pavilion", "Eyal B.", true, false),
-            (6, "10:30", 45, "TRX for Beginners", 1392, "Rec Room", "Marcus D.", false, false),
-            (6, "11:20", 40, "Lift & H.I.I.T.", 1392, "Group Exercise Room", "Marcus D.", true, false),
+            (4, "18:00", 60, "Cycle", 1388, "Cycle Studio", "Sam R.", false, false),
+            (5, "09:00", 60, "BODYPUMP", 1392, "Group Exercise Room", "Jordan A.", false, true),
+            (5, "10:10", 45, "TRX", 1388, "Rec Room", "Chris L.", true, false),
+            (5, "10:15", 60, "BODYBALANCE", 1392, "Studio 2", "Priya M.", true, false),
+            (5, "11:30", 60, "Vinyasa Yoga", 1388, "Studio 1", "Nina T.", false, false),
+            (6, "08:45", 60, "BODYCOMBAT", 1388, "Group Exercise Room", "Sam R.", false, true),
+            (6, "09:00", 60, "Boot Camp", 1392, "Group Exercise Room", "Theo W.", true, false),
+            (6, "09:20", 55, "Upbeat Barre", 1388, "Studio 1", "Dana K.", true, false),
+            (6, "12:00", 45, "Aqua Fit", 1392, "Pool", "Lena V.", false, false),
             (7, "09:00", 60, "Zumba", 1392, "Group Exercise Room", "Lena V.", false, false),
         ]
         var out: [ScheduleItem] = []

@@ -57,15 +57,17 @@ dates to your private repo; GitHub books a class only if the Mac didn't get it w
 from your Mac (Option A) out of the box. For Option B, turn on **Settings → Advanced →
 Use GitHub instead**. It doesn't book anything itself. See [`app/README.md`](app/README.md).
 
-| This & Next Week | My Classes | Scheduled Jobs | Away Dates |
-|:---:|:---:|:---:|:---:|
-| <img src="app/screenshots/week.png" width="200"> | <img src="app/screenshots/classes.png" width="200"> | <img src="app/screenshots/jobs.png" width="200"> | <img src="app/screenshots/away.png" width="200"> |
+| Week | Classes | Book | Openings | Away |
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="app/screenshots/week.png" width="160"> | <img src="app/screenshots/classes.png" width="160"> | <img src="app/screenshots/book.png" width="160"> | <img src="app/screenshots/jobs.png" width="160"> | <img src="app/screenshots/away.png" width="160"> |
 
 - **Week**: two weeks of classes; green ✓ means actually booked.
-- **Classes**: your recurring lineup and how fast each class fills.
-- **Jobs**: countdowns to each booking window, the Mac's status and each booking
+- **Classes**: your weekly lineup as a calendar and a list, with how fast each class fills.
+- **Book**: every upcoming class at both branches. Book or cancel any one; filter by
+  day, branch, start time, and hide pool or paid classes.
+- **Openings**: countdowns to each booking window, the Mac's status and each booking
   result (with GitHub, a **Book now** swipe instead).
-- **Away**: away dates and one-off swaps.
+- **Away**: away dates (add, edit, delete) and one-off swaps.
 
 ### Fill speed
 
@@ -77,7 +79,7 @@ How long every class at both branches takes to fill once booking opens, over the
 last 12 weeks. BODYPUMP fills in ~37 seconds every week; most classes take hours or
 never fill.
 
-_Screenshots use sample data; the Fill speed numbers are real (10/10)._
+_Screenshots use a made-up lineup and sample data; the Fill speed numbers are real (10/10)._
 
 ## Option A: Mac + iPhone
 

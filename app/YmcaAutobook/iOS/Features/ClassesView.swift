@@ -31,7 +31,7 @@ struct ClassesView: View {
 
     private var content: some View {
             List {
-                if !auth.isCloud {
+                if !auth.looksCloud {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
                         Label("Edits here change classes.yml", systemImage: "doc.text.fill")
@@ -64,7 +64,7 @@ struct ClassesView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .swipeActions(edge: .trailing) {
-                                    if !auth.isCloud {
+                                    if !auth.looksCloud {
                                         Button(role: .destructive) {
                                             deleteTarget = c
                                         } label: {
@@ -76,7 +76,7 @@ struct ClassesView: View {
                         }
                     }
                 }
-                if auth.isCloud {
+                if auth.looksCloud {
                     Section {} footer: { Text("Your Mac's lineup. Change classes on the Mac.") }
                 }
             }
@@ -159,7 +159,9 @@ private struct WeeklyGrid: View {
             if let end = endTime(c) {
                 Text("–" + end).font(.system(size: 8)).foregroundStyle(.secondary).monospacedDigit()
             }
-            Text(c.name).font(.system(size: 9)).lineLimit(3)
+            Text(c.name).font(.system(size: 9))
+                // One long word ("BODYBALANCE") shrinks rather than breaking mid-word.
+                .lineLimit(c.name.contains(" ") ? 3 : 1).minimumScaleFactor(c.name.contains(" ") ? 1 : 0.6)
             Text(c.branch.short).font(.system(size: 8, weight: .bold)).foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

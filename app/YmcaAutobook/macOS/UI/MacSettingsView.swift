@@ -21,7 +21,6 @@ struct SettingsView: View {
 }
 
 private let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-private let branches = [(1392, "Southwest"), (1388, "Northwest")]
 
 // MARK: Classes
 
@@ -56,7 +55,7 @@ struct ClassesEditor: View {
                     TextField("Exact class name, e.g. BODYPUMP", text: $name)
                     Picker("", selection: $weekday) { ForEach(weekdays, id: \.self) { Text($0) } }.frame(width: 80)
                     DatePicker("", selection: $time, displayedComponents: .hourAndMinute).frame(width: 90)
-                    Picker("", selection: $branch) { ForEach(branches, id: \.0) { Text($0.1).tag($0.0) } }.frame(width: 120)
+                    Picker("", selection: $branch) { ForEach(Branch.all) { Text($0.name).tag($0.id) } }.frame(width: 150)
                     Button("Add") { add() }.disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 Text("Use the name exactly as the YMCA schedule shows it. A ⚠️ after adding means nothing on the schedule matched.")

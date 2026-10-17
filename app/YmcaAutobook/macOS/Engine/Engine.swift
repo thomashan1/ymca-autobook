@@ -476,7 +476,7 @@ final class Engine: ObservableObject {
         update(classes: classes.filter { !slot.isSame(as: $0) })
     }
 
-    /// Every weekly class slot at both branches, from the next two weeks of the
+    /// Every weekly class slot at every branch, from the next two weeks of the
     /// live schedule. Personal-training style one-person slots are dropped.
     func loadCatalog() async throws -> [CatalogSlot] {
         _ = try await FisikalClient.shared.ensureSession()
@@ -489,7 +489,7 @@ final class Engine: ObservableObject {
             return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
         }
         var groups: [String: (branch: Int, occs: [Occurrence])] = [:]
-        for branch in [1392, 1388] {
+        for branch in Branch.ids {
             // Two weeks covers each weekly slot twice; this week's sessions have
             // already opened for booking, so they carry fill-speed data.
             let occs = try await FisikalClient.shared.occurrences(
@@ -541,12 +541,22 @@ final class Engine: ObservableObject {
         history = Array(byId.values)
     }
 
-    /// One-time: the API still serves the past few weeks (status Completed), so
-    /// start with ~4 weeks of history instead of an empty table.
+    /// Branches whose past weeks are already in the fill history. Versions
+    /// before every branch was read kept a single flag for Southwest + Northwest.
+    private var backfilledBranches: Set<Int> {
+        get {
+            if let ids = UserDefaults.standard.array(forKey: "historyBackfilledBranches") as? [Int] { return Set(ids) }
+            return UserDefaults.standard.bool(forKey: "historyBackfilled") ? [1392, 1388] : []
+        }
+        set { UserDefaults.standard.set(newValue.sorted(), forKey: "historyBackfilledBranches") }
+    }
+
+    /// Once per branch: the API still serves the past few weeks (status
+    /// Completed), so start with ~4 weeks of history instead of an empty table.
     private func backfillHistory() async {
         status = "Backfilling 4 weeks of class history…"
         let now = Date()
-        for branch in [1392, 1388] {
+        for branch in Branch.ids where !backfilledBranches.contains(branch) {
             for week in 1...4 {
                 let till = now.addingTimeInterval(-Double(week - 1) * 7 * 86400)
                 if let occs = try? await FisikalClient.shared.occurrences(
@@ -554,9 +564,9 @@ final class Engine: ObservableObject {
                     recordHistory(occs, branchId: branch)
                 }
             }
+            backfilledBranches.insert(branch)
         }
         Store.save(fillHistory: history)
-        UserDefaults.standard.set(true, forKey: "historyBackfilled")
     }
 
     /// Per weekly slot: how often it fills, how fast, waitlists, and — for your
@@ -669,10 +679,10 @@ final class Engine: ObservableObject {
             var joined: [CloudStore.Booking] = []
             var upcoming: [ScheduleItem] = []
             var byId: [Int: Occurrence] = [:]
-            if !UserDefaults.standard.bool(forKey: "historyBackfilled") { await backfillHistory() }
-            // Both branches every time, not just the ones in your lineup: the same
-            // fetch feeds fill history for every class.
-            for branch in [1392, 1388] {
+            if !Set(Branch.ids).isSubset(of: backfilledBranches) { await backfillHistory() }
+            // Every branch every time, not just the ones in your lineup: the same
+            // fetch feeds the Book screens and fill history for every class.
+            for branch in Branch.ids {
                 let occs = try await FisikalClient.shared.occurrences(
                     locationIds: [branch], since: now, till: now.addingTimeInterval(horizon))
                 recordHistory(occs, branchId: branch)

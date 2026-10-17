@@ -1,14 +1,6 @@
 #if os(iOS)
 import Foundation
 
-enum Branch: Int, Codable {
-    case southwest = 1392
-    case northwest = 1388
-
-    var short: String { self == .southwest ? "SW" : "NW" }
-    var name: String { self == .southwest ? "Southwest" : "Northwest" }
-}
-
 enum Weekday: String, Codable, CaseIterable, Comparable {
     case mon = "Mon", tue = "Tue", wed = "Wed", thu = "Thu", fri = "Fri"
     case sat = "Sat", sun = "Sun"
@@ -45,7 +37,7 @@ struct GymClass: Identifiable, Codable, Hashable {
     var firstLive: Date?
 
     var id: String { key }
-    var branch: Branch { Branch(rawValue: locationIds.first ?? 1392) ?? .southwest }
+    var branch: Branch { Branch(locationIds.first ?? 0) }
     var isTrial: Bool {
         guard let firstLive else { return false }
         return firstLive > Date()

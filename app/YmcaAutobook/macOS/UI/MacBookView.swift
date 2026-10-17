@@ -1,14 +1,14 @@
 #if os(macOS)
 import SwiftUI
 
-/// Every upcoming session at both branches, to book or cancel one at a time.
+/// Every upcoming session at every branch, to book or cancel one at a time.
 /// A session whose window is open is booked now; one that isn't yet is booked
 /// at the second it opens. Weekly-lineup sessions can be skipped.
 struct MacBookView: View {
     @ObservedObject var engine: Engine
     @State private var search = ""
     @State private var day: String = "All"
-    @State private var branch = 0
+    @AppStorage("bookBranches") private var branches = ""
     @State private var onlyMine = false
     @AppStorage("bookHidePool") private var hidePool = false
     @AppStorage("bookHidePaid") private var hidePaid = false
@@ -27,7 +27,7 @@ struct MacBookView: View {
                         .monospacedDigit()
                 }
                 .width(min: 150, ideal: 170)
-                TableColumn("Branch") { i in Text(Slot.branchName(i.branchId)) }.width(80)
+                TableColumn("Branch") { i in Text(Slot.branchName(i.branchId)) }.width(min: 80, ideal: 100)
                 TableColumn("Room") { i in Text(i.room).foregroundStyle(.secondary) }.width(min: 90, ideal: 130)
                 TableColumn("Instructor") { i in Text(i.trainer).foregroundStyle(.secondary) }.width(min: 80, ideal: 110)
                 TableColumn("Status") { i in status(i) }.width(min: 110, ideal: 170)
@@ -55,12 +55,7 @@ struct MacBookView: View {
                 ForEach(days, id: \.self) { d in Text(dayLabel(d)).tag(d) }
             }
             .frame(width: 130)
-            Picker("", selection: $branch) {
-                Text("Both branches").tag(0)
-                Text("Southwest").tag(1392)
-                Text("Northwest").tag(1388)
-            }
-            .frame(width: 130)
+            BranchesMenu(stored: $branches)
             Picker("", selection: $from) {
                 Text("From any time").tag(-1)
                 ForEach(ClassFilter.timeChoices, id: \.self) { Text("From \(ClassFilter.timeLabel($0))").tag($0) }
@@ -126,7 +121,7 @@ struct MacBookView: View {
         return (engine.schedule ?? []).filter { i in
             i.occursAt > Date()
                 && (day == "All" || AwayRange.day(i.occursAt) == day)
-                && (branch == 0 || i.branchId == branch)
+                && Branch.isShown(i.branchId, by: Branch.parse(branches))
                 && (!onlyMine || isMine(i))
                 && ClassFilter.matches(i, hidePool: hidePool, hidePaid: hidePaid, from: from, until: until, calendar: Self.cal)
                 && (q.isEmpty || i.name.lowercased().contains(q) || i.room.lowercased().contains(q)
@@ -155,6 +150,37 @@ struct MacBookView: View {
         f.timeZone = FisikalClient.zone
         f.dateFormat = "yyyy-MM-dd"
         return f.date(from: ymd).map { $0.formatted(.dateTime.weekday().month().day()) } ?? ymd
+    }
+}
+/// Pick any number of branches; none ticked means all of them. A popover of
+/// checkboxes rather than a menu, which on the Mac closes after every click.
+struct BranchesMenu: View {
+    /// Stored as "1392,1388"; empty means every branch.
+    @Binding var stored: String
+    @State private var open = false
+
+    var body: some View {
+        let chosen = Branch.parse(stored)
+        Button { open.toggle() } label: {
+            HStack(spacing: 4) {
+                Text(Branch.label(chosen)).lineLimit(1)
+                Image(systemName: "chevron.down").font(.caption2)
+            }
+            .frame(width: 160, alignment: .leading)
+        }
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("All branches", isOn: Binding(get: { chosen.isEmpty }, set: { _ in stored = "" }))
+                Divider()
+                ForEach(Branch.all) { b in
+                    Toggle(b.name, isOn: Binding(
+                        get: { chosen.contains(b.id) },
+                        set: { _ in stored = Branch.store(Branch.toggled(b.id, in: chosen)) }))
+                }
+            }
+            .toggleStyle(.checkbox)
+            .padding(12)
+        }
     }
 }
 #endif

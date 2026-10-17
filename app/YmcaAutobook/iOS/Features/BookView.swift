@@ -1,7 +1,7 @@
 #if os(iOS)
 import SwiftUI
 
-/// Every upcoming session at both branches, to book or cancel one at a time.
+/// Every upcoming session at every branch, to book or cancel one at a time.
 /// The iPhone doesn't talk to the YMCA itself: each tap is a request the Mac
 /// picks up within about half a minute, and books right away if the window is
 /// open, otherwise at the second it opens.
@@ -12,7 +12,7 @@ struct BookView: View {
     /// its own and no Done button.
     var embedded = false
     @State private var search = ""
-    @State private var branch = 0
+    @AppStorage("bookBranches") private var branches = ""
     /// nil = every day.
     @State private var day: Date?
     /// Screenshots: start filtered to the Nth day (`-screenshotBookDay N`).
@@ -30,11 +30,14 @@ struct BookView: View {
     }
 
     private var content: some View {
-            List {
-                header
-                ForEach(shownDays, id: \.self) { day in
+            // Filter once per redraw: every branch is thousands of classes.
+            let byDay = Dictionary(grouping: filtered) { Self.cal.startOfDay(for: $0.occursAt) }
+            let days = byDay.keys.sorted()
+            return List {
+                header(days: days)
+                ForEach(day.map { d in days.filter { $0 == d } } ?? days, id: \.self) { day in
                     Section(day.formatted(.dateTime.weekday(.wide).month().day())) {
-                        ForEach(items(on: day)) { row($0) }
+                        ForEach(byDay[day] ?? []) { row($0) }
                     }
                 }
                 Section {} footer: {
@@ -47,6 +50,7 @@ struct BookView: View {
             .refreshable { await cloud.refresh() }
             .task {
                 await cloud.ensureFresh()
+                let days = Set(filtered.map { Self.cal.startOfDay(for: $0.occursAt) }).sorted()
                 if let n = startDay, days.indices.contains(n) { day = days[n]; startDay = nil }
             }
             .toolbar {
@@ -65,12 +69,11 @@ struct BookView: View {
             } message: { Text(error ?? "") }
     }
 
-    @ViewBuilder private var header: some View {
+    @ViewBuilder private func header(days: [Date]) -> some View {
         Section {
             ChipRow {
-                MenuChip(options: dayOptions, selection: $day, active: day != nil)
-                MenuChip(options: [(0, "Both branches"), (1392, "Southwest"), (1388, "Northwest")],
-                         selection: $branch, active: branch != 0)
+                MenuChip(options: dayOptions(days), selection: $day, active: day != nil)
+                BranchesMenuChip(stored: $branches)
                 Chip(title: "Mine", systemImage: "person.fill", selected: onlyMine) { onlyMine.toggle() }
                 MenuChip(options: [(-1, "From any time")] + ClassFilter.timeChoices.map { ($0, "From \(ClassFilter.timeLabel($0))") },
                          selection: $from, active: from >= 0)
@@ -97,7 +100,7 @@ struct BookView: View {
 
     private func row(_ i: ScheduleItem) -> some View {
         let s = cloud.state(of: i)
-        let branch = Branch(rawValue: i.branchId) ?? .southwest
+        let branch = Branch(i.branchId)
         return HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
@@ -157,8 +160,9 @@ struct BookView: View {
     private var filtered: [ScheduleItem] {
         _ = cloud.version
         let q = search.lowercased().trimmingCharacters(in: .whitespaces)
+        let chosen = Branch.parse(branches)
         return (cloud.schedule ?? []).filter { i in
-            (branch == 0 || i.branchId == branch)
+            Branch.isShown(i.branchId, by: chosen)
                 && (!onlyMine || isMine(cloud.state(of: i)))
                 && ClassFilter.matches(i, hidePool: hidePool, hidePaid: hidePaid, from: from, until: until, calendar: Self.cal)
                 && (q.isEmpty || i.name.lowercased().contains(q) || i.room.lowercased().contains(q)
@@ -166,22 +170,12 @@ struct BookView: View {
         }
     }
 
-    /// Days with any class matching the other filters (the chips).
-    private var days: [Date] {
-        Array(Set(filtered.map { Self.cal.startOfDay(for: $0.occursAt) })).sorted()
-    }
-
-    /// The day dropdown: every day with a matching class, plus the chosen one
-    /// even if the other filters have just emptied it, so its label stays.
-    private var dayOptions: [(Date?, String)] {
+    /// The day dropdown: every day with a class matching the other filters
+    /// (the chips), plus the chosen one even if the other filters have just
+    /// emptied it, so its label stays.
+    private func dayOptions(_ days: [Date]) -> [(Date?, String)] {
         let list = day.map { d in days.contains(d) ? days : (days + [d]).sorted() } ?? days
         return [(nil, "All days")] + list.map { ($0, $0.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())) }
-    }
-
-    private var shownDays: [Date] { day.map { d in days.filter { $0 == d } } ?? days }
-
-    private func items(on day: Date) -> [ScheduleItem] {
-        filtered.filter { Self.cal.isDate($0.occursAt, inSameDayAs: day) }
     }
 
     private func isMine(_ s: SessionState) -> Bool { [.booked, .queued, .booking, .lineup, .skipped].contains(s) }

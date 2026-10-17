@@ -102,7 +102,7 @@ actor CloudStore {
         let toSave = wanted.values.filter { pushed[$0.name] != $0.hash }
         let toDelete = pushed.keys.filter {
             wanted[$0] == nil && (s.bookings != nil || !$0.hasPrefix("Booking."))
-                && (s.schedule != nil || $0 != Cloud.scheduleRecordName)
+                && (s.schedule != nil || !$0.hasPrefix(Cloud.schedulePrefix))
         }
 
         var saved = 0, deleted = 0
@@ -209,7 +209,8 @@ actor CloudStore {
     nonisolated func build(_ s: Snapshot) -> [Built] {
         var out: [Built] = []
         func add(_ type: String, _ name: String, _ fields: [String: CKRecordValue?]) {
-            let recordName = type == "Schedule" ? Cloud.scheduleRecordName : "\(type).\(Self.safe(name))"
+            // Schedule names are the plain branch id, which the phone also builds.
+            let recordName = type == "Schedule" ? Cloud.schedulePrefix + name : "\(type).\(Self.safe(name))"
             let rec = CKRecord(recordType: type, recordID: CKRecord.ID(recordName: recordName, zoneID: zoneID))
             var digest = type
             for (k, v) in fields.sorted(by: { $0.key < $1.key }) {
@@ -293,7 +294,9 @@ actor CloudStore {
             add("Skip", "\(p.occurrenceId)", Cloud.fields(p))
         }
         if let items = s.schedule {
-            add("Schedule", "current", ["items": Cloud.encodeSchedule(items) as NSString])
+            for (branch, part) in Dictionary(grouping: items, by: \.branchId) {
+                add("Schedule", "\(branch)", ["items": Cloud.encodeSchedule(part) as NSString])
+            }
         }
         let m = s.status
         add("MacStatus", "current", [

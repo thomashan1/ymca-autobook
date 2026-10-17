@@ -20,8 +20,8 @@ enum RepoMirror {
 
             timezone: \(timeZone)
 
-            # Branches --list / browse query: Southwest = 1392, Northwest = 1388.
-            list_location_ids: [1392, 1388]
+            # Branches --list / browse query: every YMCA of Silicon Valley branch.
+            list_location_ids: [\(Branch.ids.map(String.init).joined(separator: ", "))]
 
             classes:
             """

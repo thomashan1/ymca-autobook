@@ -72,7 +72,7 @@ struct ClassDetailSheet: View {
 
     private func detailRow(_ icon: String, _ label: String, _ value: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 16) {
-            Image(systemName: icon).font(.title3).foregroundStyle(Theme.southwest).frame(width: 28)
+            Image(systemName: icon).font(.title3).foregroundStyle(Theme.color(for: detail.branch)).frame(width: 28)
             VStack(alignment: .leading, spacing: 2) {
                 Text(label.uppercased()).font(.caption.weight(.bold)).foregroundStyle(.secondary)
                 Text(value).font(.title3).fixedSize(horizontal: false, vertical: true)

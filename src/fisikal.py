@@ -58,6 +58,16 @@ def list_occurrences(context: HttpContext, csrf: str,
     return resp.json().get("data", [])
 
 
+def list_each_branch(context: HttpContext, csrf: str, since: datetime, till: datetime,
+                     location_ids: list[int]) -> list[dict]:
+    """list_occurrences one branch at a time: nine ordinary requests rather
+    than one nine-branch request big enough to time out."""
+    out: list[dict] = []
+    for lid in location_ids:
+        out += list_occurrences(context, csrf, since, till, location_ids=[lid])
+    return out
+
+
 def find_matches(occs: list[dict], name: str, weekday: str, start_hhmm: str,
                  tz: str, sub_location: str | None = None,
                  trainer: str | None = None) -> list[dict]:

@@ -26,11 +26,14 @@ final class AuthStore: ObservableObject {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         KeychainStore.save(token: trimmed)
+        // A new token may be another account's: look its owner up again.
+        UserDefaults.standard.removeObject(forKey: Config.ownerKey)
         hasToken = true
     }
 
     func signOut() {
         KeychainStore.clear()
+        UserDefaults.standard.removeObject(forKey: Config.ownerKey)
         hasToken = false
     }
 

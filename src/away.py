@@ -1,7 +1,7 @@
 """Away dates (away ranges), fetched from a PRIVATE repo at runtime.
 
 Personal away-dates must never live in this public repo, so they're kept in a
-separate private repo (default: thomashan1/ymca-private) as a small away.yml:
+separate private repo (default: ymca-private under your own account) as a small away.yml:
 
     # inclusive start..end, local schedule timezone; resume = day after `end`
     away:
@@ -32,6 +32,8 @@ from typing import NamedTuple
 import httpx
 import yaml
 
+from . import private_repo
+
 
 class AwayRange(NamedTuple):
     """An inclusive away-window. `except_keys` are class keys still booked anyway."""
@@ -40,7 +42,7 @@ class AwayRange(NamedTuple):
     except_keys: frozenset[str] = frozenset()
 
 # The private file's location. Overridable via env (handy for tests).
-PRIVATE_REPO = os.environ.get("PRIVATE_REPO", "thomashan1/ymca-private")
+PRIVATE_REPO = private_repo.default()
 AWAY_PATH = os.environ.get("AWAY_PATH", "away.yml")
 PRIVATE_REF = os.environ.get("PRIVATE_REF", "main")
 

@@ -10,11 +10,13 @@
 #   name         - exact class title as shown on the schedule (service_title)
 #   weekday      - Mon Tue Wed Thu Fri Sat Sun
 #   start        - LOCAL start time "HH:MM" (timezone below)
-#   location_ids - branch id(s) to query; without it the API only returns your
-#                  home branch.  Find your branch ids by running --list and noting
-#                  which occurrences come back.
+#   location_ids - the branch, by id:
+#                    1384 Central         1385 El Camino     1386 Lewis and Joan Platt
+#                    1387 East Valley     1388 Northwest     1389 Palo Alto
+#                    1390 Sequoia         1391 South Valley  1392 Southwest
+#                  (also in src/branches.py)
 #
-# To stop booking a class: delete its entry, then re-run scripts/gen_workflow.py.
+# To stop booking a class: delete its entry (and its cron-job.org jobs).
 
 timezone: America/Los_Angeles
 
@@ -23,16 +25,16 @@ classes:
     name: "Vinyasa Yoga"
     weekday: Mon
     start: "09:00"
-    location_ids: [1234]
+    location_ids: [1392]
 
   - key: hiit-wed
     name: "H.I.I.T."
     weekday: Wed
     start: "10:00"
-    location_ids: [1234]
+    location_ids: [1392]
 
   - key: cycle-fri
     name: "Cycle"
     weekday: Fri
     start: "08:30"
-    location_ids: [5678]
+    location_ids: [1389]

@@ -7,7 +7,10 @@ import Foundation
 enum Config {
     static let apiBase = URL(string: "https://api.github.com")!
 
-    static let owner = "thomashan1"
+    /// The GitHub account that owns both repos: the token's own, looked up
+    /// when the token is checked (`GitHubClient.resolvedOwner`).
+    static var owner: String? { UserDefaults.standard.string(forKey: ownerKey) }
+    static let ownerKey = "githubOwner"
     static let publicRepo = "ymca-autobook"
     static let privateRepo = "ymca-private"
 

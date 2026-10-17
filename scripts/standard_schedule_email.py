@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import email_theme               # noqa: E402
 from src import private_store             # noqa: E402
+from src import branches                  # noqa: E402
 from src.main import load_config          # noqa: E402
 from src.notify_email import send_email   # noqa: E402
 
@@ -69,7 +70,7 @@ def _rows(cfg: dict, durations: dict[tuple, int]) -> list[dict]:
         h, m = (int(x) for x in c["start"].split(":"))
         start_min = h * 60 + m
         loc_ids = c.get("location_ids") or []
-        location = "Southwest" if 1392 in loc_ids else ("Northwest" if 1388 in loc_ids else "?")
+        location = branches.name(loc_ids[0] if loc_ids else None)
         key = (c["weekday"], c["start"], c["name"].strip().lower())
         rows.append({
             "dow": dow, "start_min": start_min, "duration": durations.get(key, 60),

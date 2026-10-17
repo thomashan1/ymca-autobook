@@ -28,9 +28,9 @@ struct GitHubClient {
     /// Verify the stored token by hitting an endpoint that only needs a valid
     /// credential. Returns nil on success, or a human-readable reason.
     func validateToken() async -> String? {
-        let url = baseURL.appending(path: "/user")
         do {
-            _ = try await send(url, method: "GET", json: nil)
+            UserDefaults.standard.removeObject(forKey: Config.ownerKey)
+            _ = try await resolvedOwner()
             return nil
         } catch GitHubError.notAuthenticated {
             return "No token stored."
@@ -43,6 +43,16 @@ struct GitHubClient {
         } catch {
             return "Couldn't reach GitHub: \(error.localizedDescription)"
         }
+    }
+
+    /// The token's own GitHub account, which owns both repos. Asked of GitHub
+    /// once and remembered, so nobody's account name is built into the app.
+    func resolvedOwner() async throws -> String {
+        if let owner = Config.owner { return owner }
+        struct User: Decodable { let login: String }
+        let user: User = try await get(baseURL.appending(path: "/user"))
+        UserDefaults.standard.set(user.login, forKey: Config.ownerKey)
+        return user.login
     }
 
     // MARK: Contents API
@@ -59,7 +69,8 @@ struct GitHubClient {
 
     /// Read a file's raw text + blob sha (sha needed to write it back).
     func readFile(repo: String, path: String) async throws -> (text: String, sha: String) {
-        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/contents/\(path)")
+        let owner = try await resolvedOwner()
+        let url = baseURL.appending(path: "/repos/\(owner)/\(repo)/contents/\(path)")
         let file: FileContents = try await get(url)
         guard let text = file.decoded else { throw GitHubError.decode }
         return (text, file.sha)
@@ -69,7 +80,8 @@ struct GitHubClient {
     /// Pass `branch` to commit somewhere other than the default branch.
     func writeFile(repo: String, path: String, text: String, message: String,
                    sha: String, branch: String? = nil) async throws {
-        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/contents/\(path)")
+        let owner = try await resolvedOwner()
+        let url = baseURL.appending(path: "/repos/\(owner)/\(repo)/contents/\(path)")
         var body: [String: Any] = [
             "message": message,
             "content": Data(text.utf8).base64EncodedString(),
@@ -85,14 +97,16 @@ struct GitHubClient {
 
     /// Current head commit sha of a branch.
     func headSha(repo: String = Config.publicRepo, branch: String = "main") async throws -> String {
-        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/git/ref/heads/\(branch)")
+        let owner = try await resolvedOwner()
+        let url = baseURL.appending(path: "/repos/\(owner)/\(repo)/git/ref/heads/\(branch)")
         let ref: Ref = try await get(url)
         return ref.object.sha
     }
 
     /// Create a new branch at `fromSha`.
     func createBranch(_ name: String, fromSha: String, repo: String = Config.publicRepo) async throws {
-        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/git/refs")
+        let owner = try await resolvedOwner()
+        let url = baseURL.appending(path: "/repos/\(owner)/\(repo)/git/refs")
         _ = try await send(url, method: "POST", json: ["ref": "refs/heads/\(name)", "sha": fromSha])
     }
 
@@ -100,7 +114,8 @@ struct GitHubClient {
 
     func createPR(title: String, head: String, base: String = "main",
                   body: String, repo: String = Config.publicRepo) async throws -> PullRequest {
-        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/pulls")
+        let owner = try await resolvedOwner()
+        let url = baseURL.appending(path: "/repos/\(owner)/\(repo)/pulls")
         let data = try await send(url, method: "POST",
                                   json: ["title": title, "head": head, "base": base, "body": body])
         guard let pr = try? JSONDecoder().decode(PullRequest.self, from: data) else { throw GitHubError.decode }
@@ -109,7 +124,8 @@ struct GitHubClient {
 
     /// Merge a PR immediately (works when no required checks block it).
     func mergePR(number: Int, repo: String = Config.publicRepo) async throws {
-        let url = baseURL.appending(path: "/repos/\(Config.owner)/\(repo)/pulls/\(number)/merge")
+        let owner = try await resolvedOwner()
+        let url = baseURL.appending(path: "/repos/\(owner)/\(repo)/pulls/\(number)/merge")
         _ = try await send(url, method: "PUT", json: ["merge_method": "squash"])
     }
 
@@ -126,8 +142,9 @@ struct GitHubClient {
 
     /// Fire `book.yml` for a one-off booking of a specific class key.
     func dispatchBook(classKey: String, ref: String = "main") async throws {
+        let owner = try await resolvedOwner()
         let url = baseURL.appending(
-            path: "/repos/\(Config.owner)/\(Config.publicRepo)/actions/workflows/\(Config.bookWorkflow)/dispatches")
+            path: "/repos/\(owner)/\(Config.publicRepo)/actions/workflows/\(Config.bookWorkflow)/dispatches")
         let body: [String: Any] = ["ref": ref, "inputs": ["class_key": classKey]]
         _ = try await send(url, method: "POST", json: body)
     }
@@ -135,8 +152,9 @@ struct GitHubClient {
     /// Ask the bookings snapshot to run now instead of waiting for its 6h cron.
     /// Books nothing — it only re-reads Fisikal and republishes bookings.json.
     func dispatchBookingsSnapshot(ref: String = "main") async throws {
+        let owner = try await resolvedOwner()
         let url = baseURL.appending(
-            path: "/repos/\(Config.owner)/\(Config.publicRepo)/actions/workflows/\(Config.bookingsSnapshotWorkflow)/dispatches")
+            path: "/repos/\(owner)/\(Config.publicRepo)/actions/workflows/\(Config.bookingsSnapshotWorkflow)/dispatches")
         _ = try await send(url, method: "POST", json: ["ref": ref])
     }
 
@@ -151,8 +169,9 @@ struct GitHubClient {
 
     /// Recent workflow runs, newest first — feeds the Jobs "recent" section.
     func recentRuns(perPage: Int = 20) async throws -> [Run] {
+        let owner = try await resolvedOwner()
         let url = baseURL
-            .appending(path: "/repos/\(Config.owner)/\(Config.publicRepo)/actions/runs")
+            .appending(path: "/repos/\(owner)/\(Config.publicRepo)/actions/runs")
             .appending(queryItems: [.init(name: "per_page", value: String(perPage))])
         let list: RunList = try await get(url)
         return list.workflow_runs

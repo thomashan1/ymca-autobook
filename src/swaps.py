@@ -2,7 +2,7 @@
 
 A swap is a single-date exception to classes.yml: on one specific date you want to
 miss a recurring class and take a different one instead. Like away dates, the dates
-are personal, so the file lives in the private repo (default thomashan1/ymca-private)
+are personal, so the file lives in the private repo (default: ymca-private under your own account)
 as swaps.yml:
 
     swaps:
@@ -11,7 +11,7 @@ as swaps.yml:
         book:                     # matched exactly like a classes.yml entry
           name: "BODYCOMBAT"
           start: "09:50"
-          location_ids: [1388]    # Southwest=1392, Northwest=1388
+          location_ids: [1388]    # branch ids: see src/branches.py
         note: "trying the Northwest instructor"
 
 `skip` and `book` are each optional, so a swap can also express "just skip this
@@ -43,6 +43,8 @@ from typing import NamedTuple
 
 import httpx
 import yaml
+
+from . import private_repo
 
 
 class Swap(NamedTuple):
@@ -89,7 +91,7 @@ class Swap(NamedTuple):
 
 
 # The private file's location. Overridable via env (handy for tests).
-SWAP_REPO = os.environ.get("SWAP_REPO", os.environ.get("PRIVATE_REPO", "thomashan1/ymca-private"))
+SWAP_REPO = os.environ.get("SWAP_REPO") or private_repo.default()
 SWAP_PATH = os.environ.get("SWAP_PATH", "swaps.yml")
 SWAP_REF = os.environ.get("SWAP_REF", "main")
 

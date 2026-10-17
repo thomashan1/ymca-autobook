@@ -1,7 +1,7 @@
 """Persist booked classes into a dedup ledger in the private repo.
 
 Runs every 12h. Logs into Fisikal, lists currently-joined occurrences, and
-merges them into bookings.json (in thomashan1/ymca-private), keyed by
+merges them into bookings.json (in the private repo), keyed by
 occurrence id:
 
   * new bookings get first_seen
@@ -27,11 +27,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import fisikal              # noqa: E402
 from src import private_store        # noqa: E402
+from src import branches             # noqa: E402
 from src.http_context import HttpContext  # noqa: E402
 from src.login import login          # noqa: E402
 from src.main import load_config     # noqa: E402
 
-_BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
+
 # Deliberately NOT bookings.json: that name belongs to snapshot_bookings.py,
 # which rewrites it every 6h as a flat list for the iOS app. Both scripts used
 # to default here, so the snapshot silently clobbered the ledger's dict and this
@@ -60,9 +61,9 @@ def run() -> int:
         try:
             _, csrf = login(context, user, pw)
             print("Logged in; csrf acquired.")
-            occs = fisikal.list_occurrences(
+            occs = fisikal.list_each_branch(
                 context, csrf, now - timedelta(hours=1), horizon_end,
-                location_ids=_BOTH_LOCATIONS,
+                location_ids=branches.ALL,
             )
         finally:
             context.close()

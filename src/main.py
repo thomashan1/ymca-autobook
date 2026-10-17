@@ -25,6 +25,7 @@ from . import fisikal
 from . import full_log
 from . import away
 from . import private_store
+from . import branches
 from . import swaps
 from .http_context import HttpContext
 from .login import login
@@ -112,7 +113,7 @@ _EXCLUDE_KEYWORDS = {
     "senior fitness", "craft club", "gym ventures",                                       # clubs/seniors
     "pickleball",                                                                          # group games
 }
-_BROWSE_BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
+
 _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
 
@@ -131,11 +132,11 @@ def collect_schedule(context, csrf, cfg,
     """
     zone = ZoneInfo(cfg["timezone"])
     now = datetime.now(timezone.utc)
-    occs = fisikal.list_occurrences(
+    occs = fisikal.list_each_branch(
         context, csrf,
         now - timedelta(hours=1),
         now + timedelta(days=LIST_WINDOW_DAYS),
-        location_ids=_BROWSE_BOTH_LOCATIONS,
+        location_ids=cfg.get("list_location_ids") or branches.ALL,
     )
 
     seen: set = set()
@@ -293,15 +294,17 @@ def refresh_lock_version(context, csrf, klass, target_id, target_occurs_at) -> i
 
 
 def find_occurrence(context, csrf, occurrence_id: int, horizon_days: int = 40) -> dict | None:
-    """Locate a specific occurrence by id, searching both branches."""
+    """Locate a specific occurrence by id, searching every branch (one at a
+    time, stopping at the one that has it)."""
     now = datetime.now(timezone.utc)
-    occs = fisikal.list_occurrences(
-        context, csrf, now - timedelta(hours=2), now + timedelta(days=horizon_days),
-        location_ids=_BROWSE_BOTH_LOCATIONS,
-    )
-    for o in occs:
-        if o["id"] == occurrence_id:
-            return o
+    for lid in branches.ALL:
+        occs = fisikal.list_occurrences(
+            context, csrf, now - timedelta(hours=2), now + timedelta(days=horizon_days),
+            location_ids=[lid],
+        )
+        for o in occs:
+            if o["id"] == occurrence_id:
+                return o
     return None
 
 

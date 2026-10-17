@@ -35,7 +35,7 @@
 #   1. Sign up at https://cron-job.org
 #   2. Console -> Settings -> API -> generate an API key
 #   3. GitHub -> Settings -> Developer settings -> Fine-grained tokens ->
-#      generate one scoped ONLY to thomashan1/ymca-autobook, permission
+#      generate one scoped ONLY to your copy of this repo, permission
 #      "Actions: Read and write" (nothing else)
 #
 # Usage (either works — CRONJOB_ORG_API_KEY/GITHUB_PAT can also just live in
@@ -67,7 +67,8 @@ else
   PYTHON="python3"
 fi
 
-REPO="thomashan1/ymca-autobook"
+# This repo on GitHub ("owner/name"): GITHUB_REPO, else read from the git remote.
+REPO="${GITHUB_REPO:-$(git -C "${HERE}/.." remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')}"
 DISPATCH_URL="https://api.github.com/repos/${REPO}/actions/workflows/book.yml/dispatches"
 CLASSES_YML="${HERE}/../classes.yml"
 CLASS_FILTER="${1:-}"

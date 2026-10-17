@@ -34,7 +34,7 @@ from src.main import load_config              # noqa: E402
 
 HISTORY_PATH = "fill_history.json"
 STATS_PATH = "fill_stats.json"
-BRANCHES = {1392: "Southwest", 1388: "Northwest"}
+from src.branches import BRANCHES             # noqa: E402
 KEEP_WEEKS = 26
 STATS_WEEKS = 12
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]

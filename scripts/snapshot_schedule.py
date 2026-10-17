@@ -3,7 +3,7 @@
 Runs periodically (see .github/workflows/schedule-snapshot.yml). Logs into
 Fisikal, browses Mon-Fri classes 8:30-15:00 at both branches (same filter as
 `python -m src.main --browse`: no fee/dance/swim/senior/pickleball), and
-overwrites schedule_snapshot.json in thomashan1/ymca-private with the result
+overwrites schedule_snapshot.json in the private repo with the result
 plus an `updated_at` timestamp — so the schedule can be read from the repo any
 time without a live login.
 

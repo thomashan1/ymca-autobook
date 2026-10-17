@@ -179,7 +179,7 @@ struct SettingsView: View {
         Section {
             step(1, "On github.com, open Settings → Developer settings → Personal access tokens → Fine-grained tokens.")
             step(2, "Tap “Generate new token”. Name it (e.g. “YMCA Autobook app”) and set an expiration.")
-            step(3, "Resource owner: \(Config.owner).")
+            step(3, "Resource owner: your own GitHub account (the one with both repos).")
             step(4, "Repository access → Only select repositories → choose both \(Config.publicRepo) and \(Config.privateRepo).")
             step(5, "Permissions → Repository permissions. Set all three of these — every one is Read and write, not Read-only:")
             ForEach(Self.tokenPermissions, id: \.self) { permissionRow($0) }

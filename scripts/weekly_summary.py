@@ -18,12 +18,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src import email_theme         # noqa: E402
 from src import fisikal              # noqa: E402
 from src import away                # noqa: E402
+from src import branches            # noqa: E402
 from src.http_context import HttpContext  # noqa: E402
 from src.login import login         # noqa: E402
 from src.main import load_config    # noqa: E402
 from src.notify_email import send_email  # noqa: E402
 
-_BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
+
 
 
 def _fmt_date_ranges(dates) -> str:
@@ -379,9 +380,9 @@ def run() -> int:
     with HttpContext() as context:
         try:
             _, csrf = login(context, user, pw)
-            occs = fisikal.list_occurrences(
+            occs = fisikal.list_each_branch(
                 context, csrf, win_start, win_end,
-                location_ids=_BOTH_LOCATIONS,
+                location_ids=branches.ALL,
             )
         finally:
             context.close()

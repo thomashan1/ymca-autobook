@@ -12,7 +12,9 @@ import os
 
 import httpx
 
-REPO = os.environ.get("PRIVATE_REPO", "thomashan1/ymca-private")
+from . import private_repo
+
+REPO = private_repo.default()
 REF = os.environ.get("PRIVATE_REF", "main")
 _API = "https://api.github.com"
 

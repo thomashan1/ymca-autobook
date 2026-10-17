@@ -4,7 +4,7 @@ private repo.
 Runs periodically (see .github/workflows/bookings-snapshot.yml). Logs into
 Fisikal, lists occurrences for the next 14 days at both branches, keeps the ones
 the member has actually joined (is_joined=True), and overwrites bookings.json in
-thomashan1/ymca-private with a dated list plus an `updated_at` timestamp.
+the private repo with a dated list plus an `updated_at` timestamp.
 
 This is the real "what I booked" source the iOS app reads — classes.yml only
 knows the recurring would-book schedule, and the schedule snapshot's join state
@@ -26,12 +26,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import fisikal                    # noqa: E402
 from src import private_store              # noqa: E402
+from src import branches                   # noqa: E402
 from src.http_context import HttpContext  # noqa: E402
 from src.login import login                # noqa: E402
 from src.main import load_config           # noqa: E402
 
 SNAPSHOT_PATH = os.environ.get("BOOKINGS_SNAPSHOT_PATH", "bookings.json")
-BOTH_LOCATIONS = [1392, 1388]  # Southwest + Northwest
+
 WINDOW_DAYS = 14
 
 
@@ -80,8 +81,8 @@ def run() -> int:
     with HttpContext() as context:
         try:
             _, csrf = login(context, user, pw)
-            occs = fisikal.list_occurrences(
-                context, csrf, win_start, win_end, location_ids=BOTH_LOCATIONS,
+            occs = fisikal.list_each_branch(
+                context, csrf, win_start, win_end, location_ids=branches.ALL,
             )
         finally:
             context.close()

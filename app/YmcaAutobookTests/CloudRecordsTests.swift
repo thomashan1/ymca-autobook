@@ -54,8 +54,16 @@ final class CloudRecordsTests: XCTestCase {
         XCTAssertEqual(records(s, "OneOff").compactMap(Cloud.pick), [p])
         XCTAssertEqual(records(s, "Skip").compactMap(Cloud.pick), [p])
         let sched = try XCTUnwrap(records(s, "Schedule").first)
-        XCTAssertEqual(sched.recordID.recordName, Cloud.scheduleRecordName)
+        XCTAssertEqual(sched.recordID.recordName, Cloud.scheduleRecordName(branch: 1388))
         XCTAssertEqual(Cloud.schedule(sched), [item])
+        // One record per branch, each holding only that branch's classes.
+        let other = ScheduleItem(id: 402, name: "Cycle", occursAt: occursAt, openAt: p.openAt, minutes: 45,
+                                 branchId: 1389, room: "", trainer: "", capacity: 30, full: false,
+                                 joined: false, autoBook: false)
+        s.schedule = [item, other]
+        let parts = records(s, "Schedule")
+        XCTAssertEqual(Set(parts.map(\.recordID.recordName)), ["Schedule.1388", "Schedule.1389"])
+        XCTAssertEqual(parts.first { $0.recordID.recordName == "Schedule.1389" }.flatMap(Cloud.schedule), [other])
         // No plan yet since launch: no Schedule record (and push keeps iCloud's copy).
         XCTAssertTrue(records(snapshot(), "Schedule").isEmpty)
     }

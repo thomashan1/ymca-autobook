@@ -20,7 +20,7 @@ final class BookingsRepository: ObservableObject {
         let room: String?
         let instructor: String?
 
-        var branch: Branch { Branch(rawValue: location_id ?? 1392) ?? .southwest }
+        var branch: Branch { Branch(location_id ?? 0) }
     }
     private struct Snapshot: Decodable { let updated_at: String?; let bookings: [Booking] }
 

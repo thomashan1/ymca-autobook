@@ -7,19 +7,13 @@ struct RecurringClass: Codable, Identifiable, Hashable, Sendable {
     let name: String
     let weekday: String      // "Mon" … "Sun"
     let start: String        // local "HH:mm"
-    let locationIds: [Int]   // branch: Southwest 1392, Northwest 1388
+    let locationIds: [Int]   // the branch, by Fisikal location id (see Branch)
     /// Extra GitHub trigger leads (minutes before the opening) for classes that
     /// fill in seconds; only carried through to classes.yml for the backup.
     var extraLeads: [Int]? = nil
     var id: String { key }
 
-    var branch: String {
-        switch locationIds.first {
-        case 1392: return "Southwest"
-        case 1388: return "Northwest"
-        default: return "?"
-        }
-    }
+    var branch: String { locationIds.first.map(Branch.name) ?? "?" }
 
     /// Same rule as the Python engine's find_matches: title (case-insensitive),
     /// local weekday and start time. Room and instructor are ignored on purpose.
@@ -110,7 +104,7 @@ struct CatalogSlot: Identifiable, Hashable, Sendable {
     let fastestFill: Double?
     let nextSession: Date
     var id: String { "\(name.lowercased())|\(weekday)|\(start)|\(branchId)" }
-    var branch: String { branchId == 1392 ? "Southwest" : branchId == 1388 ? "Northwest" : "?" }
+    var branch: String { Branch.name(branchId) }
     var hour: Int { Int(start.prefix(2)) ?? 0 }
 
     func isSame(as k: RecurringClass) -> Bool {
@@ -209,7 +203,7 @@ enum Slot {
     static func key(name: String, weekday: String, start: String, branchId: Int) -> String {
         "\(name.lowercased())|\(weekday)|\(start)|\(branchId)"
     }
-    static func branchName(_ id: Int) -> String { id == 1392 ? "Southwest" : id == 1388 ? "Northwest" : "?" }
+    static func branchName(_ id: Int) -> String { Branch.name(id) }
 }
 
 extension RecurringClass {

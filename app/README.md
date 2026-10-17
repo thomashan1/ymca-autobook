@@ -18,7 +18,7 @@ booking happens on the Mac.
 | Screen (iPhone/iPad) | Shows |
 |----------|----------------|
 | **Week**    | Two weeks of classes merged with your real bookings (room, instructor, end time) |
-| **Classes** | **Book**: every class at both branches for about two weeks, to book or cancel one at a time (iCloud mode only). **Weekly**: your recurring lineup. **Fill speed**: how fast every class at both branches fills once booking opens |
+| **Classes** | **Book**: every class at all nine branches for about two weeks, to book or cancel one at a time, filtered to any set of branches (iCloud mode only). **Weekly**: your recurring lineup. **Fill speed**: how fast every class at every branch fills once booking opens |
 | **Upcoming** | **Openings**: countdowns to each booking window, the Mac's status and each booking result. **Away**: away dates and one-off swaps |
 | **Settings** | Data source, the Mac's status, GitHub (advanced) |
 
@@ -39,7 +39,7 @@ what each session offers:
 
 The Mac does all the booking. The iPhone writes a `BookRequest` record to iCloud; the
 Mac reads the zone's change feed every 30 s, acts and deletes the request. The Mac
-publishes the upcoming schedule (one `Schedule.current` record, refreshed every plan),
+publishes the upcoming schedule (one `Schedule.<branch id>` record per branch, e.g. `Schedule.1392`, refreshed every plan; all nine branches in one record would come close to iCloud's 1 MB limit),
 its queue (`OneOff`) and skips (`Skip`). A result shows up as an `Opening` record, so it
 gets the same alert as a lineup booking. Cancelling a lineup session before its window
 opens also skips it, so the Mac doesn't book it back.

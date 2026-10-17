@@ -135,4 +135,22 @@ final class PickTests: XCTestCase {
         XCTAssertEqual(ClassFilter.timeLabel(510), "8:30 AM")
         XCTAssertEqual(ClassFilter.timeLabel(720), "12 PM")
     }
+
+    func testBranchFilter() {
+        XCTAssertEqual(Branch.parse(""), [])
+        XCTAssertEqual(Branch.label([]), "All branches")
+        // From "All branches" the first tick narrows to that one branch.
+        let sw = Branch.toggled(1392, in: [])
+        XCTAssertEqual(sw, [1392])
+        XCTAssertEqual(Branch.label(Branch.toggled(1388, in: sw)), "Northwest + Southwest")
+        XCTAssertEqual(Branch.label([1384, 1388, 1392]), "3 branches")
+        // Unticking the last one, or ticking all nine, is no filter at all.
+        XCTAssertEqual(Branch.store(Branch.toggled(1392, in: sw)), "")
+        XCTAssertEqual(Branch.store(Set(Branch.ids)), "")
+        XCTAssertEqual(Branch.parse(Branch.store([1392, 1388])), [1392, 1388])
+        XCTAssertTrue(Branch.isShown(1389, by: []))
+        XCTAssertFalse(Branch.isShown(1389, by: [1392]))
+        XCTAssertEqual(Branch(1389).short, "PA")
+        XCTAssertEqual(Branch(42).name, "Branch 42")
+    }
 }

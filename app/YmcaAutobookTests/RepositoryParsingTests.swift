@@ -25,7 +25,8 @@ final class ClassesParsingTests: XCTestCase {
         XCTAssertEqual(cs[0].name, "Les Mills CORE")
         XCTAssertEqual(cs[0].weekday, .mon)
         XCTAssertEqual(cs[1].locationIds, [1388])
-        XCTAssertEqual(cs[1].branch, .northwest)
+        XCTAssertEqual(cs[1].branch, Branch(1388))
+        XCTAssertEqual(cs[1].branch.name, "Northwest")
     }
 
     func testRemovingClassDropsOnlyThatBlock() throws {

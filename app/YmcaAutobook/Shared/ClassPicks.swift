@@ -64,9 +64,13 @@ extension Cloud {
                          room: (r["room"] as? String) ?? "", trainer: (r["trainer"] as? String) ?? "")
     }
 
-    // MARK: The upcoming schedule (written by the Mac, one record)
+    // MARK: The upcoming schedule (written by the Mac, one record per branch)
 
-    static let scheduleRecordName = "Schedule.current"
+    /// "Schedule.1392", one per branch: all nine branches in one record would
+    /// come close to iCloud's 1 MB record limit. (It was one "Schedule.current"
+    /// while the Mac read only two branches.)
+    static let schedulePrefix = "Schedule."
+    static func scheduleRecordName(branch: Int) -> String { schedulePrefix + "\(branch)" }
 
     static func encodeSchedule(_ items: [ScheduleItem]) -> String {
         let e = JSONEncoder()

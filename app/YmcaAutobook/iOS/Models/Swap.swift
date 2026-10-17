@@ -29,12 +29,7 @@ struct Swap: Identifiable, Hashable {
 
     /// Branch name for the replacement, matching the ids used in classes.yml.
     var bookBranch: String? {
-        guard let first = bookLocationIDs.first else { return nil }
-        switch first {
-        case 1392: return "Southwest"
-        case 1388: return "Northwest"
-        default: return nil
-        }
+        bookLocationIDs.first.map(Branch.name)
     }
 
     /// "Cycle → BODYCOMBAT 9:50", with an em dash standing in for a missing half.

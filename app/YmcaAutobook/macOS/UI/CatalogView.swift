@@ -1,7 +1,7 @@
 #if os(macOS)
 import SwiftUI
 
-/// The YMCA's live schedule for both branches, grouped into weekly slots, with
+/// The YMCA's live schedule for every branch, grouped into weekly slots, with
 /// filters and one-click add/remove. Slots already in your lineup are ticked.
 struct CatalogView: View {
     @ObservedObject var engine: Engine
@@ -10,7 +10,7 @@ struct CatalogView: View {
     @State private var error: String?
     @State private var search = ""
     @State private var day = "All"
-    @State private var branch = 0
+    @AppStorage("catalogBranches") private var branches = ""
     @State private var timeOfDay = "Any"
     @State private var onlyMine = false
 
@@ -71,11 +71,7 @@ struct CatalogView: View {
         HStack {
             TextField("Search classes, rooms, instructors", text: $search).textFieldStyle(.roundedBorder).frame(maxWidth: 240)
             Picker("", selection: $day) { ForEach(days, id: \.self) { Text($0) } }.frame(width: 80)
-            Picker("", selection: $branch) {
-                Text("Both branches").tag(0)
-                Text("Southwest").tag(1392)
-                Text("Northwest").tag(1388)
-            }.frame(width: 130)
+            BranchesMenu(stored: $branches)
             Picker("", selection: $timeOfDay) {
                 ForEach(["Any", "Morning", "Afternoon", "Evening"], id: \.self) { Text($0) }
             }.frame(width: 100)
@@ -90,7 +86,7 @@ struct CatalogView: View {
         let q = search.lowercased().trimmingCharacters(in: .whitespaces)
         return slots.filter { s in
             (day == "All" || s.weekday == day)
-                && (branch == 0 || s.branchId == branch)
+                && Branch.isShown(s.branchId, by: Branch.parse(branches))
                 && (!onlyMine || isMine(s))
                 && matchesTime(s)
                 && (q.isEmpty || s.name.lowercased().contains(q)

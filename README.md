@@ -63,8 +63,9 @@ Use GitHub instead**. It doesn't book anything itself. See [`app/README.md`](app
 
 - **Week**: two weeks of classes; green ✓ means actually booked.
 - **Classes**: your weekly lineup as a calendar and a list, with how fast each class fills.
-- **Book**: every upcoming class at both branches. Book or cancel any one; filter by
-  day, branch, start time, and hide pool or paid classes.
+- **Book**: every upcoming class at all nine YMCA of Silicon Valley branches. Book or
+  cancel any one; filter by day, branches (pick any number), start time, and hide pool
+  or paid classes.
 - **Openings**: countdowns to each booking window, the Mac's status and each booking
   result (with GitHub, a **Book now** swipe instead).
 - **Away**: away dates (add, edit, delete) and one-off swaps.
@@ -75,7 +76,7 @@ Use GitHub instead**. It doesn't book anything itself. See [`app/README.md`](app
 |:---:|:---:|
 | <img src="app/screenshots/fill-speed-mine.png" width="200"> | <img src="app/screenshots/fill-speed-fast.png" width="200"> |
 
-How long every class at both branches takes to fill once booking opens, over the
+How long every class at every branch takes to fill once booking opens, over the
 last 12 weeks. BODYPUMP fills in ~37 seconds every week; most classes take hours or
 never fill.
 

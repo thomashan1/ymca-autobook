@@ -142,7 +142,8 @@ final class CloudSource: ObservableObject {
         case "SlotStat": cache.stats[name] = Cloud.Slot(r)
         case "Booking": cache.bookings[name] = Cloud.Booking(r)
         case "MacStatus": cache.mac = MacStatus(r) ?? cache.mac
-        case "Schedule": cache.schedule = Cloud.schedule(r) ?? cache.schedule
+        case "Schedule":
+            if let part = Cloud.schedule(r) { cache.scheduleParts[name] = part; mergeSchedule() }
         case "OneOff": cache.picks[name] = Cloud.pick(r)
         case "Skip": cache.skips[name] = Cloud.pick(r)
         case Cloud.Request.recordType: cache.requests[name] = Cloud.Request(r)
@@ -156,7 +157,14 @@ final class CloudSource: ObservableObject {
         cache.openings[name] = nil; cache.stats[name] = nil; cache.bookings[name] = nil
         cache.picks[name] = nil; cache.skips[name] = nil; cache.requests[name] = nil
         cache.awayRequests[name] = nil
-        if name == Cloud.scheduleRecordName { cache.schedule = nil }
+        if cache.scheduleParts.removeValue(forKey: name) != nil { mergeSchedule() }
+    }
+
+    /// One list from the per-branch Schedule records, kept merged so the Book
+    /// screen doesn't re-sort thousands of classes on every redraw.
+    private func mergeSchedule() {
+        cache.schedule = cache.scheduleParts.isEmpty ? nil
+            : cache.scheduleParts.values.joined().sorted { ($0.occursAt, $0.id) < ($1.occursAt, $1.id) }
     }
 
     private static var cacheURL: URL {
@@ -233,7 +241,7 @@ final class CloudSource: ObservableObject {
             FillStatsRepository.Slot(
                 key: FillStatsRepository.key(name: s.name, weekday: s.weekday, start: s.start, branchId: s.branchId),
                 name: s.name, weekday: s.weekday, start: s.start, branch_id: s.branchId,
-                branch: Branch(rawValue: s.branchId)?.name ?? "Branch \(s.branchId)",
+                branch: Branch.name(s.branchId),
                 capacity: 0, weeks: s.weeks, filled: s.filledWeeks,
                 median_fill_s: s.medianFill, fastest_fill_s: s.fastestFill,
                 within_60s: s.filledWithinMinute, median_waitlist: s.medianWaitlist ?? 0)
@@ -293,7 +301,7 @@ final class CloudSource: ObservableObject {
 
     // MARK: Booking and cancelling, via the Mac
 
-    /// Every upcoming session the Mac last saw at both branches (nil before
+    /// Every upcoming session the Mac last saw at every branch (nil before
     /// a Mac that publishes it has run).
     var schedule: [ScheduleItem]? {
         if SampleMode.active { return SampleData.schedule }
@@ -386,6 +394,8 @@ final class CloudSource: ObservableObject {
         var bookings: [String: Cloud.Booking] = [:]
         var mac: Cloud.MacStatus?
         var schedule: [ScheduleItem]?
+        /// Record name -> that branch's classes.
+        var scheduleParts: [String: [ScheduleItem]] = [:]
         var picks: [String: ClassPick] = [:]
         var skips: [String: ClassPick] = [:]
         var requests: [String: Cloud.Request] = [:]

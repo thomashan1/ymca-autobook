@@ -54,6 +54,35 @@ struct MenuChip<T: Hashable>: View {
     }
 }
 
+/// A chip that opens a menu of branches to tick, any number of them. Stays
+/// open while ticking so choosing three branches is three taps, not three trips.
+struct BranchesMenuChip: View {
+    /// Stored as "1392,1388"; empty means every branch.
+    @Binding var stored: String
+
+    var body: some View {
+        let chosen = Branch.parse(stored)
+        Menu {
+            Button {
+                stored = ""
+            } label: {
+                if chosen.isEmpty { Label("All branches", systemImage: "checkmark") } else { Text("All branches") }
+            }
+            Divider()
+            ForEach(Branch.all) { b in
+                Toggle(b.name, isOn: Binding(
+                    get: { chosen.contains(b.id) },
+                    set: { _ in stored = Branch.store(Branch.toggled(b.id, in: chosen)) }))
+            }
+        } label: {
+            ChipLabel(title: Branch.label(chosen), systemImage: "chevron.down", trailingImage: true,
+                      selected: !chosen.isEmpty)
+        }
+        .menuActionDismissBehavior(.disabled)
+        .buttonStyle(.plain)
+    }
+}
+
 private struct ChipLabel: View {
     let title: String
     var systemImage: String? = nil

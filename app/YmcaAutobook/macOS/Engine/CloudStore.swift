@@ -259,6 +259,9 @@ actor CloudStore {
             f["capacity"] = e.capacity.map { NSNumber(value: $0) }
             // The full entry (every sample and attempt) for a detail view.
             f["detail"] = Self.json(e).map { $0 as NSString }
+            // The phone's alert collapses on this, so one booking is one banner
+            // even when iCloud delivers the push twice.
+            f["alertId"] = e.id.uuidString as NSString
             add("Opening", e.id.uuidString, f)
         }
         for st in s.stats {

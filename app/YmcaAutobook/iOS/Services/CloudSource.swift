@@ -368,6 +368,9 @@ final class CloudSource: ObservableObject {
         info.alertLocalizationKey = "OPENING_BODY"
         info.alertLocalizationArgs = ["verdict"]
         info.soundName = "default"
+        // One banner per booking: the iPhone and the iPad each save this
+        // subscription, and a booking on 10/19 arrived twice on the iPhone.
+        info.collapseIDKey = "alertId"
         sub.notificationInfo = info
         do {
             _ = try await database.modifySubscriptions(saving: [sub], deleting: [])

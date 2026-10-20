@@ -90,9 +90,18 @@ More on the app, its settings and how it's built: [`app/README.md`](app/README.m
 
 ## Installing
 
-There's no download yet ([#151](https://github.com/thomashan1/ymca-autobook/issues/151)).
-For now the app is built from this repo with Xcode, signed with your own Apple
-developer team (change the bundle id and iCloud container to yours).
+**iPhone / iPad (TestFlight):**
+1. Email **[thomashan@gmail.com](mailto:thomashan@gmail.com)** for an invite.
+2. Install Apple's **[TestFlight](https://apps.apple.com/app/testflight/id899247664)** app.
+3. Open the invite on your phone and tap **Install**. No Developer Mode needed.
+
+TestFlight builds last 90 days; a new one shows up in TestFlight before then.
+
+**Mac:** download the `.dmg` from [Releases](https://github.com/thomashan1/ymca-autobook/releases),
+open it and drag **YMCA Booker** to Applications.
+
+_Both are coming soon ([#151](https://github.com/thomashan1/ymca-autobook/issues/151)).
+Until then the app is built from this repo with Xcode._
 
 ## Not done yet
 

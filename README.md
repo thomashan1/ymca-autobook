@@ -32,15 +32,7 @@ that class isn't booked.
 
 ## How it works
 
-```mermaid
-flowchart LR
-    mac["`💻 YMCA Booker on your Mac
-wakes 90 s before · books at the second`"] --> ymca["🏋️ YMCA"]
-    mac --> icloud[("`☁️ your iCloud
-classes · away dates · bookings · results`")]
-    icloud --> phone["`📱 YMCA Booker on iPhone / iPad
-views · books · an alert per result`"]
-```
+**💻 Mac** books at the second → **☁️ your iCloud** holds your classes, away dates and results → **📱 iPhone / iPad** shows them and alerts you.
 
 The Mac plans every few hours, wakes just before each window, and books at the exact
 second. It publishes your lineup, away dates, bookings and results to your private

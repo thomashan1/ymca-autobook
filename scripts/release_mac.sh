@@ -63,7 +63,7 @@ xcrun stapler staple "$DMG"
 spctl -a -vv -t open --context context:primary-signature "$DMG"
 
 if [ "${PUBLISH:-1}" = 1 ]; then
-  gh release create "v$VERSION" "$DMG" --repo "$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')" \
+  gh release create "v$VERSION-$BUILD" "$DMG" --target "$(git -C "$HERE" rev-parse HEAD)" --repo "$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')" \
     --title "YMCA Booker $VERSION ($BUILD) for Mac" \
     --notes "Open the .dmg and drag **YMCA Booker** into Applications. Signed with Developer ID and notarized by Apple."
 fi

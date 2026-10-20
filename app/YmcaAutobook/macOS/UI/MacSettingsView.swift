@@ -13,7 +13,6 @@ struct SettingsView: View {
             StatsView(engine: engine).tabItem { Label("Stats", systemImage: "chart.bar") }
             MacAwayView(engine: engine).tabItem { Label("Away & swaps", systemImage: "airplane") }
             GeneralSettings(engine: engine).tabItem { Label("General", systemImage: "gearshape") }
-            AdvancedSettings(engine: engine).tabItem { Label("Advanced", systemImage: "gearshape.2") }
         }
         .padding()
         .frame(minWidth: 960, minHeight: 560)
@@ -287,6 +286,7 @@ struct GeneralSettings: View {
                 LabeledContent("Signed in as", value: engine.signedInAs ?? "—")
                 Button("Sign out", role: .destructive) { Task { await engine.signOut() } }
             }
+            GitHubBackupSection(engine: engine)
         }
         .formStyle(.grouped)
         .task {
@@ -298,12 +298,15 @@ struct GeneralSettings: View {
     }
 }
 
-// MARK: Advanced
+// MARK: GitHub backup
 
-/// The optional GitHub backup (Option B). Off by default: the Mac books on its
-/// own and syncs to the iPhone through iCloud, with no GitHub account needed.
-struct AdvancedSettings: View {
+/// The optional GitHub backup (Option B), folded away at the bottom of General
+/// since most people never use it. Off by default: the Mac books on its own and
+/// syncs to the iPhone through iCloud, with no GitHub account needed. It opens by
+/// itself when the backup is on, so its warnings stay in view.
+struct GitHubBackupSection: View {
     @ObservedObject var engine: Engine
+    @State private var expanded = RepoSync.isEnabled
     @State private var on = RepoSync.isEnabled
     @State private var token = ""
     @State private var repo = RepoSync.repo ?? ""
@@ -315,17 +318,15 @@ struct AdvancedSettings: View {
     }
 
     var body: some View {
-        Form {
-            Section {
+        Section {
+            DisclosureGroup("For technical users", isExpanded: $expanded) {
                 Toggle("Also keep a GitHub backup", isOn: $on)
                     .onChange(of: on) { _, enabled in
                         if !enabled { repo = ""; token = ""; engine.turnOffGitHub() }
                     }
                 Text("Not needed. YMCA Booker books from this Mac and shows everything on your iPhone and iPad through iCloud, without GitHub. Turn this on only if you also run the GitHub Actions booker (see the project README) as a backup for when the Mac is asleep or offline.")
                     .font(.caption).foregroundStyle(.secondary)
-            } header: { Text("GitHub backup") }
-            if on {
-                Section {
+                if on {
                     TextField("Private repo", text: $repo, prompt: Text("owner/repo"))
                         .onSubmit(save)
                     SecureField("Token", text: $token, prompt: Text(RepoSync.token == nil ? "Paste a token" : "Saved — paste to replace"))
@@ -342,7 +343,6 @@ struct AdvancedSettings: View {
                 }
             }
         }
-        .formStyle(.grouped)
     }
 }
 #endif

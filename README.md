@@ -91,7 +91,7 @@ More on the app, its settings and how it's built: [`app/README.md`](app/README.m
 ## Installing
 
 **iPhone / iPad (TestFlight):**
-1. Email **[thomashan@gmail.com](mailto:thomashan@gmail.com)** for an invite.
+1. Email **[thomashan@icloud.com](mailto:thomashan@icloud.com)** for an invite.
 2. Install Apple's **[TestFlight](https://apps.apple.com/app/testflight/id899247664)** app.
 3. Open the invite on your phone and tap **Install**. No Developer Mode needed.
 

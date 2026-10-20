@@ -242,4 +242,40 @@ final class LegacySettingsTests: XCTestCase {
         XCTAssertEqual(Cloud.AwayRequest(c.record())?.fromEnd, "2026-12-03")
     }
 }
+final class WeeklyRequestTests: XCTestCase {
+    private func request(_ a: Cloud.Request.Action, _ name: String, _ iso: String, branch: Int = 1392) throws -> Cloud.Request {
+        let at = try XCTUnwrap(ISO8601DateFormatter().date(from: iso))
+        return Cloud.Request(action: a, pick: ClassPick(occurrenceId: 9, name: name, occursAt: at,
+                                                        openAt: at.addingTimeInterval(-167 * 3600), branchId: branch))
+    }
+
+    func testAddAndDropWeeklyFromThePhone() throws {
+        let core = RecurringClass(key: "core-mon", name: "CORE", weekday: "Mon", start: "09:45", locationIds: [1392])
+        // Thu 10/29 18:15 UTC is 11:15 at the club, whatever zone the test runs in.
+        let add = try XCTUnwrap(WeeklyChange(request(.addWeekly, "Cycle Sculpt", "2026-10-29T18:15:00Z")))
+        XCTAssertEqual(add, WeeklyChange(try request(.addWeekly, "Cycle Sculpt", "2026-11-05T19:15:00Z")))  // PST, same slot
+        XCTAssertEqual(add.weekday, "Thu")
+        XCTAssertEqual(add.start, "11:15")
+
+        var out = Engine.applying([add, add], to: [core])
+        XCTAssertEqual(out.map(\.key), ["core-mon", "cycle-sculpt-thu"])   // added once
+        XCTAssertEqual(out.last?.locationIds, [1392])
+
+        let drop = try XCTUnwrap(WeeklyChange(request(.removeWeekly, "CORE", "2026-10-26T16:45:00Z")))
+        out = Engine.applying([drop], to: out)
+        XCTAssertEqual(out.map(\.key), ["cycle-sculpt-thu"])
+
+        // Another branch's session of the same name and time is a different slot.
+        let elsewhere = try XCTUnwrap(WeeklyChange(request(.removeWeekly, "Cycle Sculpt", "2026-10-29T18:15:00Z", branch: 1388)))
+        XCTAssertEqual(Engine.applying([elsewhere], to: out), out)
+
+        XCTAssertNil(WeeklyChange(try request(.book, "CORE", "2026-10-26T16:45:00Z")))
+    }
+
+    func testWeeklyRequestsLeaveThePickQueueAlone() throws {
+        let q = try request(.addWeekly, "Cycle Sculpt", "2026-10-29T18:15:00Z")
+        let r = PickTriage.apply([q], picks: [], skips: [])
+        XCTAssertTrue(r.picks.isEmpty && r.skips.isEmpty)
+    }
+}
 #endif

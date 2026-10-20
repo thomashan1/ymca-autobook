@@ -101,6 +101,10 @@ extension Cloud {
             case cancel
             /// Don't book this week's session of a lineup class / undo that.
             case skip, unskip
+            /// Book this class every week from now on / stop booking it every
+            /// week. The pick is any session of that weekly slot: its name,
+            /// branch and its weekday and start time at the club.
+            case addWeekly, removeWeekly
         }
 
         static let recordType = "BookRequest"
@@ -197,6 +201,56 @@ extension Cloud {
     }
 }
 
+/// A weekly slot as the club's clock reads it: "Mon" and "09:45" in Pacific
+/// time, whichever timezone the device is in.
+enum ClubTime {
+    static let zone = TimeZone(identifier: "America/Los_Angeles")!
+    private static let calendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = zone
+        return c
+    }()
+    private static let days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+    static func weekday(_ d: Date) -> String { days[calendar.component(.weekday, from: d) - 1] }
+    static func hhmm(_ d: Date) -> String {
+        let c = calendar.dateComponents([.hour, .minute], from: d)
+        return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
+    }
+
+    /// The next session of a weekly slot after `now`, for a request that names
+    /// the slot rather than one session.
+    static func next(weekday: String, start: String, after now: Date = Date()) -> Date? {
+        guard let wd = days.firstIndex(of: weekday) else { return nil }
+        let p = start.split(separator: ":").compactMap { Int($0) }
+        guard p.count == 2 else { return nil }
+        return calendar.nextDate(after: now, matching: DateComponents(hour: p[0], minute: p[1], weekday: wd + 1),
+                                 matchingPolicy: .nextTime)
+    }
+}
+
+/// One weekly class asked for (or dropped) from the iPhone, as the Mac adds it
+/// to its lineup.
+struct WeeklyChange: Equatable, Sendable {
+    let add: Bool
+    let name: String
+    let weekday: String
+    let start: String
+    let branchId: Int
+
+    init?(_ q: Cloud.Request) {
+        switch q.action {
+        case .addWeekly: add = true
+        case .removeWeekly: add = false
+        default: return nil
+        }
+        name = q.pick.name
+        weekday = ClubTime.weekday(q.pick.occursAt)
+        start = ClubTime.hhmm(q.pick.occursAt)
+        branchId = q.pick.branchId
+    }
+}
+
 /// What to do with the queued picks, given a fresh read of the schedule. Pure,
 /// so the tests can drive it.
 enum PickTriage {
@@ -239,7 +293,7 @@ enum PickTriage {
             case .withdraw: p.removeAll { $0.id == q.pick.id }
             case .skip: k.removeAll { $0.id == q.pick.id }; k.append(q.pick); p.removeAll { $0.id == q.pick.id }
             case .unskip: k.removeAll { $0.id == q.pick.id }
-            case .cancel: break
+            case .cancel, .addWeekly, .removeWeekly: break
             }
         }
         return (p.sorted { $0.openAt < $1.openAt }, k.sorted { $0.occursAt < $1.occursAt })
@@ -305,6 +359,8 @@ extension Cloud.Request.Action {
         case .cancel: return "Cancel booking"
         case .skip: return "Skip this one"
         case .unskip: return "Book it after all"
+        case .addWeekly: return "Book every week"
+        case .removeWeekly: return "Stop booking every week"
         }
     }
 }

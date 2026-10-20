@@ -17,16 +17,14 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            WeekView()
-                .tabItem { Label("Week", systemImage: "calendar") }.tag(0)
-            ClassesTab()
+            ScheduleView()
+                .tabItem { Label("Schedule", systemImage: "calendar") }.tag(0)
+            ClassesView()
                 .tabItem { Label("Classes", systemImage: "list.bullet") }.tag(1)
-            UpcomingTab()
-                .tabItem { Label("Upcoming", systemImage: "clock") }.tag(2)
             SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape") }.tag(3)
+                .tabItem { Label("Settings", systemImage: "gearshape") }.tag(2)
         }
-        // Back from Classes (Book): the Week view should show what was just booked or cancelled.
+        // Back from Classes: the Schedule should show what was just added or booked.
         .onChange(of: tab) { old, _ in
             if old == 1 { Task { await bookings.load() } }
         }
@@ -61,72 +59,6 @@ struct RootView: View {
             await classes.load(); await awayRanges.load(); await swaps.load()
             await bookings.load(); await fullClasses.load(); await fillStats.load()
         }
-    }
-}
-
-/// Book any single class, the weekly lineup, or how fast classes fill. Booking
-/// single classes goes through the Mac, so GitHub mode has no Book segment.
-private struct ClassesTab: View {
-    @EnvironmentObject var auth: AuthStore
-    // Launch arg `-classesSegment weekly|fill` picks the segment (for screenshots).
-    @AppStorage("classesSegment") private var segment = "book"
-
-    private var canBook: Bool { auth.isCloud || SampleMode.active }
-    private var shown: String { segment == "book" && !canBook ? "weekly" : segment }
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                switch shown {
-                case "book": BookView(embedded: true)
-                case "fill": FillStatsView()
-                default: ClassesView(embedded: true)
-                }
-            }
-            // The segments stand in for the title, in the nav bar, so they sit
-            // in the same place on every page and cost no extra row.
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    SegmentBar(selection: Binding(get: { shown }, set: { segment = $0 }),
-                               options: (canBook ? [("book", "Book")] : []) + [("weekly", "Weekly"), ("fill", "Fill speed")])
-                }
-            }
-        }
-    }
-}
-
-/// When each booking opens and how it went, and the days off.
-private struct UpcomingTab: View {
-    @AppStorage("upcomingSegment") private var segment = "openings"
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if segment == "away" { AwayView(embedded: true) } else { JobsView(embedded: true) }
-            }
-            // The segments stand in for the title, in the nav bar, so they sit
-            // in the same place on every page and cost no extra row.
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    SegmentBar(selection: $segment, options: [("openings", "Openings"), ("away", "Away")])
-                }
-            }
-        }
-    }
-}
-
-private struct SegmentBar: View {
-    @Binding var selection: String
-    let options: [(String, String)]
-
-    var body: some View {
-        Picker("Show", selection: $selection) {
-            ForEach(options, id: \.0) { Text($0.1).tag($0.0) }
-        }
-        .pickerStyle(.segmented)
-        .frame(width: 280)
     }
 }
 #endif

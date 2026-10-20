@@ -1,10 +1,11 @@
 #if os(iOS)
 import SwiftUI
 
-/// Every upcoming session at every branch, to book or cancel one at a time.
-/// The iPhone doesn't talk to the YMCA itself: each tap is a request the Mac
-/// picks up within about half a minute, and books right away if the window is
-/// open, otherwise at the second it opens.
+/// "Add a class": every upcoming session at every branch, to add to the lineup
+/// (every week) or book once, and to skip or cancel one at a time. The iPhone
+/// doesn't talk to the YMCA itself: each tap is a request the Mac picks up
+/// within about half a minute, and books right away if the window is open,
+/// otherwise at the second it opens.
 struct BookView: View {
     @ObservedObject private var cloud = CloudSource.shared
     @Environment(\.dismiss) private var dismiss
@@ -41,10 +42,10 @@ struct BookView: View {
                     }
                 }
                 Section {} footer: {
-                    Text("Booking opens 7 days ahead. Tap Book on any class: your Mac books it now if it's open, or at the second it opens.")
+                    Text("Booking opens 7 days ahead. Add a class every week, or just once: your Mac books it now if it's open, or at the second it opens.")
                 }
             }
-            .navigationTitle("Book")
+            .navigationTitle("Add a class")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $search, prompt: "Classes, rooms, instructors")
             .refreshable { await cloud.refresh() }
@@ -120,8 +121,20 @@ struct BookView: View {
                 status(i, s).font(.caption)
             }
             Spacer(minLength: 4)
-            if let a = s.action {
-                Button(a == .book ? "Book" : a == .cancel ? "Cancel" : a == .withdraw ? "Undo" : a == .skip ? "Skip" : "Unskip") {
+            if s.action == .book {
+                // Every week or just this once: the one choice the old Book
+                // and Browse screens split between them.
+                Menu {
+                    Button("Every \(i.occursAt.formatted(.dateTime.weekday(.wide)))") { send(.addWeekly, i) }
+                    Button("Just \(i.occursAt.formatted(.dateTime.weekday(.abbreviated).month(.defaultDigits).day()))") { send(.book, i) }
+                } label: {
+                    Text("Add")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+                .controlSize(.small)
+            } else if let a = s.action {
+                Button(a == .cancel ? "Cancel" : a == .withdraw ? "Undo" : a == .skip ? "Skip" : "Unskip") {
                     if a == .cancel { confirm = (i, a) } else { send(a, i) }
                 }
                 // Book is the one filled, blue button; Cancel stays red but outlined,

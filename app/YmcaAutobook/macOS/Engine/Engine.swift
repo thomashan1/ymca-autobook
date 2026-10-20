@@ -165,6 +165,9 @@ final class Engine: ObservableObject {
         case .skip: skip(p)
         case .unskip: unskip(p.id)
         case .cancel: Task { await cancelBooking(p) }
+        case .addWeekly: addClass(name: p.name, weekday: ClubTime.weekday(p.occursAt), start: ClubTime.hhmm(p.occursAt),
+                                  branchId: p.branchId)
+        case .removeWeekly: update(classes: Self.applying([WeeklyChange(Cloud.Request(action: .removeWeekly, pick: p))!], to: classes))
         }
     }
 
@@ -277,8 +280,8 @@ final class Engine: ObservableObject {
         }
     }
 
-    /// Act on requests from the iPhone (book/cancel/skip a session, add/remove
-    /// away dates), then delete them.
+    /// Act on requests from the iPhone (book/cancel/skip a session, add or drop
+    /// a weekly class, add/remove away dates), then delete them.
     private func checkInbox() async {
         guard !isFiring, signedInAs != nil else { return }
         guard let (requests, away) = try? await CloudStore.shared.inbox() else { return }
@@ -288,6 +291,11 @@ final class Engine: ObservableObject {
             setSkips(newSkips)
             update(picks: newPicks)
             for q in requests where q.action == .cancel { Task { await cancelBooking(q.pick) } }
+            let weekly = requests.sorted { $0.requestedAt < $1.requestedAt }.compactMap(WeeklyChange.init)
+            if !weekly.isEmpty {
+                let next = Self.applying(weekly, to: classes)
+                if next != classes { update(classes: next) }
+            }
         }
         if !away.isEmpty { setAwayRanges(Self.applying(away, to: awayRanges)) }
         await CloudStore.shared.delete(requests: requests.map(\.id) + away.map(\.id))
@@ -463,13 +471,39 @@ final class Engine: ObservableObject {
     }
 
     func addClass(name: String, weekday: String, start: String, branchId: Int) {
+        update(classes: classes + [Self.newClass(name: name, weekday: weekday, start: start, branchId: branchId,
+                                                 among: classes)])
+    }
+
+    /// A lineup entry with a key no other class has ("cycle-sculpt-thu", then "-2"…).
+    nonisolated static func newClass(name: String, weekday: String, start: String, branchId: Int,
+                                     among classes: [RecurringClass]) -> RecurringClass {
         let slug = name.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }.joined(separator: "-")
         var key = "\(slug)-\(weekday.lowercased())"
         var n = 2
         while classes.contains(where: { $0.key == key }) { key = "\(slug)-\(weekday.lowercased())-\(n)"; n += 1 }
-        update(classes: classes + [RecurringClass(key: key, name: name, weekday: weekday, start: start,
-                                                  locationIds: [branchId])])
+        return RecurringClass(key: key, name: name, weekday: weekday, start: start, locationIds: [branchId])
+    }
+
+    /// The lineup after weekly classes added or dropped on the iPhone, oldest
+    /// first. Adding one that's already there changes nothing; dropping removes
+    /// every entry for that slot.
+    nonisolated static func applying(_ changes: [WeeklyChange], to classes: [RecurringClass]) -> [RecurringClass] {
+        var out = classes
+        for c in changes {
+            let same = { (k: RecurringClass) in
+                k.name == c.name && k.weekday == c.weekday && k.start == c.start && (k.locationIds.first ?? 0) == c.branchId
+            }
+            if c.add {
+                if !out.contains(where: same) {
+                    out.append(newClass(name: c.name, weekday: c.weekday, start: c.start, branchId: c.branchId, among: out))
+                }
+            } else {
+                out.removeAll(where: same)
+            }
+        }
+        return out
     }
 
     func remove(_ slot: CatalogSlot) {

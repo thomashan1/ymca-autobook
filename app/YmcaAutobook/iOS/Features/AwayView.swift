@@ -2,7 +2,8 @@
 import SwiftUI
 
 /// Away dates synced to the private repo's `away.yml`. Add/remove ranges;
-/// away days grey out on the Week screen and skip their jobs.
+/// away days show as Away in the Schedule and aren't booked. Opens as a sheet
+/// from the Schedule.
 struct AwayView: View {
     @EnvironmentObject var awayRanges: AwayRepository
     @EnvironmentObject var swaps: SwapsRepository
@@ -13,6 +14,7 @@ struct AwayView: View {
     @State private var showPast = false
     @State private var busy = false
     @State private var errorMessage: String?
+    @Environment(\.dismiss) private var dismiss
 
     /// Midnight today in the gym's timezone — the cut between past and upcoming.
     /// A range that ends *today* still counts as current, not past.
@@ -50,8 +52,6 @@ struct AwayView: View {
                     .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
                 }
                 Section {
-                    // A row, not a toolbar +: a + only on this page made the
-                    // Openings/Away switch above jump sideways.
                     Button { showAdd = true } label: { Label("Add away dates", systemImage: "plus.circle.fill") }
                         .disabled(busy)
                     if upcoming.isEmpty {
@@ -108,6 +108,11 @@ struct AwayView: View {
                 }
             }
             .navigationTitle("Away Dates")
+            .toolbar {
+                if !embedded {
+                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                }
+            }
             .overlay { if busy { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
             .refreshable {
                 await awayRanges.load()

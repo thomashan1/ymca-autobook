@@ -84,7 +84,7 @@ hours or never fill.
 |:---:|:---:|
 | <img src="app/screenshots/fill-speed-mine.png" width="200"> | <img src="app/screenshots/fill-speed-fast.png" width="200"> |
 
-_Screenshots use a made-up lineup and sample data; the Fill speed numbers are real (10/10)._
+_Screenshots use a made-up lineup and sample data; the Fill speed numbers are real (10/10). Updated 10/20._
 
 More on the app, its settings and how it's built: [`app/README.md`](app/README.md).
 

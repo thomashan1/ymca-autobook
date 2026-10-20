@@ -122,6 +122,17 @@ enum SampleData {
             (6, "09:20", 55, "Upbeat Barre", 1388, "Studio 1", "Dana K.", true, false),
             (6, "12:00", 45, "Aqua Fit", 1392, "Pool", "Lena V.", false, false),
             (7, "09:00", 60, "Zumba", 1392, "Group Exercise Room", "Lena V.", false, false),
+            // Other branches, so the Book screen shows every branch.
+            (2, "09:15", 60, "BODYPUMP", 1389, "Studio A", "Kai H.", false, true),
+            (2, "10:00", 45, "Yoga Flow", 1384, "Mind Body Studio", "Rosa P.", false, false),
+            (3, "08:45", 45, "Cycle", 1387, "Cycle Studio", "Ben O.", false, false),
+            (3, "09:30", 60, "Zumba", 1390, "Group Exercise Room", "Mia G.", false, false),
+            (4, "09:15", 60, "BODYCOMBAT", 1389, "Studio A", "Kai H.", false, true),
+            (4, "11:00", 45, "Pilates", 1385, "Studio 2", "Rosa P.", false, false),
+            (5, "08:30", 45, "TRX", 1391, "Fitness Studio", "Ben O.", false, false),
+            (5, "09:45", 60, "Vinyasa Yoga", 1384, "Mind Body Studio", "Mia G.", false, false),
+            (6, "08:30", 45, "Cycle", 1389, "Cycle Studio", "Kai H.", false, false),
+            (6, "10:00", 60, "Zumba", 1386, "Gym", "Mia G.", false, false),
         ]
         var out: [ScheduleItem] = []
         var id = 900_000
@@ -139,7 +150,7 @@ enum SampleData {
                                         autoBook: c.7))
             }
         }
-        return out
+        return out.sorted { ($0.occursAt, $0.id) < ($1.occursAt, $1.id) }
     }
 
     /// One queued pick so the screenshot shows that state: next week's Friday BODYCOMBAT.

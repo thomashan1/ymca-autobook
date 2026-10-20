@@ -81,7 +81,15 @@ struct MacBookView: View {
 
     @ViewBuilder private func actionButton(_ i: ScheduleItem) -> some View {
         let s = engine.state(of: i)
-        if let a = s.action {
+        if s.action == .book {
+            // Every week or just this once, as on the iPhone.
+            Menu("Add") {
+                Button("Every \(i.occursAt.formatted(.dateTime.weekday(.wide)))") { engine.perform(.addWeekly, on: i.pick) }
+                Button("Just \(i.occursAt.formatted(.dateTime.weekday(.abbreviated).month(.defaultDigits).day()))") { engine.perform(.book, on: i.pick) }
+            }
+            .controlSize(.small)
+            .fixedSize()
+        } else if let a = s.action {
             Button(a.buttonTitle) {
                 // Booking is cheap to undo; cancelling a seat in a class that fills isn't.
                 if a == .cancel { confirm = (i, a) } else { engine.perform(a, on: i.pick) }

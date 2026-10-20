@@ -10,7 +10,7 @@ Then don't edit these files: the Mac writes them.)
 ## Running both
 
 If you run Option A and want GitHub as a backup for when the Mac is asleep or offline,
-set this up and then turn on **Settings → General → For technical users → Also keep a GitHub backup** on the Mac. The
+set this up and then turn on **Settings → For technical users → Also keep a GitHub backup** on the Mac. The
 Mac stays the main booker and writes your classes, away dates and swaps into
 `ymca-private`; GitHub books a class only if the Mac didn't get it within 5 seconds
 of the opening.

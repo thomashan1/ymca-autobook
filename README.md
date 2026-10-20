@@ -34,9 +34,12 @@ that class isn't booked.
 
 ```mermaid
 flowchart LR
-    mac["💻 YMCA Booker on your Mac<br/>wakes 90 s before · books at the second"] --> ymca["🏋️ YMCA"]
-    mac --> icloud[("☁️ your iCloud<br/>classes · away dates · bookings · results")]
-    icloud --> phone["📱 YMCA Booker on iPhone / iPad<br/>views · books · an alert per result"]
+    mac["`💻 YMCA Booker on your Mac
+wakes 90 s before · books at the second`"] --> ymca["🏋️ YMCA"]
+    mac --> icloud[("`☁️ your iCloud
+classes · away dates · bookings · results`")]
+    icloud --> phone["`📱 YMCA Booker on iPhone / iPad
+views · books · an alert per result`"]
 ```
 
 The Mac plans every few hours, wakes just before each window, and books at the exact

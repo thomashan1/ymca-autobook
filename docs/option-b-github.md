@@ -19,9 +19,12 @@ of the opening.
 
 ```mermaid
 flowchart LR
-    clock["⏰ cron-job.org<br/>15 min before each class opens"] --> gh["⚙️ GitHub Actions<br/>log in · wait for the second · book"]
+    clock["`⏰ cron-job.org
+15 min before each class opens`"] --> gh["`⚙️ GitHub Actions
+log in · wait for the second · book`"]
     gh --> ymca["🏋️ YMCA"]
-    files[("classes.yml<br/>away dates · swaps")] --> gh
+    files[("`classes.yml
+away dates · swaps`")] --> gh
     app["📱 iOS app"] -. edits .-> files
     gh -. "❌ only on failure" .-> mail["✉️ email"]
 ```

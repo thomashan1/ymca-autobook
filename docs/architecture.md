@@ -11,36 +11,53 @@ never talks to the YMCA directly.
 flowchart TB
     subgraph clock["⏰ cron-job.org — the only timing source for bookings"]
         direction LR
-        perclass["13 per-class jobs<br/>-15m before each window opens<br/>(BODYPUMP: -30m and -10m)"]
-        swapcheck["swap-check job<br/>every 30m, 9:00–13:30 PT, Mon–Fri"]
+        perclass["`13 per-class jobs
+-15m before each window opens
+(BODYPUMP: -30m and -10m)`"]
+        swapcheck["`swap-check job
+every 30m, 9:00–13:30 PT, Mon–Fri`"]
     end
 
-    app["📱 iOS app (SwiftUI)<br/>Week · Classes · Jobs · Away<br/>auth: fine-grained PAT in Keychain"]
+    app["`📱 iOS app (SwiftUI)
+Week · Classes · Jobs · Away
+auth: fine-grained PAT in Keychain`"]
 
-    api["GitHub REST API<br/>workflow_dispatch · repo contents"]
+    api["`GitHub REST API
+workflow_dispatch · repo contents`"]
 
     subgraph engine["⚙️ Booking engine — book.yml on a GitHub Actions runner"]
         direction LR
-        route{"dispatch<br/>inputs?"}
-        cls["src.main --class KEY<br/>book one class"]
-        due["scripts/run_due.py<br/>swaps only"]
-        manual["--book-id · --cancel-*<br/>--list"]
+        route{"`dispatch
+inputs?`"}
+        cls["`src.main --class KEY
+book one class`"]
+        due["`scripts/run_due.py
+swaps only`"]
+        manual["`--book-id · --cancel-*
+--list`"]
         route -- "class_key" --> cls
         route -- "none" --> due
         route -- "other" --> manual
     end
 
-    bg["🗓️ Background workflows (GitHub's own cron, not timing-critical)<br/>bookings-snapshot 6h · schedule-snapshot daily · ledger 12h · weekly-summary M/W/F"]
+    bg["`🗓️ Background workflows (GitHub's own cron, not timing-critical)
+bookings-snapshot 6h · schedule-snapshot daily · ledger 12h · weekly-summary M/W/F`"]
 
     subgraph state["🗂️ State — plain files in two GitHub repos"]
         direction LR
-        classes[("ymca-autobook (public)<br/>classes.yml")]
-        privfiles[("ymca-private<br/>away.yml · swaps.yml")]
-        snaps[("ymca-private<br/>bookings.json · schedule_snapshot.json<br/>ledger.json")]
+        classes[("`ymca-autobook (public)
+classes.yml`")]
+        privfiles[("`ymca-private
+away.yml · swaps.yml`")]
+        snaps[("`ymca-private
+bookings.json · schedule_snapshot.json
+ledger.json`")]
     end
 
-    ymca["🏋️ YMCA of Silicon Valley<br/>egym SSO login → Fisikal API (list · join · cancel)"]
-    gmail["✉️ Gmail SMTP<br/>digests + ❌ failure alerts"]
+    ymca["`🏋️ YMCA of Silicon Valley
+egym SSO login → Fisikal API (list · join · cancel)`"]
+    gmail["`✉️ Gmail SMTP
+digests + ❌ failure alerts`"]
 
     perclass -- "POST dispatch {class_key}" --> api
     swapcheck -- "POST dispatch {}" --> api

@@ -2,19 +2,19 @@
 import SwiftUI
 import UserNotifications
 
-/// The app's window, laid out like the iPhone and iPad app: Classes (Book,
-/// Weekly, Browse, Fill speed), Upcoming (Openings, Away) and Settings. The menu
-/// bar buttons pick the tab and segment through the same stored keys.
+/// The app's window, laid out like the iPhone and iPad app: Schedule, Classes
+/// and Settings, with no segments. The menu bar buttons pick the tab through
+/// the same stored key.
 struct SettingsView: View {
     @ObservedObject var engine: Engine
-    @AppStorage(MacTab.key) private var tab = MacTab.classes
+    @AppStorage(MacTab.key) private var tab = MacTab.schedule
 
     var body: some View {
         TabView(selection: $tab) {
-            MacClassesTab(engine: engine)
+            MacScheduleView(engine: engine)
+                .tabItem { Label("Schedule", systemImage: "calendar") }.tag(MacTab.schedule)
+            ClassesEditor(engine: engine)
                 .tabItem { Label("Classes", systemImage: "list.bullet") }.tag(MacTab.classes)
-            MacUpcomingTab(engine: engine)
-                .tabItem { Label("Upcoming", systemImage: "clock") }.tag(MacTab.upcoming)
             GeneralSettings(engine: engine)
                 .tabItem { Label("Settings", systemImage: "gearshape") }.tag(MacTab.settings)
         }
@@ -23,55 +23,25 @@ struct SettingsView: View {
     }
 }
 
-/// Tab and segment names, shared with the menu bar's buttons.
+/// Tab names, shared with the menu bar's buttons.
 enum MacTab {
     static let key = "macTab"
-    static let classes = "classes", upcoming = "upcoming", settings = "settings"
-    static let classesSegment = "macClassesSegment"
-    static let upcomingSegment = "macUpcomingSegment"
+    static let schedule = "schedule", classes = "classes", settings = "settings"
 }
 
-private struct MacClassesTab: View {
-    @ObservedObject var engine: Engine
-    @AppStorage(MacTab.classesSegment) private var segment = "book"
+/// A sheet holding one of the bigger tables (the YMCA schedule, fill speed,
+/// the booking log), with a Done button.
+struct SheetFrame<Content: View>: View {
+    let close: () -> Void
+    @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(spacing: 12) {
-            SegmentBar(selection: $segment,
-                       options: [("book", "Book"), ("weekly", "Weekly"), ("browse", "Browse"), ("fill", "Fill speed")])
-            switch segment {
-            case "weekly": ClassesEditor(engine: engine)
-            case "browse": CatalogView(engine: engine)
-            case "fill": StatsView(engine: engine)
-            default: MacBookView(engine: engine)
-            }
+        VStack(alignment: .trailing, spacing: 12) {
+            content
+            Button("Done", action: close).keyboardShortcut(.defaultAction)
         }
-    }
-}
-
-private struct MacUpcomingTab: View {
-    @ObservedObject var engine: Engine
-    @AppStorage(MacTab.upcomingSegment) private var segment = "openings"
-
-    var body: some View {
-        VStack(spacing: 12) {
-            SegmentBar(selection: $segment, options: [("openings", "Openings"), ("away", "Away")])
-            if segment == "away" { MacAwayView(engine: engine) } else { LogView(engine: engine) }
-        }
-    }
-}
-
-private struct SegmentBar: View {
-    @Binding var selection: String
-    let options: [(String, String)]
-
-    var body: some View {
-        Picker("Show", selection: $selection) {
-            ForEach(options, id: \.0) { Text($0.1).tag($0.0) }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .fixedSize()
+        .padding()
+        .frame(minWidth: 1000, minHeight: 620)
     }
 }
 
@@ -79,55 +49,94 @@ private let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 // MARK: Classes
 
+/// Your classes: every week (with how fast each fills) and just once. Add a
+/// class from the YMCA schedule, either way, or browse the weekly slots.
 struct ClassesEditor: View {
     @ObservedObject var engine: Engine
-    @State private var name = ""
-    @State private var weekday = "Mon"
-    @State private var time = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date())!
-    @State private var branch = 1392
+    @State private var sheet: Sheet?
+
+    private enum Sheet: String, Identifiable { case add, browse, fill; var id: String { rawValue } }
 
     var body: some View {
+        let stats = Dictionary(engine.slotStats().map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Button("Add a class…") { sheet = .add }.keyboardShortcut("n")
+                Button("Browse weekly slots…") { sheet = .browse }
+                Spacer()
+                Button("How fast every class fills…") { sheet = .fill }
+            }
             List {
-                ForEach(sorted) { k in
-                    HStack {
-                        Image(systemName: engine.isOnSchedule(k) ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                            .foregroundStyle(engine.isOnSchedule(k) ? .green : .orange)
-                            .help(engine.isOnSchedule(k) ? "Found on the YMCA schedule"
-                                  : "No matching class on the YMCA schedule in the next 16 days — check the name and time")
-                        Text(k.name).bold()
-                        Text("\(k.weekday) \(k.start) · \(k.branch)").foregroundStyle(.secondary)
-                        Spacer()
-                        Button(role: .destructive) {
-                            engine.update(classes: engine.classes.filter { $0.key != k.key })
-                        } label: { Image(systemName: "trash") }
-                        .buttonStyle(.borderless)
+                Section("Every week") {
+                    ForEach(sorted) { k in
+                        HStack(spacing: 10) {
+                            Text(k.weekday).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
+                            Text(k.name).bold()
+                            Text("\(k.start) · \(k.branch)").foregroundStyle(.secondary)
+                            if !engine.isOnSchedule(k) {
+                                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                                    .help("No matching class on the YMCA schedule in the next 16 days — check the name and time")
+                            }
+                            Spacer()
+                            if let st = stats[k.slotKey] { fillBadge(st) }
+                            Button(role: .destructive) {
+                                engine.update(classes: engine.classes.filter { $0.key != k.key })
+                            } label: { Image(systemName: "trash") }
+                            .buttonStyle(.borderless)
+                            .help("Stop booking it every week")
+                        }
+                    }
+                    if engine.classes.isEmpty { Text("None yet. Click Add a class.").foregroundStyle(.secondary) }
+                }
+                if !upcomingPicks.isEmpty {
+                    Section("Just once") {
+                        ForEach(upcomingPicks) { p in
+                            HStack(spacing: 10) {
+                                Text(p.name).bold()
+                                Text("\(p.occursAt.formatted(.dateTime.weekday().month().day().hour().minute())) · \(Branch.name(p.branchId))")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(p.openAt > Date() ? "books \(MacScheduleView.when(p.openAt))" : "booking…")
+                                    .foregroundStyle(.blue)
+                                Button("Don't book") { engine.perform(.withdraw, on: p) }
+                            }
+                        }
                     }
                 }
             }
-            GroupBox("Add a class") {
-                HStack {
-                    TextField("Exact class name, e.g. BODYPUMP", text: $name)
-                    Picker("", selection: $weekday) { ForEach(weekdays, id: \.self) { Text($0) } }.frame(width: 80)
-                    DatePicker("", selection: $time, displayedComponents: .hourAndMinute).frame(width: 90)
-                    Picker("", selection: $branch) { ForEach(Branch.all) { Text($0.name).tag($0.id) } }.frame(width: 150)
-                    Button("Add") { add() }.disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        .sheet(item: $sheet) { s in
+            SheetFrame(close: { sheet = nil }) {
+                switch s {
+                case .add: MacBookView(engine: engine)
+                case .browse: CatalogView(engine: engine)
+                case .fill: StatsView(engine: engine)
                 }
-                Text("Use the name exactly as the YMCA schedule shows it. A ⚠️ after adding means nothing on the schedule matched.")
-                    .font(.caption).foregroundStyle(.secondary)
             }
         }
     }
 
-    private var sorted: [RecurringClass] {
-        engine.classes.sorted { (weekdays.firstIndex(of: $0.weekday) ?? 9, $0.start) < (weekdays.firstIndex(of: $1.weekday) ?? 9, $1.start) }
+    private var upcomingPicks: [ClassPick] { engine.picks.filter { $0.occursAt > Date() } }
+
+    private func fillBadge(_ s: SlotStats) -> some View {
+        let fast = (s.medianFill ?? .infinity) <= 300
+        return Text(s.filledWeeks == 0 ? "rarely fills" : "fills in \(Self.duration(s.medianFill))")
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 7).padding(.vertical, 2)
+            .background((fast ? Color.orange : Color.gray).opacity(0.15), in: Capsule())
+            .foregroundStyle(fast ? Color.orange : Color.secondary)
     }
 
-    private func add() {
-        let c = Calendar.current.dateComponents([.hour, .minute], from: time)
-        engine.addClass(name: name.trimmingCharacters(in: .whitespaces), weekday: weekday,
-                        start: String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0), branchId: branch)
-        name = ""
+    static func duration(_ seconds: Double?) -> String {
+        guard let s = seconds else { return "—" }
+        if s < 120 { return "\(Int(s.rounded())) s" }
+        if s < 7200 { return "\(Int(s / 60)) min" }
+        if s < 2 * 86400 { return String(format: "%.0f h", s / 3600) }
+        return String(format: "%.0f d", s / 86400)
+    }
+
+    private var sorted: [RecurringClass] {
+        engine.classes.sorted { (weekdays.firstIndex(of: $0.weekday) ?? 9, $0.start) < (weekdays.firstIndex(of: $1.weekday) ?? 9, $1.start) }
     }
 }
 
@@ -302,6 +311,7 @@ struct GeneralSettings: View {
     @State private var launchAtLogin = LoginItem.isEnabled
     @State private var loginError: String?
     @State private var notifications = "…"
+    @State private var showLog = false
 
     var body: some View {
         Form {
@@ -338,6 +348,14 @@ struct GeneralSettings: View {
                 Text("Your classes, away dates, swaps, booking results and fill stats go to your own iCloud so the iPhone app can show them. Booking never waits on iCloud.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Booking history") {
+                HStack {
+                    Text("Every opening your Mac handled: when the booking went out, the reply, and how fast the class filled.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Show…") { showLog = true }
+                }
+            }
             Section("Account") {
                 LabeledContent("Signed in as", value: engine.signedInAs ?? "—")
                 Button("Sign out", role: .destructive) { Task { await engine.signOut() } }
@@ -345,6 +363,7 @@ struct GeneralSettings: View {
             GitHubBackupSection(engine: engine)
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $showLog) { SheetFrame(close: { showLog = false }) { LogView(engine: engine) } }
         .task {
             let s = await UNUserNotificationCenter.current().notificationSettings()
             notifications = s.authorizationStatus == .authorized ? "allowed"

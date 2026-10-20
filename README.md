@@ -5,9 +5,9 @@
 Popular classes at the YMCA of Silicon Valley fill up within a minute of opening, a
 week ahead. YMCA Booker books them for you, every week, the second they open.
 
-| Your week | Book any class | How fast classes fill |
+| Your schedule | Your classes | Add a class |
 |:---:|:---:|:---:|
-| <img src="app/screenshots/week.png" width="200"> | <img src="app/screenshots/book.png" width="200"> | <img src="app/screenshots/fill-speed-fast.png" width="200"> |
+| <img src="app/screenshots/schedule.png" width="200"> | <img src="app/screenshots/classes.png" width="200"> | <img src="app/screenshots/add-a-class.png" width="200"> |
 
 ## What you need
 
@@ -34,8 +34,8 @@ _The iPhone and iPad app is coming soon ([#151](https://github.com/thomashan1/ym
 3. On your iPhone or iPad, open **YMCA Booker** with the same iCloud account and
    allow notifications.
 
-**Going away?** Add the dates under **Away** and those classes are skipped.
-**Just once?** Book or skip a single class under **Book**.
+**Going away?** Tap **Away dates** in Schedule and those classes are skipped.
+**Just once?** Add a class just once under **Classes → Add a class**, or swipe a class in Schedule to skip it.
 
 ## Good to know
 

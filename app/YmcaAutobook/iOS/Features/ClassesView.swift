@@ -1,106 +1,109 @@
 #if os(iOS)
 import SwiftUI
 
-/// The recurring lineup, grouped by weekday. Swipe a class to delete it — that
-/// removes it from classes.yml in the private repo. Useful after a trial you didn't enjoy.
+/// Your classes: the weekly lineup, each with how fast it fills, and single
+/// sessions queued to book once. "Add a class" opens the YMCA schedule to add
+/// one either way. Swipe a weekly class to stop booking it (via the Mac in
+/// iCloud mode, or a commit to classes.yml with GitHub).
 struct ClassesView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var fillStats: FillStatsRepository
-
-    private let weekdays: [Weekday] = [.mon, .tue, .wed, .thu, .fri]
-
-    @EnvironmentObject var bookings: BookingsRepository
     @EnvironmentObject var auth: AuthStore
+    @ObservedObject private var cloud = CloudSource.shared
+
     @State private var deleteTarget: GymClass?
     @State private var deleting = false
     @State private var resultMessage: String?
     @State private var detail: ClassDetail?
+    @State private var adding = UserDefaults.standard.bool(forKey: "screenshotAdding")
 
-    private func items(on day: Weekday) -> [GymClass] {
-        classes.classes.filter { $0.weekday == day }.sorted { $0.start < $1.start }
-    }
-
-    /// Shown under a segmented control in a combined tab, which owns the
-    /// navigation stack.
-    var embedded = false
+    /// Adding and single sessions go through the Mac.
+    private var viaMac: Bool { auth.isCloud || SampleMode.active }
 
     var body: some View {
-        if embedded { content } else { NavigationStack { content } }
-    }
-
-    private var content: some View {
+        NavigationStack {
             List {
                 if !auth.looksCloud {
-                Section {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label("Edits here change classes.yml", systemImage: "doc.text.fill")
-                            .font(.footnote.weight(.semibold)).foregroundStyle(Theme.accent)
-                        Text("This is your recurring auto-book schedule, stored in **classes.yml** in your private repo, next to **away.yml** (away dates, under Upcoming → Away). Swiping a class to remove it edits that file.")
+                    Section {
+                        Label("Edits here change classes.yml in your private repo", systemImage: "doc.text.fill")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
-                }
-                if !classes.classes.isEmpty {
-                    Section {
-                        WeeklyGrid(weekdays: weekdays, items: items(on:), endTime: snapshot.endTime(for:)) {
-                            detail = classDetail($0)
+                Section {
+                    ForEach(classes.classes) { c in
+                        Button { detail = classDetail(c) } label: {
+                            ClassInfoRow(gymClass: c, endTime: snapshot.endTime(for: c), fill: fillStats.stats(for: c))
                         }
-                        .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10))
+                        .buttonStyle(.plain)
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) { deleteTarget = c } label: { Label("Remove", systemImage: "trash") }
+                        }
                     }
-                }
-                ForEach(weekdays, id: \.self) { day in
-                    let dayItems = items(on: day)
-                    if !dayItems.isEmpty {
-                        Section(day.fullName) {
-                            ForEach(dayItems) { c in
-                                Button {
-                                    detail = classDetail(c)
-                                } label: {
-                                    ClassInfoRow(gymClass: c,
-                                                 endTime: snapshot.endTime(for: c),
-                                                 minutes: snapshot.minutes(for: c),
-                                                 fill: fillStats.stats(for: c))
-                                }
-                                .buttonStyle(.plain)
+                    if classes.classes.isEmpty {
+                        Text(viaMac ? "None yet. Tap Add a class." : "None yet.").foregroundStyle(.secondary)
+                    }
+                } header: { Text("Every week") }
+                if viaMac, !cloud.oneOffs.isEmpty {
+                    Section("Just once") {
+                        ForEach(cloud.oneOffs) { p in
+                            OneOffRow(pick: p)
                                 .swipeActions(edge: .trailing) {
-                                    if !auth.looksCloud {
-                                        Button(role: .destructive) {
-                                            deleteTarget = c
-                                        } label: {
-                                            Label("Remove", systemImage: "trash")
-                                        }
-                                    }
+                                    Button("Don't book") { withdraw(p) }.tint(.orange)
                                 }
-                            }
                         }
                     }
                 }
-                if auth.looksCloud {
-                    Section {} footer: { Text("Your Mac's lineup. Change classes on the Mac.") }
+                Section {
+                    NavigationLink { FillStatsView() } label: {
+                        Label("How fast every class fills", systemImage: "chart.bar")
+                    }
+                } footer: {
+                    Text(viaMac ? "Swipe a class to stop booking it. Your Mac makes the change within a minute."
+                                : "Swipe a class to stop booking it.")
                 }
             }
-            .navigationTitle("My Classes")
+            .navigationTitle("Classes")
+            .toolbar {
+                if viaMac {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { adding = true } label: { Label("Add a class", systemImage: "plus") }
+                            .labelStyle(.titleAndIcon)
+                    }
+                }
+            }
             .overlay { if classes.isLoading || deleting { ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
-            .refreshable { await classes.load() }
+            .refreshable {
+                if auth.isCloud { await cloud.refresh() }
+                await classes.load(); await fillStats.load()
+            }
             .confirmationDialog(
-                deleteTarget.map { "Remove \($0.name) (\($0.weekday.fullName) \($0.start))?" } ?? "",
+                deleteTarget.map { "Stop booking \($0.name) every \($0.weekday.fullName)?" } ?? "",
                 isPresented: Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }),
                 titleVisibility: .visible
             ) {
-                Button("Remove from schedule", role: .destructive) {
+                Button("Stop booking every week", role: .destructive) {
                     if let c = deleteTarget { remove(c) }
                 }
-                Button("Cancel", role: .cancel) { deleteTarget = nil }
+                Button("Keep it", role: .cancel) { deleteTarget = nil }
             } message: {
-                Text("Stops auto-booking this class. Removes it from classes.yml in your private repo.")
+                Text(viaMac ? "Classes already booked stay booked." : "Removes it from classes.yml in your private repo.")
             }
-            .alert("Remove class", isPresented: Binding(get: { resultMessage != nil }, set: { if !$0 { resultMessage = nil } })) {
+            .alert("Classes", isPresented: Binding(get: { resultMessage != nil }, set: { if !$0 { resultMessage = nil } })) {
                 Button("OK") { resultMessage = nil }
             } message: {
                 Text(resultMessage ?? "")
             }
             .sheet(item: $detail) { ClassDetailSheet(detail: $0) }
+            .sheet(isPresented: $adding, onDismiss: { Task { await classes.load() } }) { BookView() }
+        }
+    }
+
+    private func withdraw(_ p: ClassPick) {
+        Task {
+            do { try await cloud.send(.withdraw, p) }
+            catch { resultMessage = "Couldn't reach iCloud: \(error.localizedDescription)" }
+        }
     }
 
     private func classDetail(_ c: GymClass) -> ClassDetail {
@@ -113,6 +116,16 @@ struct ClassesView: View {
 
     private func remove(_ c: GymClass) {
         deleteTarget = nil
+        if viaMac {
+            Task {
+                do {
+                    try await cloud.sendWeekly(add: false, name: c.name, weekday: c.weekday.rawValue, start: c.start,
+                                               branchId: c.locationIds.first ?? 0)
+                    await classes.load()
+                } catch { resultMessage = "Couldn't reach iCloud: \(error.localizedDescription)" }
+            }
+            return
+        }
         deleting = true
         Task {
             switch await classes.delete(c) {
@@ -130,83 +143,67 @@ struct ClassesView: View {
     }
 }
 
-/// The lineup as a Mon–Fri calendar, one column per day, like the Week tab's
-/// calendar but for the recurring classes rather than dated sessions.
-private struct WeeklyGrid: View {
-    let weekdays: [Weekday]
-    let items: (Weekday) -> [GymClass]
-    let endTime: (GymClass) -> String?
-    let onTap: (GymClass) -> Void
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 5) {
-            ForEach(weekdays, id: \.self) { day in
-                VStack(spacing: 4) {
-                    Text(day.fullName.prefix(3)).font(.system(size: 11, weight: .bold))
-                    ForEach(items(day)) { c in
-                        Button { onTap(c) } label: { cell(c) }.buttonStyle(.plain)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .top)
-            }
-        }
-    }
-
-    private func cell(_ c: GymClass) -> some View {
-        let color = Theme.color(for: c.branch)
-        return VStack(alignment: .leading, spacing: 1) {
-            Text(c.start).font(.system(size: 10, weight: .bold)).monospacedDigit()
-            if let end = endTime(c) {
-                Text("–" + end).font(.system(size: 8)).foregroundStyle(.secondary).monospacedDigit()
-            }
-            Text(c.name).font(.system(size: 9))
-                // One long word ("BODYBALANCE") shrinks rather than breaking mid-word.
-                .lineLimit(c.name.contains(" ") ? 3 : 1).minimumScaleFactor(c.name.contains(" ") ? 1 : 0.6)
-            Text(c.branch.short).font(.system(size: 8, weight: .bold)).foregroundStyle(color)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(5)
-        .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
-        .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(color.opacity(0.4), lineWidth: 1))
-    }
-}
-
 private struct ClassInfoRow: View {
     let gymClass: GymClass
     let endTime: String?
-    let minutes: Int?
     let fill: FillStatsRepository.Slot?
 
-    private var title: String {
-        if let m = minutes { return "\(gymClass.name) (\(m)m)" }
-        return gymClass.name
-    }
     private var timeRange: String {
         if let end = endTime { return "\(gymClass.start)–\(end)" }
         return gymClass.start
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Text(title).font(.body.weight(.medium))
-                if gymClass.isTrial {
-                    Text("Trial").font(.caption2.weight(.bold))
-                        .padding(.horizontal, 6).padding(.vertical, 1)
-                        .background(Theme.queued.opacity(0.18), in: Capsule())
-                        .foregroundStyle(Theme.queued)
+        HStack(spacing: 12) {
+            Text(gymClass.weekday.rawValue).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                .frame(width: 40, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(gymClass.name).font(.body.weight(.medium))
+                    if gymClass.key.hasPrefix("pending-") { ProgressView().controlSize(.mini) }
+                }
+                HStack(spacing: 6) {
+                    Text(timeRange).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    BranchChip(branch: gymClass.branch)
                 }
             }
-            HStack(spacing: 6) {
-                Text(timeRange).font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                BranchChip(branch: gymClass.branch)
-                if let fill {
-                    Text(fill.filled == 0 ? "never fills"
-                         : "fills in ~\(FillStatsRepository.duration(fill.median_fill_s))")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(fill.fillsFast ? .red : .secondary)
+            Spacer(minLength: 4)
+            if let fill {
+                Text(fill.filled == 0 ? "Rarely fills" : "Fills in \(FillStatsRepository.duration(fill.median_fill_s))")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background((fill.fillsFast ? Color.orange : Color.secondary).opacity(0.16), in: Capsule())
+                    .foregroundStyle(fill.fillsFast ? Color.orange : Color.secondary)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+/// A single session queued to book once.
+private struct OneOffRow: View {
+    let pick: ClassPick
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(spacing: 0) {
+                Text(pick.occursAt.formatted(.dateTime.weekday(.abbreviated))).font(.caption.weight(.bold))
+                Text(pick.occursAt.formatted(.dateTime.month(.defaultDigits).day())).font(.caption2).foregroundStyle(.secondary)
+            }
+            .frame(width: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(pick.name).font(.body.weight(.medium))
+                HStack(spacing: 6) {
+                    Text(pick.occursAt.formatted(date: .omitted, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                    BranchChip(branch: Branch(pick.branchId))
                 }
             }
+            Spacer(minLength: 4)
+            Text(pick.openAt > Date() ? "Books \(pick.openAt.formatted(.dateTime.weekday()))" : "Booking…")
+                .font(.caption.weight(.bold))
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(Theme.weekDivider.opacity(0.16), in: Capsule())
+                .foregroundStyle(Theme.weekDivider)
         }
     }
 }

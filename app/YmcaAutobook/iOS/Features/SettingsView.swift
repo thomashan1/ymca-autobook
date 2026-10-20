@@ -90,6 +90,9 @@ struct SettingsView: View {
     private var cloudSection: some View {
         Section {
             MacStatusRow()
+            NavigationLink { BookingHistoryView() } label: {
+                Label("Booking history", systemImage: "clock.arrow.circlepath")
+            }
             Button {
                 reload()
             } label: {

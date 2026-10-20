@@ -174,13 +174,29 @@ final class CloudSource: ObservableObject {
 
     // MARK: As the app's models
 
+    /// The Mac's weekly lineup, with this phone's adds and drops that haven't
+    /// reached the Mac yet already applied, so an edit shows at once.
     var classes: [GymClass] {
-        cache.classes.values.compactMap { c in
+        var out = cache.classes.values.compactMap { c in
             Weekday(rawValue: c.weekday).map {
                 GymClass(key: c.key, name: c.name, weekday: $0, start: c.start, locationIds: c.locationIds, firstLive: nil)
             }
         }
-        .sorted { ($0.weekday, $0.start) < ($1.weekday, $1.start) }
+        for q in pending {
+            guard let w = WeeklyChange(q), let wd = Weekday(rawValue: w.weekday) else { continue }
+            let same = { (c: GymClass) in
+                c.name == w.name && c.weekday == wd && c.start == w.start && (c.locationIds.first ?? 0) == w.branchId
+            }
+            if w.add {
+                if !out.contains(where: same) {
+                    out.append(GymClass(key: "pending-\(q.id)", name: w.name, weekday: wd, start: w.start,
+                                        locationIds: [w.branchId], firstLive: nil))
+                }
+            } else {
+                out.removeAll(where: same)
+            }
+        }
+        return out.sorted { ($0.weekday, $0.start) < ($1.weekday, $1.start) }
     }
 
     /// The Mac's away dates, with this phone's changes that haven't reached the
@@ -313,8 +329,27 @@ final class CloudSource: ObservableObject {
 
     /// Where a session stands, counting requests still on their way to the Mac.
     func state(of i: ScheduleItem) -> SessionState {
+        let s = sessionState(i)
+        // A weekly class just added (or dropped) here: its sessions read as the
+        // lineup's (or not) before the Mac has caught up.
+        guard !SampleMode.active, s == .future || s == .lineup, let mine = inLineup(i) else { return s }
+        return mine ? .lineup : .future
+    }
+
+    /// Whether this session's weekly slot is in the lineup after this phone's
+    /// pending adds and drops; nil when none of them touch it.
+    private func inLineup(_ i: ScheduleItem) -> Bool? {
+        let wd = ClubTime.weekday(i.occursAt), start = ClubTime.hhmm(i.occursAt)
+        return pending.compactMap(WeeklyChange.init).last {
+            $0.name == i.name && $0.weekday == wd && $0.start == start && $0.branchId == i.branchId
+        }?.add
+    }
+
+    private func sessionState(_ i: ScheduleItem) -> SessionState {
         if SampleMode.active { return SessionState(i, picked: SampleData.pickedIds.contains(i.id), skipped: false) }
-        let last = cache.requests.values.filter { $0.pick.id == i.id }.max { $0.requestedAt < $1.requestedAt }
+        let last = cache.requests.values
+            .filter { $0.pick.id == i.id && WeeklyChange($0) == nil }
+            .max { $0.requestedAt < $1.requestedAt }
         let picked = cache.picks.values.contains { $0.id == i.id }
         let skipped = cache.skips.values.contains { $0.id == i.id }
         switch last?.action {
@@ -323,8 +358,33 @@ final class CloudSource: ObservableObject {
         case .skip?: return SessionState(i, picked: false, skipped: true)
         case .unskip?: return SessionState(i, picked: picked, skipped: false)
         case .cancel?: return i.joined ? .booking : SessionState(i, picked: picked, skipped: skipped)
-        case nil: return SessionState(i, picked: picked, skipped: skipped)
+        case nil, .addWeekly?, .removeWeekly?: return SessionState(i, picked: picked, skipped: skipped)
         }
+    }
+
+    /// Single sessions queued to book outside the lineup, soonest first,
+    /// counting requests still on their way to the Mac.
+    var oneOffs: [ClassPick] {
+        if SampleMode.active { return SampleData.schedule.filter { SampleData.pickedIds.contains($0.id) }.map(\.pick) }
+        var out = Dictionary(cache.picks.values.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for q in pending {
+            switch q.action {
+            case .book: out[q.pick.id] = q.pick
+            case .withdraw, .skip: out[q.pick.id] = nil
+            default: break
+            }
+        }
+        return out.values.filter { $0.occursAt > Date() }.sorted { $0.occursAt < $1.occursAt }
+    }
+
+    /// Ask the Mac to book a class every week from now on, or stop. Any one
+    /// session names the slot; for a lineup class that has none in view, the
+    /// next one is worked out from its weekday and time.
+    func sendWeekly(add: Bool, name: String, weekday: String, start: String, branchId: Int) async throws {
+        guard let at = ClubTime.next(weekday: weekday, start: start) else { return }
+        let pick = ClassPick(occurrenceId: 0, name: name, occursAt: at,
+                             openAt: at.addingTimeInterval(-Double(Config.bookOpenLeadHours) * 3600), branchId: branchId)
+        try await send(add ? .addWeekly : .removeWeekly, pick)
     }
 
     /// Ask the Mac to do something to one session. It acts within about half a

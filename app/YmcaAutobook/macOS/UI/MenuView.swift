@@ -21,8 +21,8 @@ struct MenuView: View {
             Divider()
             HStack {
                 if engine.signedInAs != nil {
+                    Button("Schedule…") { open(MacTab.schedule) }
                     Button("Classes…") { open(MacTab.classes) }
-                    Button("Upcoming…") { open(MacTab.upcoming) }
                     Button("Settings…") { open(MacTab.settings) }
                 }
                 Spacer()

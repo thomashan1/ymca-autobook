@@ -15,17 +15,18 @@ Both platforms share `YmcaAutobook/Shared/`: the iCloud record shapes
 and the resources. iOS can't wake an app at a precise instant, which is why the
 booking happens on the Mac.
 
-| Screen (iPhone/iPad) | Shows |
+Three tabs, the same on the Mac and on iPhone/iPad (since 1.1):
+
+| Screen | Shows |
 |----------|----------------|
-| **Week**    | Two weeks of classes merged with your real bookings (room, instructor, end time) |
-| **Classes** | **Book**: every class at all nine branches for about two weeks, to book or cancel one at a time, filtered to any set of branches (iCloud mode only). **Weekly**: your recurring lineup. **Fill speed**: how fast every class at every branch fills once booking opens |
-| **Upcoming** | **Openings**: countdowns to each booking window, the Mac's status and each booking result. **Away**: away dates and one-off swaps |
-| **Settings** | Data source, the Mac's status, GitHub (advanced) |
+| **Schedule** | The next two weeks of your classes, one line each: booked, books on…, skipped or away, with a countdown to the next one that books. Swipe (iPhone) or click (Mac) a class to skip, cancel or stop booking it every week. **Away dates** opens from here. iPad and Mac show it as a calendar too |
+| **Classes** | **Every week** (your lineup, each with how fast it fills) and **Just once**. **Add a class** opens every class at all nine branches for about two weeks: add it every week or just once (iCloud mode). Links to the full fill-speed table; the Mac also has **Browse weekly slots** |
+| **Settings** | Data source, the Mac's status, **Booking history** (each opening's timing and result), GitHub (advanced) |
 
 ## Booking and cancelling single classes
 
 Besides the weekly lineup, any single upcoming session can be booked or cancelled:
-on the Mac under Settings → **Book**, on iPhone and iPad under Classes → **Book**. One shared rule (`SessionState` in `Shared/ClassPicks.swift`) decides
+under Classes → **Add a class** (and by swiping or clicking a class in Schedule). One shared rule (`SessionState` in `Shared/ClassPicks.swift`) decides
 what each session offers:
 
 | The session is… | Action |
@@ -69,8 +70,9 @@ on or off.
   `com.thomashan.ybooker.mac`, a name kept from when the Mac app was separate. Local
   files live in `~/Library/Application Support/YBookerMac`.
 - **Classes, away dates and one-day changes** are kept and edited on the Mac
-  (Classes → Weekly and Book, Upcoming → Away; the same tabs as on the iPhone). It needs no GitHub account. Away dates can also
-  be added and removed on the iPhone and iPad (Upcoming → Away).
+  (Classes, and Schedule → Away dates; the same tabs as on the iPhone). It needs no GitHub account. Weekly
+  classes and away dates can also be added and removed on the iPhone and iPad: the phone sends a
+  request through iCloud and the Mac applies it (`addWeekly`/`removeWeekly` requests since 1.1, #148).
 - **GitHub backup (optional, Settings → For technical users):** off by default. Turned on with a
   private repo and a token (Contents: Read and write on that repo only), the Mac
   writes `classes.yml`, `away.yml` and `swaps.yml` there after every change, one

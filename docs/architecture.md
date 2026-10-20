@@ -114,7 +114,7 @@ Key properties:
 2. **Find** (`src/fisikal.py`) — lists occurrences for the target branch and matches by
    **name + weekday + start time** (room and instructor ignored — they vary week to week).
 3. **Away check** (`src/away.py`) — if the class date falls in an away-range (see
-   [away dates](../README.md#away-dates-and-swaps)), skip it silently.
+   [away dates](option-b-github.md#your-classes-away-dates-and-swaps)), skip it silently.
 4. **Wait** (`src/schedule.py`) — computes `open = occurs_at − 167h` and waits for it.
 5. **Book** (`src/fisikal.py`) — POSTs the booking; retries up to 3 times (5s apart) to
    absorb clock skew. Refreshes `lock_version` on conflicts.

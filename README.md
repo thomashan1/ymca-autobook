@@ -22,10 +22,10 @@ week ahead. YMCA Booker books them for you, every week, the second they open.
   for a TestFlight invite, install the free
   [TestFlight](https://apps.apple.com/app/testflight/id899247664) app, then tap
   **Install** in the invite.
-- **Mac:** download it from [Releases](https://github.com/thomashan1/ymca-autobook/releases)
+- **Mac:** [download the latest .dmg](https://github.com/thomashan1/ymca-autobook/releases/latest)
   and drag **YMCA Booker** into Applications.
 
-_Coming soon ([#151](https://github.com/thomashan1/ymca-autobook/issues/151))._
+_The iPhone and iPad app is coming soon ([#151](https://github.com/thomashan1/ymca-autobook/issues/151))._
 
 ## Set it up
 

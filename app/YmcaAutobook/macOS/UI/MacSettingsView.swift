@@ -61,13 +61,24 @@ struct ClassesEditor: View {
         let stats = Dictionary(engine.slotStats().map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Button("Add a class…") { sheet = .add }.keyboardShortcut("n")
-                Button("Browse weekly slots…") { sheet = .browse }
+                Text("Your classes").font(.title2.bold())
                 Spacer()
-                Button("How fast every class fills…") { sheet = .fill }
+                // One clear main action; browsing by weekly slot is the other way in.
+                Menu {
+                    Button("Browse weekly slots…") { sheet = .browse }
+                } label: {
+                    Label("Add a class", systemImage: "plus")
+                } primaryAction: {
+                    sheet = .add
+                }
+                .menuStyle(.button)
+                .buttonStyle(.borderedProminent)
+                .fixedSize()
+                .keyboardShortcut("n")
+                .help("Add a class from the YMCA schedule, every week or just once. The arrow browses by weekly slot.")
             }
             List {
-                Section("Every week") {
+                Section {
                     ForEach(sorted) { k in
                         HStack(spacing: 10) {
                             Text(k.weekday).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
@@ -87,6 +98,14 @@ struct ClassesEditor: View {
                         }
                     }
                     if engine.classes.isEmpty { Text("None yet. Click Add a class.").foregroundStyle(.secondary) }
+                } header: {
+                    HStack {
+                        Text("Every week")
+                        Spacer()
+                        Button { sheet = .fill } label: { Label("How fast classes fill", systemImage: "chart.bar") }
+                            .buttonStyle(.link)
+                            .font(.callout)
+                    }
                 }
                 if !upcomingPicks.isEmpty {
                     Section("Just once") {

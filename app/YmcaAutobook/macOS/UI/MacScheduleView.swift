@@ -117,13 +117,20 @@ struct MacScheduleView: View {
             Text(title.uppercased()).font(.caption.weight(.heavy)).foregroundStyle(.secondary)
             HStack(alignment: .top, spacing: 10) {
                 ForEach(days, id: \.self) { d in
+                    let today = cal.isDateInToday(d)
+                    let past = !today && d < Date()
                     VStack(alignment: .leading, spacing: 6) {
                         Text(d.formatted(.dateTime.weekday().month(.defaultDigits).day()))
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(cal.isDateInToday(d) ? .blue : .secondary)
+                            .foregroundStyle(today ? .blue : .secondary)
                         ForEach(entries.filter { cal.isDate($0.item.occursAt, inSameDayAs: d) }) { cell($0) }
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
+                    .padding(8)
+                    .background(past ? Color.gray.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                    // Each day its own box, like the iPhone's calendar; today's in blue.
+                    .overlay(RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(today ? Color.blue.opacity(0.6) : Color.gray.opacity(0.25), lineWidth: today ? 1.5 : 1))
                 }
             }
         }
@@ -141,7 +148,8 @@ struct MacScheduleView: View {
             .foregroundStyle(dropped ? .secondary : color)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8)
-            .background((dropped ? Color.gray : color).opacity(0.13), in: RoundedRectangle(cornerRadius: 8))
+            .background((dropped ? Color.gray : color).opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder((dropped ? Color.gray : color).opacity(0.45), lineWidth: 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -177,7 +185,8 @@ struct MacScheduleView: View {
     private func status(_ e: Entry) -> (String, Color) {
         if e.away { return ("away", .orange) }
         switch e.state {
-        case .booked: return ("booked", .green)
+        // A darker green than .green: light green text on a light green card was hard to read.
+        case .booked: return ("booked", Color(red: 0.10, green: 0.50, blue: 0.22))
         case .booking: return ("booking…", .blue)
         case .queued: return ("books \(Self.when(e.item.openAt)) · just once", .blue)
         case .lineup: return ("books \(Self.when(e.item.openAt))", .blue)

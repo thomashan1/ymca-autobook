@@ -2,20 +2,76 @@
 import SwiftUI
 import UserNotifications
 
+/// The app's window, laid out like the iPhone and iPad app: Classes (Book,
+/// Weekly, Browse, Fill speed), Upcoming (Openings, Away) and Settings. The menu
+/// bar buttons pick the tab and segment through the same stored keys.
 struct SettingsView: View {
     @ObservedObject var engine: Engine
+    @AppStorage(MacTab.key) private var tab = MacTab.classes
 
     var body: some View {
-        TabView {
-            MacBookView(engine: engine).tabItem { Label("Book", systemImage: "calendar.badge.plus") }
-            CatalogView(engine: engine).tabItem { Label("Browse", systemImage: "magnifyingglass") }
-            ClassesEditor(engine: engine).tabItem { Label("My classes", systemImage: "list.bullet") }
-            StatsView(engine: engine).tabItem { Label("Stats", systemImage: "chart.bar") }
-            MacAwayView(engine: engine).tabItem { Label("Away & swaps", systemImage: "airplane") }
-            GeneralSettings(engine: engine).tabItem { Label("General", systemImage: "gearshape") }
+        TabView(selection: $tab) {
+            MacClassesTab(engine: engine)
+                .tabItem { Label("Classes", systemImage: "list.bullet") }.tag(MacTab.classes)
+            MacUpcomingTab(engine: engine)
+                .tabItem { Label("Upcoming", systemImage: "clock") }.tag(MacTab.upcoming)
+            GeneralSettings(engine: engine)
+                .tabItem { Label("Settings", systemImage: "gearshape") }.tag(MacTab.settings)
         }
         .padding()
         .frame(minWidth: 960, minHeight: 560)
+    }
+}
+
+/// Tab and segment names, shared with the menu bar's buttons.
+enum MacTab {
+    static let key = "macTab"
+    static let classes = "classes", upcoming = "upcoming", settings = "settings"
+    static let classesSegment = "macClassesSegment"
+    static let upcomingSegment = "macUpcomingSegment"
+}
+
+private struct MacClassesTab: View {
+    @ObservedObject var engine: Engine
+    @AppStorage(MacTab.classesSegment) private var segment = "book"
+
+    var body: some View {
+        VStack(spacing: 12) {
+            SegmentBar(selection: $segment,
+                       options: [("book", "Book"), ("weekly", "Weekly"), ("browse", "Browse"), ("fill", "Fill speed")])
+            switch segment {
+            case "weekly": ClassesEditor(engine: engine)
+            case "browse": CatalogView(engine: engine)
+            case "fill": StatsView(engine: engine)
+            default: MacBookView(engine: engine)
+            }
+        }
+    }
+}
+
+private struct MacUpcomingTab: View {
+    @ObservedObject var engine: Engine
+    @AppStorage(MacTab.upcomingSegment) private var segment = "openings"
+
+    var body: some View {
+        VStack(spacing: 12) {
+            SegmentBar(selection: $segment, options: [("openings", "Openings"), ("away", "Away")])
+            if segment == "away" { MacAwayView(engine: engine) } else { LogView(engine: engine) }
+        }
+    }
+}
+
+private struct SegmentBar: View {
+    @Binding var selection: String
+    let options: [(String, String)]
+
+    var body: some View {
+        Picker("Show", selection: $selection) {
+            ForEach(options, id: \.0) { Text($0.1).tag($0.0) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
     }
 }
 

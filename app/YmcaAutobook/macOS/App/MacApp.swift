@@ -13,12 +13,7 @@ struct MacApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("YMCA Booker — Booking log", id: "log") {
-            LogView(engine: engine)
-        }
-        .defaultSize(width: 900, height: 520)
-
-        Window("YMCA Booker — Settings", id: "settings") {
+        Window("YMCA Booker", id: "main") {
             SettingsView(engine: engine)
         }
         .windowResizability(.contentMinSize)

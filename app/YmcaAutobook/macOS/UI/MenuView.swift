@@ -21,9 +21,9 @@ struct MenuView: View {
             Divider()
             HStack {
                 if engine.signedInAs != nil {
-                    Button("Book…") { open("settings") }
-                    Button("Log…") { open("log") }
-                    Button("Settings…") { open("settings") }
+                    Button("Book…") { open(MacTab.classes, MacTab.classesSegment, "book") }
+                    Button("Openings…") { open(MacTab.upcoming, MacTab.upcomingSegment, "openings") }
+                    Button("Settings…") { open(MacTab.settings) }
                 }
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }
@@ -99,8 +99,11 @@ struct MenuView: View {
         Text(title).font(.caption.bold()).foregroundStyle(.secondary)
     }
 
-    private func open(_ id: String) {
-        openWindow(id: id)
+    /// Opens the app's window on a tab (and segment), like tapping it on the iPhone.
+    private func open(_ tab: String, _ segmentKey: String? = nil, _ segment: String? = nil) {
+        UserDefaults.standard.set(tab, forKey: MacTab.key)
+        if let segmentKey, let segment { UserDefaults.standard.set(segment, forKey: segmentKey) }
+        openWindow(id: "main")
         NSApp.activate(ignoringOtherApps: true)
     }
 

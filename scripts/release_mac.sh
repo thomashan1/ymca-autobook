@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Build, sign (Developer ID), notarize and package YMCA Booker for the Mac as a .dmg,
-# then publish it as a GitHub release: scripts/release_mac.sh 0.2.1
+# then publish it as a GitHub release: scripts/release_mac.sh 1.0 20261020.1
+# The build number is the date plus a counter for that day (Apple allows only digits
+# and dots, so 20261020.2 rather than 20261020b).
 #
 # One-time setup (the account holder): a Developer ID Application certificate in the
 # login Keychain (Xcode → Settings → Accounts → Manage Certificates), and an App Store
 # Connect API key saved as ~/.appstoreconnect/AuthKey_<ASC_KEY_ID>.p8. Set ASC_KEY_ID
 # and ASC_ISSUER_ID in the environment. Nothing secret is stored in this repo.
 set -euo pipefail
-VERSION="${1:?usage: release_mac.sh <version>}"
+VERSION="${1:?usage: release_mac.sh <version> <build>}"
+BUILD="${2:?usage: release_mac.sh <version> <build>}"
 : "${ASC_KEY_ID:?set ASC_KEY_ID}" "${ASC_ISSUER_ID:?set ASC_ISSUER_ID}"
 KEY="$HOME/.appstoreconnect/AuthKey_${ASC_KEY_ID}.p8"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,9 +21,10 @@ IDENTITY="$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID 
 [ -n "$IDENTITY" ] || { echo "No Developer ID Application certificate in the Keychain"; exit 1; }
 NOTARY=(--key "$KEY" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID")
 
-echo "== Archive $VERSION into $OUT"
+echo "== Archive $VERSION ($BUILD) into $OUT"
 "$XB" -project "$HERE/app/YmcaAutobook.xcodeproj" -scheme YmcaAutobook -destination 'generic/platform=macOS' \
   -derivedDataPath "$OUT/dd" -archivePath "$OUT/app.xcarchive" MARKETING_VERSION="$VERSION" \
+  CURRENT_PROJECT_VERSION="$BUILD" \
   -allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID" archive -quiet
 
@@ -60,7 +64,7 @@ spctl -a -vv -t open --context context:primary-signature "$DMG"
 
 if [ "${PUBLISH:-1}" = 1 ]; then
   gh release create "v$VERSION" "$DMG" --repo "$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')" \
-    --title "YMCA Booker $VERSION (Mac)" \
+    --title "YMCA Booker $VERSION ($BUILD) for Mac" \
     --notes "Open the .dmg and drag **YMCA Booker** into Applications. Signed with Developer ID and notarized by Apple."
 fi
 echo "Done: $DMG"

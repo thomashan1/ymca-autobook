@@ -21,6 +21,7 @@ struct ScheduleView: View {
     private static let daysAhead = 14
     @State private var detail: ClassDetail?
     @State private var showAway = false
+    @State private var showCalendar = UserDefaults.standard.bool(forKey: "screenshotCalendar")
     @State private var confirmCancel: ScheduleItem?
     @State private var bookNow: Row?
     @State private var message: String?
@@ -144,6 +145,13 @@ struct ScheduleView: View {
             }
             .navigationTitle("Schedule")
             .toolbar {
+                // The iPad shows the calendar above the list; the iPhone has no
+                // room, so it's a tap away, full screen and zoomable.
+                if sizeClass != .regular {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showCalendar = true } label: { Label("Calendar", systemImage: "calendar") }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showAway = true } label: { Label("Away dates", systemImage: "airplane") }
                         .labelStyle(.titleAndIcon)
@@ -156,6 +164,7 @@ struct ScheduleView: View {
             }
             .sheet(item: $detail) { ClassDetailSheet(detail: $0) }
             .sheet(isPresented: $showAway) { AwayView() }
+            .fullScreenCover(isPresented: $showCalendar) { CalendarZoomSheet() }
             .confirmationDialog(confirmCancel.map { "Cancel \($0.name) on \($0.occursAt.formatted(.dateTime.weekday(.wide).month().day()))? Someone else may take the seat." } ?? "",
                                 isPresented: Binding(get: { confirmCancel != nil }, set: { if !$0 { confirmCancel = nil } }),
                                 titleVisibility: .visible) {
@@ -574,6 +583,33 @@ private struct GridCell: View {
         if dropped { return .clear }
         if swapRole == .replacement { return Theme.queued.opacity(0.5) }
         return occ.booked ? Theme.booked.opacity(0.5) : .clear
+    }
+}
+// MARK: - Zoomable full-screen calendar
+
+private struct CalendarZoomSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var scale: CGFloat = 1
+
+    var body: some View {
+        NavigationStack {
+            ScrollView([.horizontal, .vertical]) {
+                TwoWeekGrid(cellFont: 13, labelFont: 15)
+                    .frame(minWidth: UIScreen.main.bounds.width - 24)
+                    .padding()
+                    .scaleEffect(scale, anchor: .topLeading)
+                    .frame(width: (UIScreen.main.bounds.width - 24) * scale, alignment: .topLeading)
+                    .gesture(MagnificationGesture().onChanged { scale = min(4, max(1, $0)) })
+            }
+            .navigationTitle("Calendar")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Reset zoom") { withAnimation { scale = 1 } }.disabled(scale == 1)
+                }
+            }
+        }
     }
 }
 #endif

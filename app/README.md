@@ -19,7 +19,7 @@ Three tabs, the same on the Mac and on iPhone/iPad (since 1.1):
 
 | Screen | Shows |
 |----------|----------------|
-| **Schedule** | The next two weeks of your classes, one line each: booked, books on…, skipped or away, with a countdown to the next one that books. Swipe (iPhone) or click (Mac) a class to skip, cancel or stop booking it every week. **Away dates** opens from here. iPad and Mac show it as a calendar too |
+| **Schedule** | The next two weeks of your classes, one line each: booked, books on…, skipped or away, with a countdown to the next one that books. Swipe (iPhone) or click (Mac) a class to skip, cancel or stop booking it every week. **Away dates** opens from here. iPad and Mac show it as a calendar too; on iPhone the calendar button opens it full screen (pinch to zoom) |
 | **Classes** | **Every week** (your lineup, each with how fast it fills) and **Just once**. **Add a class** opens every class at all nine branches for about two weeks: add it every week or just once (iCloud mode). Links to the full fill-speed table; the Mac also has **Browse weekly slots** |
 | **Settings** | Data source, the Mac's status, **Booking history** (each opening's timing and result), GitHub (advanced) |
 

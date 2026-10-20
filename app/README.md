@@ -71,7 +71,7 @@ on or off.
 - **Classes, away dates and one-day changes** are kept and edited on the Mac
   (My classes, Away & swaps, Book). It needs no GitHub account. Away dates can also
   be added and removed on the iPhone and iPad (Upcoming → Away).
-- **GitHub backup (optional, Settings → Advanced):** off by default. Turned on with a
+- **GitHub backup (optional, Settings → General → For technical users):** off by default. Turned on with a
   private repo and a token (Contents: Read and write on that repo only), the Mac
   writes `classes.yml`, `away.yml` and `swaps.yml` there after every change, one
   way, so the Option B GitHub booker can back it up. Turning it off forgets the repo

@@ -56,7 +56,7 @@ struct SettingsView: View {
     private static var sampleMacs: [Cloud.MacDevice] {
         let v = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.2"
         return [Cloud.MacDevice(id: "mac-sample-1", name: "Mac mini", booking: true, version: v, checkedIn: .now.addingTimeInterval(-120)),
-                Cloud.MacDevice(id: "mac-sample-2", name: "MacBook Pro", booking: false, version: v, checkedIn: .now.addingTimeInterval(-3 * 3600))]
+                Cloud.MacDevice(id: "mac-sample-2", name: "MacBook Pro", booking: false, version: v, checkedIn: .now.addingTimeInterval(-3 * 3600), laptop: true)]
     }
 
     private var tokenEntrySection: some View {

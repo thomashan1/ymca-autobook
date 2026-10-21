@@ -148,27 +148,31 @@ enum Cloud {
         let booking: Bool       // false: "Don't book on this Mac"
         let version: String     // "1.2 (20261021.1)"
         let checkedIn: Date
+        /// Has a built-in battery (a MacBook); nil from 1.2 (20261021.1), which didn't say.
+        var laptop: Bool? = nil
 
         /// Each Mac checks in at every plan (at least every 3 hours) while awake.
         var looksAsleep: Bool { Date().timeIntervalSince(checkedIn) > 6 * 3600 }
         /// Not seen for a month: probably wiped or sold; no longer listed.
         var gone: Bool { Date().timeIntervalSince(checkedIn) > 30 * 86400 }
 
-        private struct Info: Codable { let name: String; let booking: Bool; let version: String }
+        private struct Info: Codable { let name: String; let booking: Bool; let version: String; var laptop: Bool? }
 
-        init(id: String, name: String, booking: Bool, version: String, checkedIn: Date) {
+        init(id: String, name: String, booking: Bool, version: String, checkedIn: Date, laptop: Bool? = nil) {
             self.id = id; self.name = name; self.booking = booking; self.version = version; self.checkedIn = checkedIn
+            self.laptop = laptop
         }
 
         init?(_ r: CKRecord) {
             guard r.recordType == "MacStatus", r.recordID.recordName.hasPrefix(Self.prefix),
                   let at = r["lastSynced"] as? Date, let json = (r["status"] as? String)?.data(using: .utf8),
                   let info = try? JSONDecoder().decode(Info.self, from: json) else { return nil }
-            self.init(id: r.recordID.recordName, name: info.name, booking: info.booking, version: info.version, checkedIn: at)
+            self.init(id: r.recordID.recordName, name: info.name, booking: info.booking, version: info.version, checkedIn: at,
+                      laptop: info.laptop)
         }
 
         var fields: [String: CKRecordValue] {
-            let info = (try? JSONEncoder().encode(Info(name: name, booking: booking, version: version)))
+            let info = (try? JSONEncoder().encode(Info(name: name, booking: booking, version: version, laptop: laptop)))
                 .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
             return ["lastSynced": checkedIn as NSDate, "status": info as NSString]
         }
@@ -187,6 +191,12 @@ enum Cloud {
                 return "\(booking.count) Macs are booking (\(booking.map(\.name).joined(separator: ", "))). One is enough; set the others to \u{201C}Don't book on this Mac\u{201D}."
             }
             return nil
+        }
+
+        /// The Mac that books, when exactly one does: its name stands in for "Mac".
+        static func booker(_ macs: [MacDevice]) -> MacDevice? {
+            let booking = macs.filter { $0.booking && !$0.gone }
+            return booking.count == 1 ? booking[0] : nil
         }
 
         /// Booking first, then by name.

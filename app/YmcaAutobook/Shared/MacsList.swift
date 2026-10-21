@@ -18,7 +18,7 @@ struct MacsList: View {
         }
         ForEach(listed) { m in
             HStack(spacing: 10) {
-                Image(systemName: "desktopcomputer").foregroundStyle(m.booking ? .green : .secondary)
+                Image(systemName: m.laptop == true ? "laptopcomputer" : "desktopcomputer").foregroundStyle(m.booking ? .green : .secondary)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(m.id == thisMac ? "\(m.name) (this Mac)" : m.name)
                     TimelineView(.periodic(from: .now, by: 60)) { _ in

@@ -240,7 +240,7 @@ private struct NextUpCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let m = cloud.mac, m.looksDown, DataSource.isCloud {
-                Label("Your Mac hasn't checked in since \(m.updatedAt.formatted(.relative(presentation: .named))). Nothing books until it's back.",
+                Label("\(Cloud.MacDevice.booker(cloud.macs)?.name ?? "Your Mac") hasn't checked in since \(m.updatedAt.formatted(.relative(presentation: .named))). Nothing books until it's back.",
                       systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote.weight(.semibold)).foregroundStyle(.orange)
             }

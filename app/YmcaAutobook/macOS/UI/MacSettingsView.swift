@@ -64,10 +64,27 @@ private struct WelcomeView: View {
             Text("Sign in with the account you use in the YMCA app. Then pick your classes: this Mac books each one the second it opens, every week.")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary).frame(maxWidth: 460)
             SignInForm(engine: engine).frame(width: 360)
+            WatchOnlyToggle(engine: engine).frame(width: 360)
             VersionTag()
         }
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// The "Don't book on this Mac" switch and what it means.
+struct WatchOnlyToggle: View {
+    @ObservedObject var engine: Engine
+    @AppStorage(WatchOnly.key) private var on = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle("Don't book on this Mac", isOn: $on)
+                .onChange(of: on) { _, off in if !off { engine.pushToCloudSoon(after: 1) } }
+            Text(on ? "Watch only: this Mac shows your classes but never books, cancels or sends anything to iCloud. Another Mac does the booking."
+                    : "Turn on for a second Mac that should only watch, so two Macs never book the same classes.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
     }
 }
 
@@ -376,6 +393,9 @@ struct GeneralSettings: View {
 
     var body: some View {
         Form {
+            Section("This Mac") {
+                WatchOnlyToggle(engine: engine)
+            }
             Section("Startup") {
                 Toggle("Open YMCA Booker at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, on in

@@ -24,7 +24,44 @@ final class Updates: NSObject, SPUUpdaterDelegate {
 
     var updater: SPUUpdater? { controller?.updater }
 
-    func checkForUpdates() { controller?.checkForUpdates(nil) }
+    /// "Check for Updates…": look first, quietly. With an update, Sparkle's own
+    /// window offers it (it shows both build numbers); without one, our own note
+    /// says so with the build, which Sparkle's "up to date" leaves out.
+    func checkForUpdates() {
+        guard let updater, updater.canCheckForUpdates else { return }
+        manualCheck = true
+        foundUpdate = false
+        updater.checkForUpdateInformation()
+    }
+
+    private var manualCheck = false
+    private var foundUpdate = false
+
+    nonisolated func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        MainActor.assumeIsolated { foundUpdate = true }
+    }
+
+    nonisolated func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: (any Error)?) {
+        MainActor.assumeIsolated {
+            guard manualCheck, updateCheck == .updateInformation else { return }
+            manualCheck = false
+            if foundUpdate {
+                controller?.checkForUpdates(nil)
+                return
+            }
+            let alert = NSAlert()
+            alert.icon = NSApp.applicationIconImage
+            if let error, (error as NSError).code != Int(SUError.noUpdateError.rawValue) {
+                alert.messageText = "Couldn't check for updates"
+                alert.informativeText = error.localizedDescription
+            } else {
+                alert.messageText = "You're up to date"
+                alert.informativeText = "YMCA Booker \(AppVersion.label) is the newest version."
+            }
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
+    }
 
     /// When it's safe to restart again, if not now: from 10 minutes before an
     /// opening until 6 minutes after one (the booking, then the fill watch).

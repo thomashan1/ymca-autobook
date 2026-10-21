@@ -9,6 +9,7 @@ struct MacScheduleView: View {
     @State private var showAway = false
     @State private var open: Int?
     @State private var confirmCancel: ScheduleItem?
+    @AppStorage(WatchOnly.key) private var watchOnly = false
 
     private static let cal: Calendar = {
         var c = Calendar(identifier: .gregorian)
@@ -78,6 +79,10 @@ struct MacScheduleView: View {
         let entries = entries
         let past = past(since: mondays[0])
         VStack(alignment: .leading, spacing: 16) {
+            if watchOnly {
+                Label("Watch only: this Mac doesn't book. Turn it off in Settings → This Mac.", systemImage: "eye")
+                    .foregroundStyle(.orange)
+            }
             HStack(spacing: 12) {
                 nextBanner(entries)
                 Button("Away dates…") { showAway = true }

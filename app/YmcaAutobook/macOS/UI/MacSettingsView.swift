@@ -10,6 +10,15 @@ struct SettingsView: View {
     @AppStorage(MacTab.key) private var tab = MacTab.schedule
 
     var body: some View {
+        if engine.signedInAs == nil {
+            WelcomeView(engine: engine)
+                .frame(minWidth: 960, minHeight: 560)
+        } else {
+            tabs
+        }
+    }
+
+    private var tabs: some View {
         TabView(selection: $tab) {
             MacScheduleView(engine: engine)
                 .tabItem { Label("Schedule", systemImage: "calendar") }.tag(MacTab.schedule)
@@ -40,6 +49,25 @@ struct VersionTag: View {
     var body: some View {
         Text("YMCA Booker \(AppVersion.label)").font(.caption2).foregroundStyle(.tertiary).monospacedDigit()
             .textSelection(.enabled)
+    }
+}
+
+/// First run (or signed out): what the app does and the YMCA sign-in, in the
+/// window itself rather than only in the menu bar.
+private struct WelcomeView: View {
+    @ObservedObject var engine: Engine
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 96, height: 96)
+            Text("Welcome to YMCA Booker").font(.largeTitle.bold())
+            Text("Sign in with the account you use in the YMCA app. Then pick your classes: this Mac books each one the second it opens, every week.")
+                .multilineTextAlignment(.center).foregroundStyle(.secondary).frame(maxWidth: 460)
+            SignInForm(engine: engine).frame(width: 360)
+            VersionTag()
+        }
+        .padding(40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

@@ -9,6 +9,11 @@ week ahead. YMCA Booker books them for you, every week, the second they open.
 |:---:|:---:|:---:|
 | <img src="app/screenshots/schedule.png" width="200"> | <img src="app/screenshots/classes.png" width="200"> | <img src="app/screenshots/add-a-class.png" width="200"> |
 
+**On your Mac**, the same three tabs:
+
+<img src="app/screenshots/mac-schedule.png" width="640" alt="Schedule on the Mac: this week and next as a calendar">
+<img src="app/screenshots/mac-classes.png" width="640" alt="Classes on the Mac: every week and just once, with how fast each fills">
+
 ## What you need
 
 - 💻 **A Mac that stays on.** It does the booking. A desktop Mac is best; a MacBook

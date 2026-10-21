@@ -74,6 +74,7 @@ final class Engine: ObservableObject {
     private let syncEvery: TimeInterval = 600
 
     init() {
+        if MacSample.active { loadSample(); return }
         RepoSync.settleImport()
         Notifier.requestPermission()
         LoginItem.registerIfWanted()
@@ -628,7 +629,26 @@ final class Engine: ObservableObject {
 
     /// Has the latest plan found an upcoming opening for this class? Catches typos
     /// in a class name or time — a class that matches nothing is never booked.
-    func isOnSchedule(_ k: RecurringClass) -> Bool { openings.contains { $0.klass.key == k.key } }
+    func isOnSchedule(_ k: RecurringClass) -> Bool { MacSample.active || openings.contains { $0.klass.key == k.key } }
+
+    /// Screenshot mode: made-up classes, nothing started (see MacSample).
+    private func loadSample() {
+        let now = Date()
+        signedInAs = "you@example.com"
+        classes = MacSample.lineup
+        let s = MacSample.schedule(now: now)
+        schedule = s
+        picks = MacSample.picks(s, now: now)
+        skips = MacSample.skips(s, now: now)
+        history = MacSample.history(now: now)
+        log = MacSample.log(now: now)
+        if let thu = s.first(where: { $0.name == "TRX" && ClubTime.weekday($0.occursAt) == "Thu" && $0.openAt > now }) {
+            awayRanges = [AwayRange(start: AwayRange.day(thu.occursAt), end: AwayRange.day(thu.occursAt), except: nil, note: "Dentist")]
+        }
+        swaps = []
+        lastCloudPush = now
+        status = "Sample data"
+    }
 
     // MARK: iCloud
 

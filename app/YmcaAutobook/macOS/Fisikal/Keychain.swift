@@ -8,6 +8,7 @@ enum Keychain {
     private static let service = "com.thomashan.ybooker.mac"
 
     static func set(_ value: Data, for key: String) {
+        if MacSample.active { return }
         let base: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -20,6 +21,7 @@ enum Keychain {
     }
 
     static func get(_ key: String) -> Data? {
+        if MacSample.active { return nil }   // screenshot mode: no saved login
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -32,6 +34,7 @@ enum Keychain {
     }
 
     static func delete(_ key: String) {
+        if MacSample.active { return }
         SecItemDelete([
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

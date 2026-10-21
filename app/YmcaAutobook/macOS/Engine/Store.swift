@@ -6,6 +6,12 @@ import Foundation
 /// appended as the app runs.
 enum Store {
     static let dir: URL = {
+        // Screenshot mode never sees or touches the real files.
+        if MacSample.active {
+            let d = FileManager.default.temporaryDirectory.appendingPathComponent("YBookerSample-\(ProcessInfo.processInfo.processIdentifier)")
+            try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+            return d
+        }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let d = base.appendingPathComponent("YBookerMac", isDirectory: true)
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)

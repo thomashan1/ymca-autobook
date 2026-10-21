@@ -28,12 +28,16 @@ struct MacStatusRow: View {
 
     var body: some View {
         if let m = cloud.mac {
+            // The booking Mac by name once Macs report themselves (1.2 on).
+            let booker = Cloud.MacDevice.booker(cloud.macs)
+            let name = booker?.name ?? "Mac"
+            let icon = booker?.laptop == true ? "laptopcomputer" : "desktopcomputer"
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Image(systemName: m.looksDown ? "desktopcomputer.trianglebadge.exclamationmark" : "desktopcomputer")
+                    Image(systemName: m.looksDown ? "\(icon).trianglebadge.exclamationmark" : icon)
                         .foregroundStyle(m.looksDown ? Theme.accent : Theme.booked)
-                    Text(m.looksDown ? "Mac hasn't checked in"
-                         : "Mac is booking \(m.liveClasses) class\(m.liveClasses == 1 ? "" : "es")")
+                    Text(m.looksDown ? "\(name) hasn't checked in"
+                         : "\(name) is booking \(m.liveClasses) class\(m.liveClasses == 1 ? "" : "es")")
                         .font(.body.weight(.medium))
                 }
                 Text("Last heard from \(m.updatedAt.formatted(.relative(presentation: .named)))")

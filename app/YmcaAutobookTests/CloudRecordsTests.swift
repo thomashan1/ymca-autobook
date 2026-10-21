@@ -193,6 +193,11 @@ final class CloudRecordsTests: XCTestCase {
         XCTAssertEqual(back?.name, "mini")
         XCTAssertEqual(back?.booking, true)
         XCTAssertEqual(back?.version, "1.2 (20261021.1)")
+        XCTAssertNil(back?.laptop, "not said: shown as a desktop")
+        let mbp = Cloud.MacDevice(id: "mac-mbp", name: "MBP", booking: false, version: "1.2", checkedIn: Date(), laptop: true)
+        let r2 = CKRecord(recordType: "MacStatus", recordID: CKRecord.ID(recordName: mbp.id, zoneID: Cloud.zoneID))
+        for (k, v) in mbp.fields { r2[k] = v }
+        XCTAssertEqual(Cloud.MacDevice(r2)?.laptop, true)
         XCTAssertEqual(back?.checkedIn.timeIntervalSince1970 ?? 0, d.checkedIn.timeIntervalSince1970, accuracy: 0.001)
         // iPhone builds before 1.2 read every MacStatus record as the heartbeat;
         // a Mac's own record must not decode as one, or it would replace it.

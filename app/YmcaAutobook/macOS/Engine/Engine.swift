@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import Foundation
+import IOKit.ps
 
 /// Shadow-mode booking engine. Works out each class's opening instant from the
 /// YMCA's own data, and at that second does everything a real booking would —
@@ -189,12 +190,24 @@ final class Engine: ObservableObject {
         return id
     }
 
+    /// A MacBook: it has a built-in battery. (The model id doesn't say on
+    /// newer Macs, which report "Mac14,7" and the like.)
+    private static let hasBattery: Bool = {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+              let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef] else { return false }
+        return list.contains { ps in
+            (IOPSGetPowerSourceDescription(info, ps)?.takeUnretainedValue() as? [String: Any])?[kIOPSTypeKey] as? String
+                == kIOPSInternalBatteryType
+        }
+    }()
+
     /// Tell iCloud this Mac is here and whether it books, then read back every
     /// Mac's entry. Runs with each plan and whenever booking is turned on or off.
     func checkIn() async {
         guard !MacSample.active else { return }
         let me = Cloud.MacDevice(id: Self.deviceId, name: Host.current().localizedName ?? "Mac",
-                                 booking: !WatchOnly.isOn, version: AppVersion.label, checkedIn: Date())
+                                 booking: !WatchOnly.isOn, version: AppVersion.label, checkedIn: Date(),
+                                 laptop: Self.hasBattery)
         try? await CloudStore.shared.announce(me)
         if let all = try? await CloudStore.shared.macs() { macs = all }
     }

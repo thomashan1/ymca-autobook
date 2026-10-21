@@ -138,6 +138,9 @@ the Mac and on TestFlight. Two tracks:
   Sparkle update feed without publishing anything (install it on your own Mac), and
   `scripts/release_ios.sh 1.1 20261021.3` uploads to TestFlight, where internal testers
   get it at once.
+- **What's new**: `release-notes/<version>.md`, one `- ` line per change, written in plain
+  words for friends. It shows in the Mac's update window, on the GitHub release and as
+  TestFlight's "What to Test"; promoting refuses to run without it.
 - **Give it to friends** (after it has handled a real opening): `scripts/promote.sh 1.1
   20261021.3 <release dir>` publishes the .dmg and `appcast.xml` as the GitHub release
   (one per version), which every installed Mac picks up through Sparkle, and adds the

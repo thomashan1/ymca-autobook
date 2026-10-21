@@ -73,7 +73,7 @@ on or off.
   (Classes, and Schedule → Away dates; the same tabs as on the iPhone). It needs no GitHub account. Weekly
   classes and away dates can also be added and removed on the iPhone and iPad: the phone sends a
   request through iCloud and the Mac applies it (`addWeekly`/`removeWeekly` requests since 1.1, #148).
-- **GitHub backup (optional, Settings → For technical users):** off by default. Turned on with a
+- **GitHub backup (optional, Settings → Advanced mode):** off by default. Turned on with a
   private repo and a token (Contents: Read and write on that repo only), the Mac
   writes `classes.yml`, `away.yml` and `swaps.yml` there after every change, one
   way, so the Option B GitHub booker can back it up. Turning it off forgets the repo

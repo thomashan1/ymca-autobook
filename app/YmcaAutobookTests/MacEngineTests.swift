@@ -74,7 +74,7 @@ final class RepoSyncTests: XCTestCase {
 }
 
 /// The Mac needs nothing from GitHub: the backup copy is written only with a
-/// repo set (Settings → For technical users), and never replaces the Mac's own data.
+/// repo set (Settings → Advanced mode), and never replaces the Mac's own data.
 final class GitHubBackupTests: XCTestCase {
     private func defaults() throws -> (UserDefaults, String) {
         let name = "GitHubBackupTests-\(UUID())"

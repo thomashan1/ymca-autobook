@@ -418,13 +418,13 @@ struct GeneralSettings: View {
 
 // MARK: GitHub backup
 
-/// The optional GitHub backup (Option B), folded away at the bottom of General
-/// since most people never use it. Off by default: the Mac books on its own and
-/// syncs to the iPhone through iCloud, with no GitHub account needed. It opens by
-/// itself when the backup is on, so its warnings stay in view.
+/// The optional GitHub backup (Option B), folded away as "Advanced mode" at the
+/// bottom of Settings since most people never use it, and always collapsed at
+/// first. Off by default: the Mac books on its own and syncs to the iPhone
+/// through iCloud, with no GitHub account needed.
 struct GitHubBackupSection: View {
     @ObservedObject var engine: Engine
-    @State private var expanded = RepoSync.isEnabled
+    @State private var expanded = false
     @State private var on = RepoSync.isEnabled
     @State private var token = ""
     @State private var repo = RepoSync.repo ?? ""
@@ -437,7 +437,7 @@ struct GitHubBackupSection: View {
 
     var body: some View {
         Section {
-            DisclosureGroup("For technical users", isExpanded: $expanded) {
+            DisclosureGroup(isExpanded: $expanded) {
                 Toggle("Also keep a GitHub backup", isOn: $on)
                     .onChange(of: on) { _, enabled in
                         if !enabled { repo = ""; token = ""; engine.turnOffGitHub() }
@@ -458,6 +458,15 @@ struct GitHubBackupSection: View {
                     }
                     Text("After each change the Mac writes a copy of your classes, away dates and one-day changes into that private repo's classes.yml, away.yml and swaps.yml, for the backup to follow. It never reads them back, so keep editing here or on the iPhone, not in the repo. Use a fine-grained token for that repo only, with Contents: Read and write. It's stored in this Mac's Keychain. Turning the backup off forgets the repo and token.")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+            } label: {
+                // Collapsed even with the backup on, but a problem still shows.
+                HStack {
+                    Text("Advanced mode")
+                    if RepoSync.isEnabled, engine.syncError != nil {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                            .help("The GitHub backup has a problem. Open to see it.")
+                    }
                 }
             }
         }

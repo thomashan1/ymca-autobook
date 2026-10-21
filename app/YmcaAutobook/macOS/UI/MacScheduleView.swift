@@ -30,9 +30,14 @@ struct MacScheduleView: View {
         let now = Date(), until = now.addingTimeInterval(15 * 86400)
         return (engine.schedule ?? []).compactMap { i in
             guard i.occursAt > now, i.occursAt < until else { return nil }
-            let s = engine.state(of: i)
-            guard [.booked, .queued, .booking, .lineup, .skipped].contains(s) else { return nil }
-            return Entry(item: i, state: s, away: s == .lineup && isAway(i))
+            var s = engine.state(of: i)
+            // Away and skipped classes stay on the calendar, struck through,
+            // even after their booking window opened (they aren't in the lineup
+            // then, so they'd read as just "open" and drop off).
+            let away = !i.joined && isAway(i)
+            if !i.joined && engine.isSkipped(i.id) { s = .skipped }
+            guard away || [.booked, .queued, .booking, .lineup, .skipped].contains(s) else { return nil }
+            return Entry(item: i, state: s, away: away)
         }
         .sorted { $0.item.occursAt < $1.item.occursAt }
     }

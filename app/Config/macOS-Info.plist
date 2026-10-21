@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Sparkle: where updates are announced (the newest GitHub release's appcast.xml)
+	     and the public half of the key that signs them. The private half stays off the repo. -->
+	<key>SUFeedURL</key>
+	<string>https://github.com/thomashan1/ymca-autobook/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>tiVwIlBx8w30BohpmVMXVWurWT4Hndl0W+Uj3h00qxY=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+</dict>
+</plist>

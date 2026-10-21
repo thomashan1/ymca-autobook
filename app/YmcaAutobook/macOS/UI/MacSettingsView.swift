@@ -381,6 +381,14 @@ struct GeneralSettings: View {
                 Text("Your classes, away dates, swaps, booking results and fill stats go to your own iCloud so the iPhone app can show them. Booking never waits on iCloud.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Updates") {
+                HStack {
+                    Text("YMCA Booker \(AppVersion.label). Checks for a new version once a day and asks before installing; it never restarts around an opening.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    CheckForUpdatesButton()
+                }
+            }
             Section("Booking history") {
                 HStack {
                     Text("Every opening your Mac handled: when the booking went out, the reply, and how fast the class filled.")

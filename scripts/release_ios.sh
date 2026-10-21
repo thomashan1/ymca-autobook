@@ -16,6 +16,7 @@ KEY="$HOME/.appstoreconnect/AuthKey_${ASC_KEY_ID}.p8"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${RELEASE_DIR:-$(mktemp -d)}"
 XB="${XCODEBUILD:-xcodebuild}"
+"$HERE/scripts/fetch_sparkle.sh"   # the Mac updater, kept out of git
 AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID"
   -authenticationKeyIssuerID "$ASC_ISSUER_ID")
 

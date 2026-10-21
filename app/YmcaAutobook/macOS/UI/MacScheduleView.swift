@@ -87,14 +87,20 @@ struct MacScheduleView: View {
                 nextBanner(entries)
                 Button("Away dates…") { showAway = true }
             }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    ForEach(Array(mondays.enumerated()), id: \.offset) { n, mon in
-                        week(n == 0 ? "This week" : "Next week", from: mon, entries, past: n == 0 ? past : [])
+            if engine.schedule == nil {
+                // In place of the calendar, not over it: empty day boxes behind
+                // the spinner made its text unreadable.
+                ProgressView("Reading the YMCA schedule…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        ForEach(Array(mondays.enumerated()), id: \.offset) { n, mon in
+                            week(n == 0 ? "This week" : "Next week", from: mon, entries, past: n == 0 ? past : [])
+                        }
                     }
                 }
             }
-            .overlay { if engine.schedule == nil { ProgressView("Reading the YMCA schedule…") } }
             Text("Click a class to skip it, cancel it or stop booking it every week. Your Mac books each class the second its booking opens, 7 days ahead.")
                 .font(.caption).foregroundStyle(.secondary)
         }

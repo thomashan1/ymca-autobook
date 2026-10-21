@@ -68,6 +68,11 @@ final class FillStatsRepository: ObservableObject {
         updatedAt = updated
     }
 
+    /// A session's weekly slot, as the Add a class list names it.
+    func stats(for i: ScheduleItem) -> Slot? {
+        byKey[Self.key(name: i.name, weekday: ClubTime.weekday(i.occursAt), start: ClubTime.hhmm(i.occursAt), branchId: i.branchId)]
+    }
+
     func stats(for c: GymClass) -> Slot? {
         byKey[Self.key(name: c.name, weekday: c.weekday.rawValue, start: c.start,
                        branchId: c.locationIds.first ?? 1392)]

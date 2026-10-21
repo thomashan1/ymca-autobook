@@ -17,6 +17,9 @@ struct MacBookView: View {
     @State private var confirm: (ScheduleItem, Cloud.Request.Action)?
 
     var body: some View {
+        // How fast each weekly slot fills, from the fill history (Browse weekly
+        // slots used to be the place for this).
+        let fills = Dictionary(engine.slotStats().map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         VStack(alignment: .leading, spacing: 10) {
             filters
             Table(filtered) {
@@ -31,6 +34,14 @@ struct MacBookView: View {
                 TableColumn("Room") { i in Text(i.room).foregroundStyle(.secondary) }.width(min: 90, ideal: 130)
                 TableColumn("Instructor") { i in Text(i.trainer).foregroundStyle(.secondary) }.width(min: 80, ideal: 110)
                 TableColumn("Status") { i in status(i) }.width(min: 110, ideal: 170)
+                TableColumn("Fills in") { i in
+                    let s = fills[Slot.key(name: i.name, weekday: Slot.weekday(i.occursAt), start: Slot.hhmm(i.occursAt), branchId: i.branchId)]
+                    Text(s.map { $0.filledWeeks == 0 ? "rarely" : ClassesEditor.duration($0.medianFill) } ?? "—")
+                        .monospacedDigit()
+                        .foregroundStyle((s?.medianFill ?? .infinity) <= 300 ? .orange : .secondary)
+                        .help("Typical time from booking opening to full, over past weeks")
+                }
+                .width(70)
             }
             .overlay {
                 if engine.schedule == nil { ProgressView("Reading the YMCA schedule…") }

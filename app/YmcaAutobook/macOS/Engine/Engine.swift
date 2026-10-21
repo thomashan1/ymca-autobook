@@ -507,52 +507,6 @@ final class Engine: ObservableObject {
         return out
     }
 
-    func remove(_ slot: CatalogSlot) {
-        update(classes: classes.filter { !slot.isSame(as: $0) })
-    }
-
-    /// Every weekly class slot at every branch, from the next two weeks of the
-    /// live schedule. Personal-training style one-person slots are dropped.
-    func loadCatalog() async throws -> [CatalogSlot] {
-        _ = try await FisikalClient.shared.ensureSession()
-        let now = Date()
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = FisikalClient.zone
-        let days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-        func hhmm(_ d: Date) -> String {
-            let c = cal.dateComponents([.hour, .minute], from: d)
-            return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
-        }
-        var groups: [String: (branch: Int, occs: [Occurrence])] = [:]
-        for branch in Branch.ids {
-            // Two weeks covers each weekly slot twice; this week's sessions have
-            // already opened for booking, so they carry fill-speed data.
-            let occs = try await FisikalClient.shared.occurrences(
-                locationIds: [branch], since: now.addingTimeInterval(-86400), till: now.addingTimeInterval(14 * 86400))
-            for o in occs where o.capacity >= 5 {
-                let wd = days[cal.component(.weekday, from: o.occursAt) - 1]
-                let id = "\(o.title.lowercased())|\(wd)|\(hhmm(o.occursAt))|\(branch)"
-                groups[id, default: (branch, [])].occs.append(o)
-            }
-        }
-        return groups.values.compactMap { g -> CatalogSlot? in
-            guard let first = g.occs.min(by: { $0.occursAt < $1.occursAt }) else { return nil }
-            let upcoming = g.occs.filter { $0.occursAt > now }.min { $0.occursAt < $1.occursAt } ?? first
-            let fills = g.occs.compactMap { o in o.fullGroupAt.map { $0.timeIntervalSince(o.openAt) } }.filter { $0 >= 0 }
-            return CatalogSlot(
-                name: first.title,
-                weekday: days[cal.component(.weekday, from: first.occursAt) - 1],
-                start: hhmm(first.occursAt),
-                end: hhmm(first.occursAt.addingTimeInterval(Double(first.durationMinutes) * 60)),
-                branchId: g.branch,
-                rooms: Array(Set(g.occs.map(\.room).filter { !$0.isEmpty })).sorted(),
-                trainers: Array(Set(g.occs.map(\.trainer).filter { !$0.isEmpty })).sorted(),
-                capacity: g.occs.map(\.capacity).max() ?? 0,
-                fastestFill: fills.min(),
-                nextSession: upcoming.occursAt)
-        }
-    }
-
     // MARK: Fill history
 
     /// Upsert every group class whose booking window has opened. `full_group_at`

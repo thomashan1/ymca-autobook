@@ -80,8 +80,8 @@ struct WatchOnlyToggle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle("Don't book on this Mac", isOn: $on)
-                .onChange(of: on) { _, off in if !off { engine.pushToCloudSoon(after: 1) } }
-            Text(on ? "Watch only: this Mac shows your classes but never books, cancels or sends anything to iCloud. Another Mac does the booking."
+                .onChange(of: on) { _, now in if now { engine.enterWatchOnly() } else { engine.leaveWatchOnly() } }
+            Text(on ? "Watch only: this Mac shows the booking Mac's classes and away dates (same iCloud account) but never books, cancels or changes anything. Make changes on that Mac or the iPhone."
                     : "Turn on for a second Mac that should only watch, so two Macs never book the same classes.")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -123,6 +123,7 @@ private let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 struct ClassesEditor: View {
     @ObservedObject var engine: Engine
     @State private var sheet: Sheet?
+    @AppStorage(WatchOnly.key) private var watchOnly = false
 
     private enum Sheet: String, Identifiable { case add, fill; var id: String { rawValue } }
 
@@ -132,10 +133,15 @@ struct ClassesEditor: View {
             HStack {
                 Text("Your classes").font(.title2.bold())
                 Spacer()
-                Button { sheet = .add } label: { Label("Add a class", systemImage: "plus") }
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut("n")
-                    .help("Add a class from the YMCA schedule, every week or just once")
+                if watchOnly {
+                    Text("Watch only: change classes on the Mac that books, or on the iPhone.")
+                        .font(.callout).foregroundStyle(.orange)
+                } else {
+                    Button { sheet = .add } label: { Label("Add a class", systemImage: "plus") }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut("n")
+                        .help("Add a class from the YMCA schedule, every week or just once")
+                }
             }
             List {
                 Section {
@@ -150,11 +156,13 @@ struct ClassesEditor: View {
                             }
                             Spacer()
                             if let st = stats[k.slotKey] { fillBadge(st) }
-                            Button(role: .destructive) {
-                                engine.update(classes: engine.classes.filter { $0.key != k.key })
-                            } label: { Image(systemName: "trash") }
-                            .buttonStyle(.borderless)
-                            .help("Stop booking it every week")
+                            if !watchOnly {
+                                Button(role: .destructive) {
+                                    engine.update(classes: engine.classes.filter { $0.key != k.key })
+                                } label: { Image(systemName: "trash") }
+                                .buttonStyle(.borderless)
+                                .help("Stop booking it every week")
+                            }
                         }
                     }
                     if engine.classes.isEmpty { Text("None yet. Click Add a class.").foregroundStyle(.secondary) }
@@ -177,7 +185,7 @@ struct ClassesEditor: View {
                                 Spacer()
                                 Text(p.openAt > Date() ? "books \(MacScheduleView.when(p.openAt))" : "booking…")
                                     .foregroundStyle(.blue)
-                                Button("Don't book") { engine.perform(.withdraw, on: p) }
+                                if !watchOnly { Button("Don't book") { engine.perform(.withdraw, on: p) } }
                             }
                         }
                     }

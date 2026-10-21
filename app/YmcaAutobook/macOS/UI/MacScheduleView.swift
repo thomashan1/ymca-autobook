@@ -102,6 +102,7 @@ struct MacScheduleView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         ForEach(Array(mondays.enumerated()), id: \.offset) { n, mon in
+                            if n > 0 { Rectangle().fill(Color.blue.opacity(0.4)).frame(height: 2) }
                             week(n == 0 ? "This week" : "Next week", from: mon, entries, past: n == 0 ? past : [])
                         }
                     }
@@ -159,29 +160,24 @@ struct MacScheduleView: View {
         // Weekends only when something's on them.
         let days = all.enumerated().filter { n, d in n < 5 || entries.contains { cal.isDate($0.item.occursAt, inSameDayAs: d) } }.map(\.element)
         return VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased()).font(.caption.weight(.heavy)).foregroundStyle(.secondary)
+            Text(title.uppercased()).font(.caption.weight(.heavy)).foregroundStyle(.blue)
             HStack(alignment: .top, spacing: 10) {
                 ForEach(days, id: \.self) { d in dayColumn(d, entries, past) }
             }
         }
     }
 
+    /// The same card as the iPhone's calendar; what it's waiting for is in
+    /// the tooltip and the popover.
     private func cell(_ e: Entry) -> some View {
-        let (label, color) = status(e)
         let dropped = e.away || e.state == .skipped
         return Button { open = e.id } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(e.item.name).font(.callout.weight(.semibold)).strikethrough(dropped).lineLimit(2)
-                Text("\(e.item.occursAt.formatted(date: .omitted, time: .shortened)) · \(label)")
-                    .font(.caption)
-            }
-            .foregroundStyle(dropped ? .secondary : color)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(8)
-            .background((dropped ? Color.gray : color).opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder((dropped ? Color.gray : color).opacity(0.45), lineWidth: 1))
-            .contentShape(Rectangle())
+            CalendarCell(time: Self.hhmm(e.item.occursAt), name: e.item.name,
+                         booked: e.state == .booked, dropped: dropped,
+                         queued: e.state == .queued || e.state == .booking)
+                .contentShape(Rectangle())
         }
+        .help(status(e).0)
         .buttonStyle(.plain)
         .popover(isPresented: Binding(get: { open == e.id }, set: { if !$0 { open = nil } }), arrowEdge: .trailing) {
             details(e)
@@ -193,9 +189,12 @@ struct MacScheduleView: View {
         let today = cal.isDateInToday(d)
         let isPast = !today && d < Date()
         return VStack(alignment: .leading, spacing: 6) {
-            Text(d.formatted(.dateTime.weekday().month(.defaultDigits).day()))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(today ? .blue : .secondary)
+            VStack(spacing: 1) {
+                Text(d.formatted(.dateTime.weekday(.abbreviated))).font(.subheadline.weight(.bold))
+                Text(d.formatted(.dateTime.month(.defaultDigits).day())).font(.caption).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(today ? .blue : .primary)
             ForEach(past.filter { cal.isDate($0.occursAt, inSameDayAs: d) }) { pastCell($0) }
             ForEach(entries.filter { cal.isDate($0.item.occursAt, inSameDayAs: d) }) { cell($0) }
         }
@@ -208,18 +207,11 @@ struct MacScheduleView: View {
     }
 
     private func pastCell(_ p: Past) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(p.name).font(.callout.weight(.semibold)).lineLimit(2)
-            Text("\(p.occursAt.formatted(date: .omitted, time: .shortened)) · \(p.booked ? "done" : "not booked")")
-                .font(.caption)
-        }
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(Color.gray.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.gray.opacity(0.3), lineWidth: 1))
-        .help(p.verdict)
+        CalendarCell(time: Self.hhmm(p.occursAt), name: p.name, booked: p.booked, past: true)
+            .help(p.verdict)
     }
+
+    private static func hhmm(_ d: Date) -> String { ClubTime.hhmm(d) }
 
     private func details(_ e: Entry) -> some View {
         let i = e.item

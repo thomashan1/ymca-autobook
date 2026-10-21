@@ -475,6 +475,7 @@ private struct TwoWeekGrid: View {
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
     @EnvironmentObject var fullClasses: FullRepository
+    @ObservedObject private var cloud = CloudSource.shared
 
     var cellFont: CGFloat
     var labelFont: CGFloat
@@ -505,6 +506,16 @@ private struct TwoWeekGrid: View {
         }
     }
 
+    /// Skipped in YMCA Booker (iCloud mode): struck through like an away day.
+    private func skipped(_ occ: Occurrence, on date: Date) -> Bool {
+        _ = cloud.version
+        guard let item = cloud.schedule?.first(where: {
+            $0.name == occ.name && ClubTime.hhmm($0.occursAt) == occ.start
+                && CalendarHelper.pacific.isDate($0.occursAt, inSameDayAs: date)
+        }) else { return false }
+        return cloud.state(of: item) == .skipped
+    }
+
     private func dayColumn(_ date: Date) -> some View {
         let occs = CalendarHelper.weekday(of: date).map {
             Occurrence.build(date: date, weekday: $0, classes: classes, bookings: bookings,
@@ -519,7 +530,7 @@ private struct TwoWeekGrid: View {
             }
             ForEach(occs) { occ in
                 let away = occ.classKey.map { awayRanges.isAway(date, classKey: $0) } ?? false
-                GridCell(occ: occ, away: away,
+                GridCell(occ: occ, away: away || skipped(occ, on: date),
                          swapRole: swaps.role(name: occ.name, start: occ.start,
                                               classKey: occ.classKey, on: date),
                          past: CalendarHelper.startDate(occ.start, on: date).map { $0 < Date() } ?? false,
@@ -541,48 +552,13 @@ private struct GridCell: View {
     /// because in both cases it simply isn't happening for you that day.
     private var dropped: Bool { away || swapRole == .displaced }
 
-    private var fill: Color {
-        if dropped { return Theme.away.opacity(0.12) }
-        if swapRole == .replacement { return Theme.queued.opacity(0.18) }
-        return occ.booked ? Theme.booked.opacity(0.18) : Theme.away.opacity(0.10)
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            HStack(spacing: 2) {
-                Text(occ.start).font(.system(size: font, weight: .bold)).monospacedDigit()
-                // No room for a word at this size, so the swap arrows carry it;
-                // the agenda row below spells it out as a badge.
-                if swapRole != nil {
-                    Image(systemName: "arrow.triangle.swap")
-                        .font(.system(size: font - 1, weight: .heavy))
-                        .foregroundStyle(swapRole == .replacement ? Theme.queued : Theme.away)
-                }
-                if occ.booked && !dropped {
-                    Image(systemName: "checkmark").font(.system(size: font - 1, weight: .heavy))
-                        .foregroundStyle(Theme.booked)
-                }
-            }
-            Text(occ.name).font(.system(size: font))
-                // One long word ("BODYBALANCE") shrinks rather than breaking mid-word.
-                .lineLimit(occ.name.contains(" ") ? 3 : 1).minimumScaleFactor(occ.name.contains(" ") ? 1 : 0.6)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(5)
-        .background(fill, in: RoundedRectangle(cornerRadius: 7))
-        .overlay(
-            RoundedRectangle(cornerRadius: 7)
-                .strokeBorder(strokeColor, lineWidth: 1)
-        )
-        .foregroundStyle(dropped ? Theme.away : .primary)
-        .strikethrough(dropped, color: Theme.away)
-        .opacity(past ? 0.4 : (dropped ? 0.6 : 1))
-    }
-
-    private var strokeColor: Color {
-        if dropped { return .clear }
-        if swapRole == .replacement { return Theme.queued.opacity(0.5) }
-        return occ.booked ? Theme.booked.opacity(0.5) : .clear
+        // No room for a word at this size, so the swap arrows carry it; the
+        // agenda row below spells it out as a badge.
+        CalendarCell(time: occ.start, name: occ.name, booked: occ.booked, dropped: dropped, past: past,
+                     queued: swapRole == .replacement,
+                     symbol: swapRole.map { ("arrow.triangle.swap", $0 == .replacement ? Theme.queued : Theme.away) },
+                     font: font)
     }
 }
 // MARK: - Zoomable full-screen calendar

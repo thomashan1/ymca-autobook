@@ -244,6 +244,10 @@ private struct NextUpCard: View {
                       systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote.weight(.semibold)).foregroundStyle(.orange)
             }
+            if DataSource.isCloud, let w = Cloud.MacDevice.warning(cloud.macs) {
+                Label(w, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote.weight(.semibold)).foregroundStyle(.orange)
+            }
             Text("NEXT TO BOOK").font(.caption.weight(.heavy)).foregroundStyle(Theme.weekDivider)
             if let next, let opens = next.opensAt, let starts = next.startsAt {
                 Text("\(next.occ.name) · \(starts.formatted(.dateTime.weekday().month(.defaultDigits).day())), \(next.occ.start)")

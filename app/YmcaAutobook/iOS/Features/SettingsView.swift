@@ -11,6 +11,7 @@ struct SettingsView: View {
     @EnvironmentObject var snapshot: SnapshotRepository
     @EnvironmentObject var bookings: BookingsRepository
     @EnvironmentObject var fullClasses: FullRepository
+    @ObservedObject private var cloud = CloudSource.shared
 
     /// When shown as the first-run sheet this is true; false when it's the tab.
     var onboarding: Bool = false
@@ -26,6 +27,11 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if auth.isCloud || SampleMode.active {
+                    Section("Your Macs") {
+                        MacsList(macs: SampleMode.active ? Self.sampleMacs : cloud.macs)
+                    }
+                }
                 if auth.isCloud {
                     cloudSection
                     diagnosticsSection
@@ -46,6 +52,12 @@ struct SettingsView: View {
     }
 
     // MARK: Sections
+
+    private static var sampleMacs: [Cloud.MacDevice] {
+        let v = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.2"
+        return [Cloud.MacDevice(id: "mac-sample-1", name: "Mac mini", booking: true, version: v, checkedIn: .now.addingTimeInterval(-120)),
+                Cloud.MacDevice(id: "mac-sample-2", name: "MacBook Pro", booking: false, version: v, checkedIn: .now.addingTimeInterval(-3 * 3600))]
+    }
 
     private var tokenEntrySection: some View {
         Section {

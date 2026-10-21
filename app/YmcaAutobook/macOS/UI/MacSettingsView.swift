@@ -404,6 +404,11 @@ struct GeneralSettings: View {
             Section("This Mac") {
                 WatchOnlyToggle(engine: engine)
             }
+            Section("Your Macs") {
+                MacsList(macs: engine.macs, thisMac: UserDefaults.standard.string(forKey: "macDeviceId"))
+                Text("Every Mac with YMCA Booker on your iCloud account. One books; the others can just watch.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Startup") {
                 Toggle("Open YMCA Booker at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, on in

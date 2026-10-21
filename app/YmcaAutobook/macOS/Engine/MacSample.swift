@@ -66,6 +66,13 @@ enum MacSample {
     }
 
     /// Next week's BODYBALANCE, skipped.
+    static func macs(now: Date) -> [Cloud.MacDevice] {
+        [Cloud.MacDevice(id: "mac-sample-1", name: "Mac mini", booking: true, version: AppVersion.label,
+                         checkedIn: now.addingTimeInterval(-120)),
+         Cloud.MacDevice(id: "mac-sample-2", name: "MacBook Pro", booking: false, version: AppVersion.label,
+                         checkedIn: now.addingTimeInterval(-3 * 3600))]
+    }
+
     static func skips(_ schedule: [ScheduleItem], now: Date = Date()) -> [ClassPick] {
         schedule.filter { $0.name == "BODYBALANCE" && $0.autoBook && $0.openAt > now }.prefix(1).map(\.pick)
     }

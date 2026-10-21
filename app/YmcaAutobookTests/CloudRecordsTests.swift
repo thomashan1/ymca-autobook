@@ -177,5 +177,41 @@ final class CloudRecordsTests: XCTestCase {
                                  openAt: Date().addingTimeInterval(-207 * 86400), away: false))
         XCTAssertEqual(records(s, "Opening").count, 1)
     }
+
+    // MARK: Your Macs
+
+    private func device(_ id: String, booking: Bool, ago: TimeInterval = 60) -> Cloud.MacDevice {
+        Cloud.MacDevice(id: "mac-\(id)", name: id, booking: booking, version: "1.2 (20261021.1)",
+                        checkedIn: Date().addingTimeInterval(-ago))
+    }
+
+    func testMacDeviceRoundTrips() {
+        let d = device("mini", booking: true)
+        let r = CKRecord(recordType: "MacStatus", recordID: CKRecord.ID(recordName: d.id, zoneID: Cloud.zoneID))
+        for (k, v) in d.fields { r[k] = v }
+        let back = Cloud.MacDevice(r)
+        XCTAssertEqual(back?.name, "mini")
+        XCTAssertEqual(back?.booking, true)
+        XCTAssertEqual(back?.version, "1.2 (20261021.1)")
+        XCTAssertEqual(back?.checkedIn.timeIntervalSince1970 ?? 0, d.checkedIn.timeIntervalSince1970, accuracy: 0.001)
+        // iPhone builds before 1.2 read every MacStatus record as the heartbeat;
+        // a Mac's own record must not decode as one, or it would replace it.
+        XCTAssertNil(Cloud.MacStatus(r))
+        // …and the heartbeat isn't a Mac in the list.
+        let heartbeat = records(snapshot(), "MacStatus")
+        XCTAssertFalse(heartbeat.isEmpty)
+        XCTAssertTrue(heartbeat.allSatisfy { Cloud.MacDevice($0) == nil })
+    }
+
+    func testMacWarnings() {
+        XCTAssertNil(Cloud.MacDevice.warning([]), "nothing until some Mac reports")
+        XCTAssertNil(Cloud.MacDevice.warning([device("mini", booking: true), device("mbp", booking: false)]))
+        XCTAssertNotNil(Cloud.MacDevice.warning([device("mbp", booking: false)]), "no Mac books")
+        XCTAssertNotNil(Cloud.MacDevice.warning([device("mini", booking: true), device("mbp", booking: true)]), "two book")
+        // A quiet booking Mac is the heartbeat's warning, not this one's; a long-gone one isn't listed.
+        XCTAssertNil(Cloud.MacDevice.warning([device("mini", booking: true, ago: 8 * 3600), device("mbp", booking: true, ago: 40 * 86400)]))
+        XCTAssertEqual(Cloud.MacDevice.sorted([device("b", booking: false), device("a", booking: false), device("c", booking: true),
+                                               device("old", booking: true, ago: 40 * 86400)]).map(\.name), ["c", "a", "b"])
+    }
 }
 #endif

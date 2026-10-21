@@ -44,6 +44,8 @@ final class CloudSource: ObservableObject {
     static let shared = CloudSource()
 
     @Published private(set) var mac: MacStatus?
+    /// Every Mac with the app, booking or watching (from 1.2 on).
+    @Published private(set) var macs: [Cloud.MacDevice] = []
     @Published private(set) var lastRefresh: Date?
     @Published private(set) var error: String?
     /// Bumped whenever the cached records change, so views that read the
@@ -62,6 +64,7 @@ final class CloudSource: ObservableObject {
         if let d = try? Data(contentsOf: Self.cacheURL), let c = try? JSONDecoder().decode(Cache.self, from: d) {
             cache = c
             mac = c.mac
+            macs = Array(c.macs.values)
             lastRefresh = c.lastRefresh
         }
     }
@@ -128,6 +131,7 @@ final class CloudSource: ObservableObject {
         cache.lastRefresh = Date()
         if let d = try? JSONEncoder().encode(cache) { try? d.write(to: Self.cacheURL, options: .atomic) }
         mac = cache.mac
+        macs = Array(cache.macs.values)
         lastRefresh = cache.lastRefresh
         version += 1
     }
@@ -141,6 +145,7 @@ final class CloudSource: ObservableObject {
         case "Opening": cache.openings[name] = Opening(r)
         case "SlotStat": cache.stats[name] = Cloud.Slot(r)
         case "Booking": cache.bookings[name] = Cloud.Booking(r)
+        case "MacStatus" where name.hasPrefix(Cloud.MacDevice.prefix): cache.macs[name] = Cloud.MacDevice(r)
         case "MacStatus": cache.mac = MacStatus(r) ?? cache.mac
         case "Schedule":
             if let part = Cloud.schedule(r) { cache.scheduleParts[name] = part; mergeSchedule() }
@@ -156,7 +161,7 @@ final class CloudSource: ObservableObject {
         cache.classes[name] = nil; cache.awayRanges[name] = nil; cache.swaps[name] = nil
         cache.openings[name] = nil; cache.stats[name] = nil; cache.bookings[name] = nil
         cache.picks[name] = nil; cache.skips[name] = nil; cache.requests[name] = nil
-        cache.awayRequests[name] = nil
+        cache.awayRequests[name] = nil; cache.macs[name] = nil
         if cache.scheduleParts.removeValue(forKey: name) != nil { mergeSchedule() }
     }
 
@@ -456,6 +461,12 @@ final class CloudSource: ObservableObject {
         var stats: [String: Cloud.Slot] = [:]
         var bookings: [String: Cloud.Booking] = [:]
         var mac: Cloud.MacStatus?
+        /// Optional so a cache written before 1.2 still decodes.
+        var devices: [String: Cloud.MacDevice]?
+        var macs: [String: Cloud.MacDevice] {
+            get { devices ?? [:] }
+            set { devices = newValue }
+        }
         var schedule: [ScheduleItem]?
         /// Record name -> that branch's classes.
         var scheduleParts: [String: [ScheduleItem]] = [:]

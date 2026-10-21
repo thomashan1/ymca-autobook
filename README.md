@@ -18,7 +18,7 @@ week ahead. YMCA Booker books them for you, every week, the second they open.
 
 - 💻 **A Mac that stays on.** It does the booking. A desktop Mac is best; a MacBook
   only books while it's open and awake.
-- 📱 **An iPhone or iPad** (optional), to see your classes and get a note after each booking.
+- 📱 **An iPhone or iPad** (optional), to see your classes and get a notification after each booking.
 - 🏋️ **Your YMCA login**, the one you use in the YMCA app.
 
 ## Get the app

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build, sign (Developer ID), notarize and package YMCA Booker for the Mac as a .dmg,
 # then publish it as a GitHub release: scripts/release_mac.sh 1.0 20261020.1
+# Each version keeps one release: a new build replaces earlier builds of that version.
 # The build number is the date plus a counter for that day (Apple allows only digits
 # and dots, so 20261020.2 rather than 20261020b).
 #
@@ -63,8 +64,13 @@ xcrun stapler staple "$DMG"
 spctl -a -vv -t open --context context:primary-signature "$DMG"
 
 if [ "${PUBLISH:-1}" = 1 ]; then
-  gh release create "v$VERSION-$BUILD" "$DMG" --target "$(git -C "$HERE" rev-parse HEAD)" --repo "$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')" \
+  REPO="$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')"
+  gh release create "v$VERSION-$BUILD" "$DMG" --target "$(git -C "$HERE" rev-parse HEAD)" --repo "$REPO" \
     --title "YMCA Booker $VERSION ($BUILD) for Mac" \
     --notes "Open the .dmg and drag **YMCA Booker** into Applications. Signed with Developer ID and notarized by Apple."
+  # One release per version: this build replaces earlier builds of the same version.
+  for old in $(gh release list --repo "$REPO" --limit 100 --json tagName --jq '.[].tagName' | grep "^v$VERSION-" | grep -vx "v$VERSION-$BUILD"); do
+    gh release delete "$old" --repo "$REPO" --yes --cleanup-tag
+  done
 fi
 echo "Done: $DMG"

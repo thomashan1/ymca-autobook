@@ -19,7 +19,27 @@ struct SettingsView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape") }.tag(MacTab.settings)
         }
         .padding()
+        // On every tab, so a screenshot or a question always says which build.
+        .safeAreaInset(edge: .bottom, alignment: .trailing) { VersionTag().padding(.trailing, 16).padding(.bottom, 6) }
         .frame(minWidth: 960, minHeight: 560)
+    }
+}
+
+/// "1.1 (20261020.12)": the same version and build TestFlight and the release page show.
+enum AppVersion {
+    static var label: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(short) (\(build))"
+    }
+}
+
+/// The version and build, small and grey.
+struct VersionTag: View {
+    var body: some View {
+        Text("YMCA Booker \(AppVersion.label)").font(.caption2).foregroundStyle(.tertiary).monospacedDigit()
+            .textSelection(.enabled)
     }
 }
 
@@ -38,7 +58,11 @@ struct SheetFrame<Content: View>: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 12) {
             content
-            Button("Done", action: close).keyboardShortcut(.defaultAction)
+            HStack {
+                VersionTag()
+                Spacer()
+                Button("Done", action: close).keyboardShortcut(.defaultAction)
+            }
         }
         .padding()
         .frame(minWidth: 1000, minHeight: 620)

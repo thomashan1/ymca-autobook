@@ -10,7 +10,7 @@ struct MenuView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("YMCA Booker").font(.headline)
                 Spacer()
-                Text(version).font(.caption).foregroundStyle(.tertiary).monospacedDigit()
+                Text(AppVersion.label).font(.caption).foregroundStyle(.tertiary).monospacedDigit()
             }
             if engine.signedInAs == nil {
                 Divider()
@@ -105,14 +105,6 @@ struct MenuView: View {
         UserDefaults.standard.set(tab, forKey: MacTab.key)
         openWindow(id: "main")
         NSApp.activate(ignoringOtherApps: true)
-    }
-
-    /// "1.0 (20261020.1)": the same version and build TestFlight and the release page show.
-    private var version: String {
-        let info = Bundle.main.infoDictionary
-        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
-        let build = info?["CFBundleVersion"] as? String ?? "?"
-        return "\(short) (\(build))"
     }
 
     private func dayLabel(_ date: Date) -> String {

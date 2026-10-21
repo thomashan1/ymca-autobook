@@ -278,4 +278,17 @@ final class WeeklyRequestTests: XCTestCase {
         XCTAssertTrue(r.picks.isEmpty && r.skips.isEmpty)
     }
 }
+final class UpdateTimingTests: XCTestCase {
+    func testNeverRestartsAroundAnOpening() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        XCTAssertNil(Updates.quietUntil(now: now, nextOpening: nil, lastOpening: nil))
+        XCTAssertNil(Updates.quietUntil(now: now, nextOpening: now.addingTimeInterval(3600), lastOpening: now.addingTimeInterval(-3600)))
+        // 5 minutes before an opening: wait until 6 minutes after it.
+        XCTAssertEqual(Updates.quietUntil(now: now, nextOpening: now.addingTimeInterval(300), lastOpening: nil),
+                       now.addingTimeInterval(660))
+        // 2 minutes after one (the fill watch): wait out the rest of the 6.
+        XCTAssertEqual(Updates.quietUntil(now: now, nextOpening: nil, lastOpening: now.addingTimeInterval(-120)),
+                       now.addingTimeInterval(240))
+    }
+}
 #endif

@@ -28,7 +28,8 @@ week ahead. YMCA Booker books them for you, every week, the second they open.
   [TestFlight](https://apps.apple.com/app/testflight/id899247664) app, then tap
   **Install** in the invite.
 - **Mac:** [download the latest .dmg](https://github.com/thomashan1/ymca-autobook/releases/latest)
-  and drag **YMCA Booker** into Applications.
+  and drag **YMCA Booker** into Applications. After that it updates itself: it offers each
+  new version (**Install Update**), and never restarts while a class is opening.
 
 _The iPhone and iPad app is coming soon ([#151](https://github.com/thomashan1/ymca-autobook/issues/151))._
 

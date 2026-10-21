@@ -129,6 +129,25 @@ app/
   screenshots/
 ```
 
+## Releasing
+
+Every build has a version and a date build number, e.g. 1.1 (20261021.3), the same on
+the Mac and on TestFlight. Two tracks:
+
+- **Try it**: `scripts/release_mac.sh 1.1 20261021.3` builds a notarized .dmg plus its
+  Sparkle update feed without publishing anything (install it on your own Mac), and
+  `scripts/release_ios.sh 1.1 20261021.3` uploads to TestFlight, where internal testers
+  get it at once.
+- **Give it to friends** (after it has handled a real opening): `scripts/promote.sh 1.1
+  20261021.3 <release dir>` publishes the .dmg and `appcast.xml` as the GitHub release
+  (one per version), which every installed Mac picks up through Sparkle, and adds the
+  build to the TestFlight group with the public link for Apple's beta review.
+
+The Mac updates itself with [Sparkle](https://sparkle-project.org): `scripts/fetch_sparkle.sh`
+downloads the framework (checksum-verified, not in git), the feed is signed with an
+Ed25519 key kept in `~/.appstoreconnect/`, and `Updates.swift` holds an install back from
+10 minutes before an opening until 6 minutes after it.
+
 The Mac screenshots come from the app's screenshot mode, which shows made-up
 classes and never reads or writes your real files, Keychain or iCloud:
 `"YMCA Booker.app/Contents/MacOS/YMCA Booker" -sampleData YES -screenshotDir <folder>`

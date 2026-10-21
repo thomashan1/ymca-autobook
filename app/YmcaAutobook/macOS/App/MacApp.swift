@@ -12,7 +12,7 @@ struct MacApp: App {
         MenuBarExtra {
             MenuView(engine: engine)
         } label: {
-            MenuBarIcon()
+            MenuBarIcon(engine: engine)
         }
         .menuBarExtraStyle(.window)
 
@@ -20,17 +20,22 @@ struct MacApp: App {
             SettingsView(engine: engine)
         }
         .windowResizability(.contentMinSize)
+        .commands {
+            CommandGroup(after: .appInfo) { CheckForUpdatesButton() }
+        }
     }
 }
 
 /// The menu bar icon. It's the one view that exists from launch on, so it's
 /// where the app gets hold of SwiftUI's openWindow for the Dock and launch.
 private struct MenuBarIcon: View {
+    let engine: Engine
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Image(systemName: "figure.strengthtraining.traditional")
             .task {
+                Updates.shared.engine = engine   // starts the daily update check
                 MainWindow.open = {
                     openWindow(id: "main")
                     NSApp.activate(ignoringOtherApps: true)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build, sign (Developer ID), notarize and package YMCA Booker for the Mac as a .dmg,
-# then publish it as a GitHub release: scripts/release_mac.sh 1.0 20261020.1
-# Each version keeps one release: a new build replaces earlier builds of that version.
+# with its Sparkle update feed: scripts/release_mac.sh 1.0 20261020.1. Nothing is published:
+# scripts/promote.sh puts a tested build in front of friends.
 # The build number is the date plus a counter for that day (Apple allows only digits
 # and dots, so 20261020.2 rather than 20261020b).
 #
@@ -17,6 +17,7 @@ KEY="$HOME/.appstoreconnect/AuthKey_${ASC_KEY_ID}.p8"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${RELEASE_DIR:-$(mktemp -d)}"
 XB="${XCODEBUILD:-xcodebuild}"
+"$HERE/scripts/fetch_sparkle.sh"   # the Mac updater, kept out of git
 BUNDLE=com.thomashan.ymcaautobook
 IDENTITY="$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/{print $2; exit}')"
 [ -n "$IDENTITY" ] || { echo "No Developer ID Application certificate in the Keychain"; exit 1; }
@@ -46,6 +47,15 @@ d.pop("com.apple.security.get-task-allow", None)
 d["com.apple.developer.icloud-container-environment"] = "Production"
 plistlib.dump(d, open(p, "wb"))
 PY
+# Sparkle's helpers first, inside out: notarization needs every piece signed
+# with the Developer ID, hardened runtime and a timestamp.
+SPK="$APP/Contents/Frameworks/Sparkle.framework"
+if [ -d "$SPK" ]; then
+  for part in "$SPK/Versions/B/XPCServices/Installer.xpc" "$SPK/Versions/B/XPCServices/Downloader.xpc" \
+              "$SPK/Versions/B/Autoupdate" "$SPK/Versions/B/Updater.app" "$SPK"; do
+    [ -e "$part" ] && codesign --force --options runtime --timestamp --preserve-metadata=entitlements --sign "$IDENTITY" "$part"
+  done
+fi
 codesign --force --options runtime --timestamp --entitlements "$OUT/ent.plist" --sign "$IDENTITY" "$APP"
 
 echo "== Notarize the app"
@@ -63,14 +73,14 @@ xcrun notarytool submit "$DMG" "${NOTARY[@]}" --wait
 xcrun stapler staple "$DMG"
 spctl -a -vv -t open --context context:primary-signature "$DMG"
 
-if [ "${PUBLISH:-1}" = 1 ]; then
-  REPO="$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')"
-  gh release create "v$VERSION-$BUILD" "$DMG" --target "$(git -C "$HERE" rev-parse HEAD)" --repo "$REPO" \
-    --title "YMCA Booker $VERSION ($BUILD) for Mac" \
-    --notes "Open the .dmg and drag **YMCA Booker** into Applications. Signed with Developer ID and notarized by Apple."
-  # One release per version: this build replaces earlier builds of the same version.
-  for old in $(gh release list --repo "$REPO" --limit 100 --json tagName --jq '.[].tagName' | grep "^v$VERSION-" | grep -vx "v$VERSION-$BUILD"); do
-    gh release delete "$old" --repo "$REPO" --yes --cleanup-tag
-  done
-fi
+echo "== Update feed (Sparkle)"
+# The app reads this from the newest release; its signature is checked against
+# the public key built into the app. The private key never enters the repo.
+REPO="$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')"
+SPARKLE_KEY="${SPARKLE_KEY:-$HOME/.appstoreconnect/sparkle_ed25519_private.txt}"
+python3 "$HERE/scripts/appcast.py" "$DMG" "$SPARKLE_KEY" "$VERSION" "$BUILD" \
+  "https://github.com/$REPO/releases/download/v$VERSION-$BUILD/$(basename "$DMG")" > "$OUT/appcast.xml"
+
+echo "Built $DMG. Install it on your own Mac to try it; when it's ready for friends:"
+echo "  scripts/promote.sh $VERSION $BUILD $OUT"
 echo "Done: $DMG"

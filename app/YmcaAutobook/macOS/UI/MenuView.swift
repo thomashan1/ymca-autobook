@@ -4,6 +4,7 @@ import SwiftUI
 struct MenuView: View {
     @ObservedObject var engine: Engine
     @Environment(\.openWindow) private var openWindow
+    @AppStorage(WatchOnly.key) private var watchOnly = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -38,6 +39,9 @@ struct MenuView: View {
         // when it says something else (planning, an error, an opening under way).
         if !engine.status.hasPrefix("Next:") {
             Text(engine.status).font(.caption).foregroundStyle(.secondary)
+        }
+        if watchOnly {
+            Label("Watch only: this Mac doesn't book", systemImage: "eye").font(.caption).foregroundStyle(.orange)
         }
 
         if let next = engine.openings.first {

@@ -174,7 +174,7 @@ final class Engine: ObservableObject {
 
     /// Give a booked seat back, then read the session again to be sure.
     func cancelBooking(_ p: ClassPick) async {
-        guard !cancelling.contains(p.id) else { return }
+        guard !WatchOnly.isOn, !cancelling.contains(p.id) else { return }
         cancelling.insert(p.id)
         defer { cancelling.remove(p.id) }
         while isFiring { await sleep(until: Date().addingTimeInterval(5)) }
@@ -227,7 +227,7 @@ final class Engine: ObservableObject {
     /// Book a picked session whose window is already open: the same join and
     /// read-back as at an opening, just not timed to the second.
     func bookNow(_ p: ClassPick) async {
-        guard !bookingNow.contains(p.id) else { return }
+        guard !WatchOnly.isOn, !bookingNow.contains(p.id) else { return }
         bookingNow.insert(p.id)
         defer { bookingNow.remove(p.id) }
         while isFiring { await sleep(until: Date().addingTimeInterval(5)) }
@@ -284,7 +284,8 @@ final class Engine: ObservableObject {
     /// Act on requests from the iPhone (book/cancel/skip a session, add or drop
     /// a weekly class, add/remove away dates), then delete them.
     private func checkInbox() async {
-        guard !isFiring, signedInAs != nil else { return }
+        // A watch-only Mac leaves the iPhone's requests to the Mac that books.
+        guard !isFiring, signedInAs != nil, !WatchOnly.isOn else { return }
         guard let (requests, away) = try? await CloudStore.shared.inbox() else { return }
         guard !(requests.isEmpty && away.isEmpty) else { return }
         if !requests.isEmpty {
@@ -377,7 +378,7 @@ final class Engine: ObservableObject {
     /// Write classes.yml, away.yml and swaps.yml into the repo where they differ
     /// from what was last written. Cheap when nothing changed (no network).
     func publishToRepo(force: Bool = false) async {
-        guard RepoSync.isEnabled, !isFiring else { return }
+        guard RepoSync.isEnabled, !isFiring, !WatchOnly.isOn else { return }
         await importFromRepoOnce()
         guard UserDefaults.standard.bool(forKey: "repoImported") else { return }   // never overwrite unread edits
         let skipPairs = skips.compactMap { s in lineupKeys[s.id].map { (date: AwayRange.day(s.occursAt), key: $0) } }
@@ -619,6 +620,8 @@ final class Engine: ObservableObject {
     }
 
     func pushToCloud() async {
+        // The iPhone reads the booking Mac's records; a watch-only Mac adds none.
+        guard !WatchOnly.isOn else { return }
         let snap = CloudStore.Snapshot(
             classes: classes, awayRanges: awayRanges, swaps: swaps, log: log, stats: slotStats(), bookings: bookings,
             picks: picks, skips: skips, schedule: schedule,
@@ -794,9 +797,11 @@ final class Engine: ObservableObject {
         while Date() < openAt.addingTimeInterval(-1) { try? await Task.sleep(nanoseconds: 200_000_000) }
         while Date() < openAt { try? await Task.sleep(nanoseconds: 5_000_000) }
 
-        // The opening second: send the join first, then read back.
+        // The opening second: send the join first, then read back. A watch-only
+        // Mac skips the join and only reads, as the old shadow mode did.
+        let watchOnly = WatchOnly.isOn
         await withTaskGroup(of: (Int, ShadowEntry.BookingLog?).self) { tg in
-            for (i, o) in group.enumerated() where !o.away && entries[i].error == nil {
+            for (i, o) in group.enumerated() where !o.away && entries[i].error == nil && !watchOnly {
                 tg.addTask { (i, await Self.book(o)) }
             }
             for await (i, log) in tg { entries[i].booking = log }

@@ -130,6 +130,11 @@ struct ScheduleView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) { actions(r) }
+                                // A full-width line after a day's last class, so days read
+                                // apart; between classes of one day it starts at the name.
+                                .alignmentGuide(.listRowSeparatorLeading) { d in
+                                    n == day.rows.count - 1 ? 0 : 52
+                                }
                             }
                         }
                     }

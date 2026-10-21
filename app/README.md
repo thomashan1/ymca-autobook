@@ -151,6 +151,28 @@ downloads the framework (checksum-verified, not in git), the feed is signed with
 Ed25519 key kept in `~/.appstoreconnect/`, and `Updates.swift` holds an install back from
 10 minutes before an opening until 6 minutes after it.
 
+## Inviting someone
+
+Nothing to set up per person; the links are the same for everyone.
+
+1. They email you (the README's contact).
+2. You reply with both links:
+   > **Mac app** (books for you): https://github.com/thomashan1/ymca-autobook/releases/latest
+   > Open the .dmg, drag YMCA Booker into Applications, sign in with your YMCA account and
+   > add your classes. Keep that Mac awake.
+   >
+   > **iPhone/iPad app** (optional): install TestFlight from the App Store, then open
+   > https://testflight.apple.com/join/bg4rZECr and tap Install. Use the same iCloud
+   > account as the Mac.
+3. That's all. Their Mac updates itself (Sparkle) and TestFlight updates the phone, each
+   time a build is promoted.
+
+The TestFlight link joins the external group *YMCA friends*: no access to your App Store
+Connect account, up to 10,000 people, and each version passes Apple's beta review first
+(later builds of a version are usually approved at once). Your own devices are in the
+internal group, which gets every build with no review. To limit who joins, turn the
+public link off in App Store Connect and add people by email to that group instead.
+
 The Mac screenshots come from the app's screenshot mode, which shows made-up
 classes and never reads or writes your real files, Keychain or iCloud:
 `"YMCA Booker.app/Contents/MacOS/YMCA Booker" -sampleData YES -screenshotDir <folder>`

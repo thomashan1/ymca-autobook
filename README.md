@@ -23,18 +23,17 @@ week ahead. YMCA Booker books them for you, every week, the second they open.
 
 ## Get the app
 
-- **iPhone / iPad:** email **[thomashan@icloud.com](mailto:thomashan@icloud.com)**
-  for a TestFlight invite, install the free
-  [TestFlight](https://apps.apple.com/app/testflight/id899247664) app, then tap
-  **Install** in the invite.
-- **Mac:** [download the latest .dmg](https://github.com/thomashan1/ymca-autobook/releases/latest)
+- **Mac** (does the booking): [download the latest .dmg](https://github.com/thomashan1/ymca-autobook/releases/latest)
   and drag **YMCA Booker** into Applications. After that it updates itself through
   [Sparkle](https://sparkle-project.org): it offers each new version, checks it's genuinely
   ours, and never restarts while a class is opening.
 
   <img src="app/screenshots/mac-update.png" width="560" alt="YMCA Booker offering an update, with what's new in it: Install Update, Remind Me Later or Skip This Version">
 
-_The iPhone and iPad app is coming soon ([#151](https://github.com/thomashan1/ymca-autobook/issues/151))._
+- **iPhone / iPad** (optional, a beta through Apple's TestFlight): email
+  **[thomashan@icloud.com](mailto:thomashan@icloud.com)** for the invite link. Install the
+  free [TestFlight](https://apps.apple.com/app/testflight/id899247664) app, open the link,
+  and tap **Install**. TestFlight keeps it up to date.
 
 ## Set it up
 
@@ -53,6 +52,8 @@ _The iPhone and iPad app is coming soon ([#151](https://github.com/thomashan1/ym
 - **Your info stays yours.** Your login stays in your Mac's Keychain and your
   classes in your own iCloud. Nothing goes to anyone else.
 - **All nine branches** of the YMCA of Silicon Valley are supported.
+- **One Mac books.** On a second Mac, turn on **Don't book on this Mac** (Settings → This
+  Mac) before signing in: it shows everything without booking.
 
 ---
 

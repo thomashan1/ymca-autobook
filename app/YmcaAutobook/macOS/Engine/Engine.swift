@@ -12,6 +12,8 @@ final class Engine: ObservableObject {
     /// What the YMCA has us booked into, refreshed with every plan (and so right
     /// after each opening, which clears lastPlanned).
     @Published private(set) var bookings: [CloudStore.Booking]?
+    /// Every Mac with the app on this iCloud account, booking or watching.
+    @Published private(set) var macs: [Cloud.MacDevice] = []
     @Published private(set) var log: [ShadowEntry] = Store.shadowLog()
     @Published private(set) var status = "Starting…"
     @Published private(set) var lastPlanned: Date?
@@ -169,6 +171,7 @@ final class Engine: ObservableObject {
 
     /// Back from watch only: this Mac's own lineup again.
     func leaveWatchOnly() {
+        Task { await checkIn() }
         classes = Store.classes()
         awayRanges = Store.awayRanges()
         replanSoon()
@@ -176,7 +179,25 @@ final class Engine: ObservableObject {
     }
 
     /// Into watch only: pick up the booking Mac's lineup now.
-    func enterWatchOnly() { replanSoon() }
+    func enterWatchOnly() { replanSoon(); Task { await checkIn() } }
+
+    /// This Mac's own id in the list of Macs; kept for good once made.
+    private static var deviceId: String {
+        if let id = UserDefaults.standard.string(forKey: "macDeviceId") { return id }
+        let id = Cloud.MacDevice.prefix + UUID().uuidString.lowercased()
+        UserDefaults.standard.set(id, forKey: "macDeviceId")
+        return id
+    }
+
+    /// Tell iCloud this Mac is here and whether it books, then read back every
+    /// Mac's entry. Runs with each plan and whenever booking is turned on or off.
+    func checkIn() async {
+        guard !MacSample.active else { return }
+        let me = Cloud.MacDevice(id: Self.deviceId, name: Host.current().localizedName ?? "Mac",
+                                 booking: !WatchOnly.isOn, version: AppVersion.label, checkedIn: Date())
+        try? await CloudStore.shared.announce(me)
+        if let all = try? await CloudStore.shared.macs() { macs = all }
+    }
 
     func perform(_ action: Cloud.Request.Action, on p: ClassPick) {
         guard !WatchOnly.isOn else { return }   // the booking Mac does that
@@ -621,6 +642,7 @@ final class Engine: ObservableObject {
             awayRanges = [AwayRange(start: AwayRange.day(thu.occursAt), end: AwayRange.day(thu.occursAt), except: nil, note: "Dentist")]
         }
         swaps = []
+        macs = MacSample.macs(now: now)
         lastCloudPush = now
         status = "Sample data"
     }
@@ -706,6 +728,7 @@ final class Engine: ObservableObject {
         do {
             _ = try await FisikalClient.shared.ensureSession()
             await mirrorIfWatching()
+            Task { await checkIn() }
             let now = Date()
             var found: [Opening] = []
             var joined: [CloudStore.Booking] = []

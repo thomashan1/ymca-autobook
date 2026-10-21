@@ -132,4 +132,66 @@ enum Cloud {
             syncError = r["syncError"] as? String
         }
     }
+
+    /// One Mac with the app, booking or just watching. Every Mac writes its own
+    /// (the booking Mac's heartbeat above is a single record only it writes).
+    ///
+    /// Stored as a MacStatus record named "mac-<install id>" in fields the
+    /// production schema already has (`lastSynced`, `status`), so no schema
+    /// deploy. It leaves `updatedAt` empty on purpose: iPhone builds before
+    /// 1.2 read every MacStatus record as the heartbeat and skip ones without it.
+    struct MacDevice: Codable, Hashable, Identifiable {
+        static let prefix = "mac-"
+
+        let id: String          // the record name
+        let name: String        // "Thomas's Mac mini"
+        let booking: Bool       // false: "Don't book on this Mac"
+        let version: String     // "1.2 (20261021.1)"
+        let checkedIn: Date
+
+        /// Each Mac checks in at every plan (at least every 3 hours) while awake.
+        var looksAsleep: Bool { Date().timeIntervalSince(checkedIn) > 6 * 3600 }
+        /// Not seen for a month: probably wiped or sold; no longer listed.
+        var gone: Bool { Date().timeIntervalSince(checkedIn) > 30 * 86400 }
+
+        private struct Info: Codable { let name: String; let booking: Bool; let version: String }
+
+        init(id: String, name: String, booking: Bool, version: String, checkedIn: Date) {
+            self.id = id; self.name = name; self.booking = booking; self.version = version; self.checkedIn = checkedIn
+        }
+
+        init?(_ r: CKRecord) {
+            guard r.recordType == "MacStatus", r.recordID.recordName.hasPrefix(Self.prefix),
+                  let at = r["lastSynced"] as? Date, let json = (r["status"] as? String)?.data(using: .utf8),
+                  let info = try? JSONDecoder().decode(Info.self, from: json) else { return nil }
+            self.init(id: r.recordID.recordName, name: info.name, booking: info.booking, version: info.version, checkedIn: at)
+        }
+
+        var fields: [String: CKRecordValue] {
+            let info = (try? JSONEncoder().encode(Info(name: name, booking: booking, version: version)))
+                .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+            return ["lastSynced": checkedIn as NSDate, "status": info as NSString]
+        }
+
+        /// What's worth warning about across all your Macs, if anything. Says
+        /// nothing until some Mac has checked in this way (older versions don't).
+        static func warning(_ macs: [MacDevice]) -> String? {
+            let listed = macs.filter { !$0.gone }
+            guard !listed.isEmpty else { return nil }
+            // A booking Mac that's gone quiet is the heartbeat's warning already.
+            if !listed.contains(where: \.booking) {
+                return "No Mac is booking: every Mac is set to \u{201C}Don't book on this Mac\u{201D}."
+            }
+            let booking = listed.filter { $0.booking && !$0.looksAsleep }
+            if booking.count > 1 {
+                return "\(booking.count) Macs are booking (\(booking.map(\.name).joined(separator: ", "))). One is enough; set the others to \u{201C}Don't book on this Mac\u{201D}."
+            }
+            return nil
+        }
+
+        /// Booking first, then by name.
+        static func sorted(_ macs: [MacDevice]) -> [MacDevice] {
+            macs.filter { !$0.gone }.sorted { ($0.booking ? 0 : 1, $0.name) < ($1.booking ? 0 : 1, $1.name) }
+        }
+    }
 }

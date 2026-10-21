@@ -172,6 +172,43 @@ actor CloudStore {
         return (classes, away.sorted { $0.start < $1.start })
     }
 
+    // MARK: Your Macs
+
+    /// Say this Mac is here, and whether it books. Every Mac does this, watch-only
+    /// ones too; it's one record per Mac, saved directly rather than through
+    /// `push`, which only the booking Mac runs.
+    func announce(_ d: Cloud.MacDevice) async throws {
+        let status = try await CKContainer(identifier: Self.containerId).accountStatus()
+        guard status == .available else { throw Failure.account(status) }
+        if !zoneReady {
+            _ = try await database.modifyRecordZones(saving: [CKRecordZone(zoneID: zoneID)], deleting: [])
+            zoneReady = true
+        }
+        let r = CKRecord(recordType: "MacStatus", recordID: CKRecord.ID(recordName: d.id, zoneID: zoneID))
+        for (k, v) in d.fields { r[k] = v }
+        _ = try await database.modifyRecords(saving: [r], deleting: [], savePolicy: .allKeys, atomically: false)
+    }
+
+    /// Every Mac that has announced itself. A full read of the zone, nothing saved.
+    func macs() async throws -> [Cloud.MacDevice] {
+        var token: CKServerChangeToken?
+        var out: [Cloud.MacDevice] = []
+        var more = true
+        do {
+            while more {
+                let changes = try await database.recordZoneChanges(inZoneWith: zoneID, since: token)
+                for (_, result) in changes.modificationResultsByID {
+                    if case .success(let m) = result, let d = Cloud.MacDevice(m.record) { out.append(d) }
+                }
+                token = changes.changeToken
+                more = changes.moreComing
+            }
+        } catch let e as CKError where e.code == .zoneNotFound {
+            return []
+        }
+        return out
+    }
+
     // MARK: Requests from the iPhone
 
     /// New "book this" / "never mind" requests since the last look, read from the

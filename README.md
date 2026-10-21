@@ -53,7 +53,8 @@ week ahead. YMCA Booker books them for you, every week, the second they open.
   classes in your own iCloud. Nothing goes to anyone else.
 - **All nine branches** of the YMCA of Silicon Valley are supported.
 - **One Mac books.** On a second Mac, turn on **Don't book on this Mac** (Settings → This
-  Mac) before signing in: it shows everything without booking.
+  Mac) before signing in: it shows everything without booking. **Settings → Your Macs**, on
+  every device, lists each Mac and whether it's booking or watching, and warns if none books.
 
 ---
 

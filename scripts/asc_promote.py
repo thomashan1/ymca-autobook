@@ -48,7 +48,15 @@ if notes_path:
         api("POST", "/v1/betaBuildLocalizations",
             {"data": {"type": "betaBuildLocalizations", "attributes": {"locale": "en-US", "whatsNew": text},
                       "relationships": {"build": {"data": {"type": "builds", "id": build["id"]}}}}})
-r = api("POST", "/v1/betaAppReviewSubmissions",
-        {"data": {"type": "betaAppReviewSubmissions",
-                  "relationships": {"build": {"data": {"type": "builds", "id": build["id"]}}}}})
-print(f"{build_number}: in {friends['attributes']['name']}, review {r['data']['attributes']['betaReviewState']}")
+try:
+    r = api("POST", "/v1/betaAppReviewSubmissions",
+            {"data": {"type": "betaAppReviewSubmissions",
+                      "relationships": {"build": {"data": {"type": "builds", "id": build["id"]}}}}})
+    print(f"{build_number}: in {friends['attributes']['name']}, review {r['data']['attributes']['betaReviewState']}")
+except SystemExit as e:
+    # Apple reviews one build of a version at a time. Once the earlier one is
+    # through, run this again for the newest build.
+    if "ANOTHER_BUILD_IN_REVIEW" not in str(e):
+        raise
+    print(f"{build_number}: in {friends['attributes']['name']}; another build of this version is still in "
+          "beta review, so submit this one again once that's done")

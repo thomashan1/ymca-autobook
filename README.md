@@ -32,7 +32,7 @@ week ahead. YMCA Booker books them for you, every week, the second they open.
   [Sparkle](https://sparkle-project.org): it offers each new version, checks it's genuinely
   ours, and never restarts while a class is opening.
 
-  <img src="app/screenshots/mac-update.png" width="520" alt="YMCA Booker offering an update: Install Update, Remind Me Later or Skip This Version">
+  <img src="app/screenshots/mac-update.png" width="560" alt="YMCA Booker offering an update, with what's new in it: Install Update, Remind Me Later or Skip This Version">
 
 _The iPhone and iPad app is coming soon ([#151](https://github.com/thomashan1/ymca-autobook/issues/151))._
 

@@ -935,7 +935,9 @@ final class Engine: ObservableObject {
             let types = Set(r.errorTypes)
             if r.ok {
                 log.booked = true
-                log.outcome = "BOOKED by the Mac (attempt \(attempt))"
+                // This is the phone's alert text. Each try is still in the booking
+                // history, so the alert only mentions the count when it took more than one.
+                log.outcome = attempt == 1 ? "Booked by your Mac" : "Booked by your Mac on try \(attempt)"
                 return log
             }
             if !types.isDisjoint(with: race) {

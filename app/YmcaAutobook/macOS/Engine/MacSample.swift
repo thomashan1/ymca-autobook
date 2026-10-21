@@ -99,7 +99,7 @@ enum MacSample {
                                 openAt: open, away: false)
             var b = ShadowEntry.BookingLog()
             b.attempts = [.init(sentAt: open.addingTimeInterval(0.004), repliedAt: open.addingTimeInterval(0.9), result: "joined")]
-            b.outcome = "BOOKED by the Mac (attempt 1)"
+            b.outcome = "Booked by your Mac"
             b.booked = true
             e.booking = b
             return e

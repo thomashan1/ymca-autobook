@@ -141,6 +141,37 @@ actor CloudStore {
         return (saved, deleted)
     }
 
+    // MARK: The booking Mac's lineup (read by a watch-only Mac)
+
+    /// The weekly classes and away dates as the Mac that books published them,
+    /// for a watch-only Mac to show. A full read of the zone, nothing saved.
+    func lineup() async throws -> (classes: [RecurringClass], away: [AwayRange]) {
+        var token: CKServerChangeToken?
+        var classes: [RecurringClass] = []
+        var away: [AwayRange] = []
+        var more = true
+        do {
+            while more {
+                let changes = try await database.recordZoneChanges(inZoneWith: zoneID, since: token)
+                for (_, result) in changes.modificationResultsByID {
+                    guard case .success(let m) = result else { continue }
+                    let r = m.record
+                    if r.recordType == "Class", let c = Cloud.Class(r) {
+                        classes.append(RecurringClass(key: c.key, name: c.name, weekday: c.weekday, start: c.start,
+                                                      locationIds: c.locationIds))
+                    } else if r.recordType == "AwayRange", let a = Cloud.AwayRange(r) {
+                        away.append(AwayRange(start: a.start, end: a.end, except: a.except.isEmpty ? nil : a.except, note: a.note))
+                    }
+                }
+                token = changes.changeToken
+                more = changes.moreComing
+            }
+        } catch let e as CKError where e.code == .zoneNotFound {
+            return ([], [])
+        }
+        return (classes, away.sorted { $0.start < $1.start })
+    }
+
     // MARK: Requests from the iPhone
 
     /// New "book this" / "never mind" requests since the last look, read from the

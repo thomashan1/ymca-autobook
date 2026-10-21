@@ -50,6 +50,12 @@ struct MacScheduleView: View {
     private func past(since monday: Date) -> [Past] {
         let now = Date()
         var seen: [String: Past] = [:]
+        // What the YMCA has us booked into earlier this week (any Mac knows this)…
+        for b in engine.bookings ?? [] where b.occursAt >= monday && b.occursAt <= now {
+            let p = Past(name: b.name, occursAt: b.occursAt, booked: true, verdict: "booked")
+            seen[p.id] = p
+        }
+        // …plus the openings this Mac handled, for the ones that didn't get booked.
         for e in engine.log where e.occursAt >= monday && e.occursAt <= now && !e.away {
             let p = Past(name: e.className, occursAt: e.occursAt,
                          booked: e.booking?.booked == true || e.atOpen?.isJoined == true, verdict: e.verdict)
@@ -85,7 +91,7 @@ struct MacScheduleView: View {
             }
             HStack(spacing: 12) {
                 nextBanner(entries)
-                Button("Away dates…") { showAway = true }
+                if !watchOnly { Button("Away dates…") { showAway = true } }
             }
             if engine.schedule == nil {
                 // In place of the calendar, not over it: empty day boxes behind
@@ -101,7 +107,8 @@ struct MacScheduleView: View {
                     }
                 }
             }
-            Text("Click a class to skip it, cancel it or stop booking it every week. Your Mac books each class the second its booking opens, 7 days ahead.")
+            Text(watchOnly ? "Watch only: the Mac that books makes changes; this one just shows them."
+                 : "Click a class to skip it, cancel it or stop booking it every week. Your Mac books each class the second its booking opens, 7 days ahead.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .sheet(isPresented: $showAway) {
@@ -222,15 +229,17 @@ struct MacScheduleView: View {
             Text([Branch.name(i.branchId), i.room, i.trainer].filter { !$0.isEmpty }.joined(separator: " · "))
                 .foregroundStyle(.secondary)
             Text(status(e).0).foregroundStyle(status(e).1)
-            HStack {
-                if let a = e.state.action {
-                    Button(a.buttonTitle) {
-                        open = nil
-                        if a == .cancel { confirmCancel = i } else { engine.perform(a, on: i.pick) }
+            if !watchOnly {
+                HStack {
+                    if let a = e.state.action {
+                        Button(a.buttonTitle) {
+                            open = nil
+                            if a == .cancel { confirmCancel = i } else { engine.perform(a, on: i.pick) }
+                        }
                     }
-                }
-                if e.state == .lineup || e.state == .skipped || (e.state == .booked && i.autoBook) {
-                    Button("Stop booking every week") { open = nil; engine.perform(.removeWeekly, on: i.pick) }
+                    if e.state == .lineup || e.state == .skipped || (e.state == .booked && i.autoBook) {
+                        Button("Stop booking every week") { open = nil; engine.perform(.removeWeekly, on: i.pick) }
+                    }
                 }
             }
         }

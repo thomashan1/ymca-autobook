@@ -11,7 +11,7 @@ final class Engine: ObservableObject {
     @Published private(set) var openings: [Opening] = []
     /// What the YMCA has us booked into, refreshed with every plan (and so right
     /// after each opening, which clears lastPlanned).
-    private(set) var bookings: [CloudStore.Booking]?
+    @Published private(set) var bookings: [CloudStore.Booking]?
     @Published private(set) var log: [ShadowEntry] = Store.shadowLog()
     @Published private(set) var status = "Starting…"
     @Published private(set) var lastPlanned: Date?
@@ -159,7 +159,27 @@ final class Engine: ObservableObject {
     }
 
     /// Do a session's action, from the Mac's own window or from the iPhone.
+    /// Watch only: show the booking Mac's classes and away dates (from iCloud)
+    /// instead of this Mac's own, which stay untouched on disk.
+    private func mirrorIfWatching() async {
+        guard WatchOnly.isOn, let (c, a) = try? await CloudStore.shared.lineup() else { return }
+        classes = c
+        awayRanges = a
+    }
+
+    /// Back from watch only: this Mac's own lineup again.
+    func leaveWatchOnly() {
+        classes = Store.classes()
+        awayRanges = Store.awayRanges()
+        replanSoon()
+        pushToCloudSoon(after: 1)
+    }
+
+    /// Into watch only: pick up the booking Mac's lineup now.
+    func enterWatchOnly() { replanSoon() }
+
     func perform(_ action: Cloud.Request.Action, on p: ClassPick) {
+        guard !WatchOnly.isOn else { return }   // the booking Mac does that
         switch action {
         case .book: setSkips(skips.filter { $0.id != p.id }); pick(p)
         case .withdraw: unpick(p.id)
@@ -685,6 +705,7 @@ final class Engine: ObservableObject {
         status = "Planning…"
         do {
             _ = try await FisikalClient.shared.ensureSession()
+            await mirrorIfWatching()
             let now = Date()
             var found: [Opening] = []
             var joined: [CloudStore.Booking] = []
@@ -693,9 +714,15 @@ final class Engine: ObservableObject {
             if !Set(Branch.ids).isSubset(of: backfilledBranches) { await backfillHistory() }
             // Every branch every time, not just the ones in your lineup: the same
             // fetch feeds the Book screens and fill history for every class.
+            // From this week's Monday, so classes already done this week show as
+            // booked too (the Schedule's earlier days, on any Mac).
+            var cal = Calendar(identifier: .gregorian)
+            cal.timeZone = FisikalClient.zone
+            cal.firstWeekday = 2
+            let since = cal.dateInterval(of: .weekOfYear, for: now)?.start ?? now
             for branch in Branch.ids {
                 let occs = try await FisikalClient.shared.occurrences(
-                    locationIds: [branch], since: now, till: now.addingTimeInterval(horizon))
+                    locationIds: [branch], since: min(since, now), till: now.addingTimeInterval(horizon))
                 recordHistory(occs, branchId: branch)
                 joined += occs.filter(\.isJoined).map {
                     .init(occurrenceId: $0.id, name: $0.title, occursAt: $0.occursAt, minutes: $0.durationMinutes,

@@ -14,7 +14,7 @@ enum RepoSync {
 
     /// "owner/name" of the GitHub backup's private repo. Optional: only people
     /// who also run the GitHub booker (Option B) as a backup need it.
-    static var repo: String? { repo(in: .standard) }
+    static var repo: String? { MacSample.active ? nil : repo(in: .standard) }
     static func repo(in d: UserDefaults) -> String? { normalize(d.string(forKey: repoKey)) }
     /// The GitHub backup is on only with a repo set; empty or blank means off.
     static var isEnabled: Bool { repo != nil }

@@ -36,6 +36,9 @@ private struct MenuBarIcon: View {
                     NSApp.activate(ignoringOtherApps: true)
                 }
                 if MainWindow.showAtLaunch { MainWindow.open?() }
+                if MacSample.active, let dir = UserDefaults.standard.string(forKey: "screenshotDir") {
+                    await MacSample.captureAndQuit(to: dir)
+                }
             }
     }
 }

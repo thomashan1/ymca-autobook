@@ -128,3 +128,9 @@ app/
   YmcaAutobookTests/          XCTest, per-platform files
   screenshots/
 ```
+
+The Mac screenshots come from the app's screenshot mode, which shows made-up
+classes and never reads or writes your real files, Keychain or iCloud:
+`"YMCA Booker.app/Contents/MacOS/YMCA Booker" -sampleData YES -screenshotDir <folder>`
+(a Debug build; it saves `mac-schedule.png`, `mac-classes.png`, `mac-settings.png`
+and quits). The iPhone ones come from the simulator with no account signed in.

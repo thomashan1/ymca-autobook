@@ -36,6 +36,28 @@ struct MacScheduleView: View {
         .sorted { $0.item.occursAt < $1.item.occursAt }
     }
 
+    /// Classes earlier this week, from the booking log: the schedule only has
+    /// sessions still to come. One per class and time; booked ones read "done".
+    private struct Past: Identifiable {
+        let name: String
+        let occursAt: Date
+        let booked: Bool
+        let verdict: String
+        var id: String { "\(name)|\(occursAt.timeIntervalSince1970)" }
+    }
+
+    private func past(since monday: Date) -> [Past] {
+        let now = Date()
+        var seen: [String: Past] = [:]
+        for e in engine.log where e.occursAt >= monday && e.occursAt <= now && !e.away {
+            let p = Past(name: e.className, occursAt: e.occursAt,
+                         booked: e.booking?.booked == true || e.atOpen?.isJoined == true, verdict: e.verdict)
+            if let old = seen[p.id], old.booked { continue }
+            seen[p.id] = p
+        }
+        return seen.values.sorted { $0.occursAt < $1.occursAt }
+    }
+
     private func isAway(_ i: ScheduleItem) -> Bool {
         let k = engine.classes.first {
             $0.name == i.name && $0.weekday == ClubTime.weekday(i.occursAt) && $0.start == ClubTime.hhmm(i.occursAt)
@@ -54,6 +76,7 @@ struct MacScheduleView: View {
 
     var body: some View {
         let entries = entries
+        let past = past(since: mondays[0])
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 nextBanner(entries)
@@ -62,7 +85,7 @@ struct MacScheduleView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     ForEach(Array(mondays.enumerated()), id: \.offset) { n, mon in
-                        week(n == 0 ? "This week" : "Next week", from: mon, entries)
+                        week(n == 0 ? "This week" : "Next week", from: mon, entries, past: n == 0 ? past : [])
                     }
                 }
             }
@@ -112,7 +135,7 @@ struct MacScheduleView: View {
         .background(Color.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    private func week(_ title: String, from mon: Date, _ entries: [Entry]) -> some View {
+    private func week(_ title: String, from mon: Date, _ entries: [Entry], past: [Past]) -> some View {
         let cal = Self.cal
         let all = (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: mon) }
         // Weekends only when something's on them.
@@ -120,22 +143,7 @@ struct MacScheduleView: View {
         return VStack(alignment: .leading, spacing: 8) {
             Text(title.uppercased()).font(.caption.weight(.heavy)).foregroundStyle(.secondary)
             HStack(alignment: .top, spacing: 10) {
-                ForEach(days, id: \.self) { d in
-                    let today = cal.isDateInToday(d)
-                    let past = !today && d < Date()
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(d.formatted(.dateTime.weekday().month(.defaultDigits).day()))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(today ? .blue : .secondary)
-                        ForEach(entries.filter { cal.isDate($0.item.occursAt, inSameDayAs: d) }) { cell($0) }
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
-                    .padding(8)
-                    .background(past ? Color.gray.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                    // Each day its own box, like the iPhone's calendar; today's in blue.
-                    .overlay(RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(today ? Color.blue.opacity(0.6) : Color.gray.opacity(0.25), lineWidth: today ? 1.5 : 1))
-                }
+                ForEach(days, id: \.self) { d in dayColumn(d, entries, past) }
             }
         }
     }
@@ -160,6 +168,39 @@ struct MacScheduleView: View {
         .popover(isPresented: Binding(get: { open == e.id }, set: { if !$0 { open = nil } }), arrowEdge: .trailing) {
             details(e)
         }
+    }
+
+    private func dayColumn(_ d: Date, _ entries: [Entry], _ past: [Past]) -> some View {
+        let cal = Self.cal
+        let today = cal.isDateInToday(d)
+        let isPast = !today && d < Date()
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(d.formatted(.dateTime.weekday().month(.defaultDigits).day()))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(today ? .blue : .secondary)
+            ForEach(past.filter { cal.isDate($0.occursAt, inSameDayAs: d) }) { pastCell($0) }
+            ForEach(entries.filter { cal.isDate($0.item.occursAt, inSameDayAs: d) }) { cell($0) }
+        }
+        .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
+        .padding(8)
+        .background(isPast ? Color.gray.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 10))
+        // Each day its own box, like the iPhone's calendar; today's in blue.
+        .overlay(RoundedRectangle(cornerRadius: 10)
+            .strokeBorder(today ? Color.blue.opacity(0.6) : Color.gray.opacity(0.25), lineWidth: today ? 1.5 : 1))
+    }
+
+    private func pastCell(_ p: Past) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(p.name).font(.callout.weight(.semibold)).lineLimit(2)
+            Text("\(p.occursAt.formatted(date: .omitted, time: .shortened)) · \(p.booked ? "done" : "not booked")")
+                .font(.caption)
+        }
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(Color.gray.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.gray.opacity(0.3), lineWidth: 1))
+        .help(p.verdict)
     }
 
     private func details(_ e: Entry) -> some View {

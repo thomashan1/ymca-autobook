@@ -8,6 +8,7 @@ import SwiftUI
 /// otherwise at the second it opens.
 struct BookView: View {
     @ObservedObject private var cloud = CloudSource.shared
+    @EnvironmentObject var fillStats: FillStatsRepository
     @Environment(\.dismiss) private var dismiss
     /// Shown in the Classes tab rather than as a sheet: no navigation stack of
     /// its own and no Done button.
@@ -118,7 +119,14 @@ struct BookView: View {
                     Text(i.room).font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                status(i, s).font(.caption)
+                HStack(spacing: 6) {
+                    status(i, s)
+                    if let f = fillStats.stats(for: i), f.filled > 0 {
+                        Text("· fills in \(FillStatsRepository.duration(f.median_fill_s))")
+                            .foregroundStyle(f.fillsFast ? .orange : .secondary)
+                    }
+                }
+                .font(.caption)
             }
             Spacer(minLength: 4)
             if s.action == .book {

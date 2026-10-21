@@ -74,12 +74,12 @@ private let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 // MARK: Classes
 
 /// Your classes: every week (with how fast each fills) and just once. Add a
-/// class from the YMCA schedule, either way, or browse the weekly slots.
+/// class from the YMCA schedule, either way.
 struct ClassesEditor: View {
     @ObservedObject var engine: Engine
     @State private var sheet: Sheet?
 
-    private enum Sheet: String, Identifiable { case add, browse, fill; var id: String { rawValue } }
+    private enum Sheet: String, Identifiable { case add, fill; var id: String { rawValue } }
 
     var body: some View {
         let stats = Dictionary(engine.slotStats().map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
@@ -87,19 +87,10 @@ struct ClassesEditor: View {
             HStack {
                 Text("Your classes").font(.title2.bold())
                 Spacer()
-                // One clear main action; browsing by weekly slot is the other way in.
-                Menu {
-                    Button("Browse weekly slots…") { sheet = .browse }
-                } label: {
-                    Label("Add a class", systemImage: "plus")
-                } primaryAction: {
-                    sheet = .add
-                }
-                .menuStyle(.button)
-                .buttonStyle(.borderedProminent)
-                .fixedSize()
-                .keyboardShortcut("n")
-                .help("Add a class from the YMCA schedule, every week or just once. The arrow browses by weekly slot.")
+                Button { sheet = .add } label: { Label("Add a class", systemImage: "plus") }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut("n")
+                    .help("Add a class from the YMCA schedule, every week or just once")
             }
             List {
                 Section {
@@ -152,7 +143,6 @@ struct ClassesEditor: View {
             SheetFrame(close: { sheet = nil }) {
                 switch s {
                 case .add: MacBookView(engine: engine)
-                case .browse: CatalogView(engine: engine)
                 case .fill: StatsView(engine: engine)
                 }
             }

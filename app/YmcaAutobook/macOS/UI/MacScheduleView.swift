@@ -73,7 +73,11 @@ struct MacScheduleView: View {
         .sheet(isPresented: $showAway) {
             VStack(alignment: .trailing) {
                 MacAwayView(engine: engine)
-                Button("Done") { showAway = false }.keyboardShortcut(.defaultAction)
+                HStack {
+                    VersionTag()
+                    Spacer()
+                    Button("Done") { showAway = false }.keyboardShortcut(.defaultAction)
+                }
             }
             .padding()
             .frame(width: 720, height: 560)

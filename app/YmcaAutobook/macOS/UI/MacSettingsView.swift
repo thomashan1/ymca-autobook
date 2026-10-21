@@ -462,14 +462,14 @@ struct GitHubBackupSection: View {
             } label: {
                 // Collapsed even with the backup on, but a problem still shows.
                 HStack {
-                    Text("Advanced mode")
+                    Text("GitHub backup")
                     if RepoSync.isEnabled, engine.syncError != nil {
                         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                             .help("The GitHub backup has a problem. Open to see it.")
                     }
                 }
             }
-        }
+        } header: { Text("Advanced mode") }
     }
 }
 #endif

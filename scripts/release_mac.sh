@@ -79,7 +79,8 @@ echo "== Update feed (Sparkle)"
 REPO="$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')"
 SPARKLE_KEY="${SPARKLE_KEY:-$HOME/.appstoreconnect/sparkle_ed25519_private.txt}"
 python3 "$HERE/scripts/appcast.py" "$DMG" "$SPARKLE_KEY" "$VERSION" "$BUILD" \
-  "https://github.com/$REPO/releases/download/v$VERSION-$BUILD/$(basename "$DMG")" > "$OUT/appcast.xml"
+  "https://github.com/$REPO/releases/download/v$VERSION-$BUILD/$(basename "$DMG")" \
+  "$HERE/release-notes/$VERSION.md" > "$OUT/appcast.xml"
 
 echo "Built $DMG. Install it on your own Mac to try it; when it's ready for friends:"
 echo "  scripts/promote.sh $VERSION $BUILD $OUT"

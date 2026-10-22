@@ -24,6 +24,8 @@ echo "== Archive $VERSION ($BUILD) into $OUT"
 "$XB" -project "$HERE/app/YmcaAutobook.xcodeproj" -scheme YmcaAutobook -destination 'generic/platform=iOS' \
   -derivedDataPath "$OUT/dd" -archivePath "$OUT/app.xcarchive" \
   MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" "${AUTH[@]}" archive -quiet
+"$HERE/scripts/check_weak_imports.sh" "$OUT/app.xcarchive/Products/Applications/YMCA Booker.app/YMCA Booker" \
+  "$HERE/scripts/weak_imports_ios.txt"
 
 echo "== Upload to App Store Connect"
 cat > "$OUT/export.plist" <<PLIST

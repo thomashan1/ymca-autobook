@@ -29,6 +29,8 @@ echo "== Archive $VERSION ($BUILD) into $OUT"
   CURRENT_PROJECT_VERSION="$BUILD" \
   -allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID" archive -quiet
+"$HERE/scripts/check_weak_imports.sh" "$OUT/app.xcarchive/Products/Applications/YMCA Booker.app/Contents/MacOS/YMCA Booker" \
+  "$HERE/scripts/weak_imports_macos.txt"
 
 echo "== Developer ID provisioning profile"
 # Xcode's automatic Developer ID export needs cloud signing, which only the account

@@ -91,8 +91,12 @@ struct MacScheduleView: View {
         let past = past(since: mondays[0])
         VStack(alignment: .leading, spacing: 16) {
             if watchOnly {
-                Label("Watch only: this Mac doesn't book. Turn it off in Settings → This Mac.", systemImage: "eye")
+                Label("Watch only: \(Cloud.MacDevice.booker(engine.macs)?.name ?? "another Mac") books; this one doesn't. Change it in Settings → This Mac.",
+                      systemImage: "eye")
                     .foregroundStyle(.orange)
+            }
+            if let w = Cloud.MacDevice.warning(engine.macs) {
+                Label(w, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             }
             HStack(spacing: 12) {
                 nextBanner(entries)

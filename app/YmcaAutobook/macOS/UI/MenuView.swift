@@ -39,7 +39,11 @@ struct MenuView: View {
             Text(engine.status).font(.caption).foregroundStyle(.secondary)
         }
         if watchOnly {
-            Label("Watch only: this Mac doesn't book", systemImage: "eye").font(.caption).foregroundStyle(.orange)
+            Label("Watch only: \(Cloud.MacDevice.booker(engine.macs)?.name ?? "another Mac") books", systemImage: "eye")
+                .font(.caption).foregroundStyle(.orange)
+        }
+        if let w = Cloud.MacDevice.warning(engine.macs) {
+            Label(w, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
         }
 
         if let next = engine.openings.first {

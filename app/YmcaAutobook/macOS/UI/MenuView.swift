@@ -22,9 +22,7 @@ struct MenuView: View {
             Divider()
             HStack {
                 if engine.signedInAs != nil {
-                    Button("Schedule…") { open(MacTab.schedule) }
-                    Button("Classes…") { open(MacTab.classes) }
-                    Button("Settings…") { open(MacTab.settings) }
+                    Button("Open YMCA Booker") { open() }
                 }
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }
@@ -103,10 +101,9 @@ struct MenuView: View {
         Text(title).font(.caption.bold()).foregroundStyle(.secondary)
     }
 
-    /// Opens the app's window on a tab, named as in the window (and on the iPhone).
-    /// The tab keeps whichever segment was last picked.
-    private func open(_ tab: String) {
-        UserDefaults.standard.set(tab, forKey: MacTab.key)
+    /// Opens the app's window on whichever tab was last picked; its tabs
+    /// (Schedule, Classes, Settings) are one click away there.
+    private func open() {
         openWindow(id: "main")
         NSApp.activate(ignoringOtherApps: true)
     }

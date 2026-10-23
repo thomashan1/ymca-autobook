@@ -4,8 +4,8 @@ import SwiftUI
 /// The next two weeks of your classes, one line each: booked, booking soon,
 /// skipped or away. Merges the weekly lineup with real bookings (so one-offs
 /// show too) and, from the Mac, single sessions queued to book. A card on top
-/// says what books next. Swipe a class to skip it (or undo, cancel…); away
-/// dates open from the toolbar. Tap a class for its details.
+/// says what books next. Tap a class for its details and to skip it (or undo,
+/// cancel…); swiping or long-pressing does the same. Away dates open from the toolbar.
 struct ScheduleView: View {
     @EnvironmentObject var classes: ClassesRepository
     @EnvironmentObject var awayRanges: AwayRepository
@@ -19,7 +19,9 @@ struct ScheduleView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private static let daysAhead = 14
-    @State private var detail: ClassDetail?
+    @State private var detail: Row?
+    /// The hint on top of the list, until it's dismissed.
+    @AppStorage("scheduleTipDismissed") private var tipDismissed = false
     @State private var showAway = false
     @State private var showCalendar = UserDefaults.standard.bool(forKey: "screenshotCalendar")
     @State private var confirmCancel: ScheduleItem?
@@ -112,6 +114,9 @@ struct ScheduleView: View {
         NavigationStack {
             let days = days
             List {
+                if auth.isCloud && !tipDismissed {
+                    Section { tip }
+                }
                 Section { NextUpCard(next: days.flatMap(\.rows).filter { $0.status == .books }
                                         .min { ($0.opensAt ?? .distantFuture) < ($1.opensAt ?? .distantFuture) }) }
                 if sizeClass == .regular {
@@ -125,11 +130,12 @@ struct ScheduleView: View {
                     Section(CalendarHelper.weekLabel(wi)) {
                         ForEach(groups[wi] ?? []) { day in
                             ForEach(Array(day.rows.enumerated()), id: \.element.id) { n, r in
-                                Button { detail = r.occ.detail(on: r.date) } label: {
+                                Button { detail = r } label: {
                                     ScheduleRow(row: r, showDate: n == 0, awayNote: n == 0 ? awayNote(day.date) : nil)
                                 }
                                 .buttonStyle(.plain)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) { actions(r) }
+                                .contextMenu { actions(r) }
                                 // A full-width line after a day's last class, so days read
                                 // apart; between classes of one day it starts at the name.
                                 .alignmentGuide(.listRowSeparatorLeading) { d in
@@ -144,7 +150,7 @@ struct ScheduleView: View {
                         .foregroundStyle(.secondary)
                 }
                 Section {} footer: {
-                    Text(auth.looksCloud ? "Swipe a class to skip it this week. Your Mac books each class the second its booking opens, 7 days ahead."
+                    Text(auth.looksCloud ? "Tap or swipe a class to skip or cancel just that day. Your Mac books each class the second its booking opens, 7 days ahead."
                                          : "Swipe a class to book it now. GitHub Actions books each class the second its booking opens, 7 days ahead.")
                 }
             }
@@ -167,7 +173,11 @@ struct ScheduleView: View {
                 await classes.load(); await awayRanges.load(); await swaps.load()
                 await snapshot.load(); await bookings.load(); await fullClasses.load()
             }
-            .sheet(item: $detail) { ClassDetailSheet(detail: $0) }
+            .sheet(item: $detail) { r in
+                ClassDetailSheet(detail: r.occ.detail(on: r.date)) {
+                    if let item = r.item, auth.isCloud { SessionActions(item: item, send: send) }
+                }
+            }
             .sheet(isPresented: $showAway) { AwayView() }
             .fullScreenCover(isPresented: $showCalendar) { CalendarZoomSheet() }
             .confirmationDialog(confirmCancel.map { "Cancel \($0.name) on \($0.occursAt.formatted(.dateTime.weekday(.wide).month().day()))? Someone else may take the seat." } ?? "",
@@ -187,6 +197,20 @@ struct ScheduleView: View {
             .alert("YMCA Booker", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: { Text(message ?? "") }
+        }
+    }
+
+    private var tip: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "hand.point.up.left").font(.title3).foregroundStyle(Theme.accent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Skip or cancel one class").font(.subheadline.weight(.semibold))
+                Text("Tap a class, or swipe it left, to skip or cancel just that day. It still books every other week.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button { tipDismissed = true } label: { Image(systemName: "xmark").foregroundStyle(.secondary) }
+                .buttonStyle(.borderless).accessibilityLabel("Dismiss tip")
         }
     }
 
@@ -229,6 +253,46 @@ struct ScheduleView: View {
             }
         }
     }
+}
+
+/// The class detail's buttons for one session: the same action its swipe offers,
+/// spelled out, with a confirmation before cancelling a booking.
+private struct SessionActions: View {
+    let item: ScheduleItem
+    let send: (Cloud.Request.Action, ScheduleItem) -> Void
+    @ObservedObject private var cloud = CloudSource.shared
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmCancel = false
+
+    var body: some View {
+        let action = cloud.state(of: item).action
+        if [.skip, .unskip, .withdraw, .cancel].contains(action) {
+            VStack(alignment: .leading, spacing: 8) {
+                switch action {
+                case .skip?: button("Skip this day", "calendar.badge.minus", .orange) { act(.skip) }
+                case .unskip?: button("Undo skip", "arrow.uturn.backward", .blue) { act(.unskip) }
+                case .withdraw?: button("Don't book this day", "xmark.circle", .orange) { act(.withdraw) }
+                case .cancel?: button("Cancel this booking", "xmark.circle", .red) { confirmCancel = true }
+                default: EmptyView()
+                }
+                Text(action == .unskip ? "Your Mac books it when its booking opens."
+                     : "Just this day; it still books every other week. You can also swipe a class left in Schedule.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(.top, 8)
+            .confirmationDialog("Cancel \(item.name) on \(item.occursAt.formatted(.dateTime.weekday(.wide).month().day()))? Someone else may take the seat.",
+                                isPresented: $confirmCancel, titleVisibility: .visible) {
+                Button("Cancel booking", role: .destructive) { act(.cancel) }
+            }
+        }
+    }
+
+    private func button(_ title: String, _ icon: String, _ tint: Color, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) { Label(title, systemImage: icon).frame(maxWidth: .infinity) }
+            .buttonStyle(.borderedProminent).controlSize(.large).tint(tint)
+    }
+
+    private func act(_ a: Cloud.Request.Action) { send(a, item); dismiss() }
 }
 
 /// What books next and when, counting down, plus a warning when the Mac has

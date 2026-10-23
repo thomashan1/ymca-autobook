@@ -16,8 +16,10 @@ struct ClassDetail: Identifiable {
     var id: String { name + "|" + whenLabel + "|" + time }
 }
 
-struct ClassDetailSheet: View {
+struct ClassDetailSheet<Actions: View>: View {
     let detail: ClassDetail
+    /// What you can do with this session (Schedule: skip, cancel…), under the details.
+    @ViewBuilder var actions: Actions
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -44,6 +46,7 @@ struct ClassDetailSheet: View {
                     detailRow("building.2", "Branch", "\(detail.branch.name) YMCA")
                     detailRow("mappin.and.ellipse", "Room", value(detail.room))
                     detailRow("person", "Instructor", value(detail.instructor))
+                    actions
                 }
                 .padding(24)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -80,5 +83,8 @@ struct ClassDetailSheet: View {
             Spacer()
         }
     }
+}
+extension ClassDetailSheet where Actions == EmptyView {
+    init(detail: ClassDetail) { self.init(detail: detail) { EmptyView() } }
 }
 #endif

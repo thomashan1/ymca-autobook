@@ -1,16 +1,18 @@
 name: Weekly class summary
 
 on:
-  schedule:
-    # Each slot has a PDT and a PST cron; both fire, but the script inspects
-    # which cron triggered (github.event.schedule) and lets only the one matching
-    # the current DST offset actually send — robust to GitHub's scheduling lag.
-    - cron: "7 7 * * 1"   # Mon 00:07 PT (PDT = UTC-7) — this week; early + off-peak to dodge GitHub's queue delay
-    - cron: "7 8 * * 1"   # Mon 00:07 PT (PST = UTC-8)
-    - cron: "7 7 * * 3"   # Wed 00:07 PT (PDT = UTC-7) — midweek update (this + next week)
-    - cron: "7 8 * * 3"   # Wed 00:07 PT (PST = UTC-8)
-    - cron: "7 7 * * 5"   # Fri 00:07 PT (PDT = UTC-7) — recap + next week; early + off-peak
-    - cron: "7 8 * * 5"   # Fri 00:07 PT (PST = UTC-8)
+  # Scheduled sends paused 2026-10-24: the YMCA Booker app shows the same
+  # schedule live. Uncomment to bring the Mon/Wed/Fri emails back.
+  # schedule:
+  #   # Each slot has a PDT and a PST cron; both fire, but the script inspects
+  #   # which cron triggered (github.event.schedule) and lets only the one matching
+  #   # the current DST offset actually send — robust to GitHub's scheduling lag.
+  #   - cron: "7 7 * * 1"   # Mon 00:07 PT (PDT = UTC-7) — this week; early + off-peak to dodge GitHub's queue delay
+  #   - cron: "7 8 * * 1"   # Mon 00:07 PT (PST = UTC-8)
+  #   - cron: "7 7 * * 3"   # Wed 00:07 PT (PDT = UTC-7) — midweek update (this + next week)
+  #   - cron: "7 8 * * 3"   # Wed 00:07 PT (PST = UTC-8)
+  #   - cron: "7 7 * * 5"   # Fri 00:07 PT (PDT = UTC-7) — recap + next week; early + off-peak
+  #   - cron: "7 8 * * 5"   # Fri 00:07 PT (PST = UTC-8)
   workflow_dispatch:
     inputs:
       weeks:

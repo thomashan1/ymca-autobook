@@ -37,7 +37,8 @@ Standing context + preferences for this project. **Read at the start of each ses
 - Editing classes (delete) opens an auto-merging PR against `classes.yml`; away-date edits write directly to `away.yml` in the private repo. See `app/README.md`.
 
 ## Summary emails
-- **Mon / Wed / Fri ~12:07 AM PT** (early + off-peak to dodge GitHub's cron-queue delay).
+- **Paused since 2026-10-24** (the YMCA Booker app shows the same schedule live): `weekly-summary.yml`'s `schedule:` block is commented out; `workflow_dispatch` still sends one on demand. Uncomment to restore.
+- Was **Mon / Wed / Fri ~12:07 AM PT** (early + off-peak to dodge GitHub's cron-queue delay).
 - Mon = this week; Wed & Fri = this + next week. Date format M/D. Away days blocked out in the calendar.
 - **Standard schedule email — manual only since 2026-10-14** (`scripts/standard_schedule_email.py`, `.github/workflows/standard-schedule-email.yml`, `workflow_dispatch`). It used to fire on a push touching `classes.yml`, which can't happen now that the file lives in the private repo. A simpler email than the summaries: the recurring lineup as a generic Mon–Fri calendar grid, not tied to any specific week's dates or live booking status. No live Fisikal login needed; end times come from the cached `schedule_snapshot.json`, falling back to a 60-min default.
 

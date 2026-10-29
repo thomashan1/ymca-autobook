@@ -1,5 +1,6 @@
 """Add an uploaded build to the TestFlight group that has the public link, set its
-"What to Test" from the version's notes, and submit it for beta review:
+"What to Test" from the version's notes (only the lines the last friends' build
+didn't have), and submit it for beta review:
 asc_promote.py KEY.p8 KEY_ID ISSUER_ID BUNDLE_ID BUILD_NUMBER [NOTES.md]
 Needs PyJWT with cryptography (pip install pyjwt cryptography)."""
 import json, sys, time, urllib.parse, urllib.request
@@ -37,9 +38,24 @@ groups = api("GET", f"/v1/apps/{app}/betaGroups?fields[betaGroups]=name,isIntern
 friends = next(g for g in groups if not g["attributes"]["isInternalGroup"] and g["attributes"]["publicLinkEnabled"])
 api("POST", f"/v1/betaGroups/{friends['id']}/relationships/builds", {"data": [{"type": "builds", "id": build["id"]}]})
 if notes_path:
-    text = ("What's new:\n" + open(notes_path).read().strip()
-            + "\n\nNeeds a Mac running YMCA Booker on the same iCloud account "
+    # Only what's new since the last build friends got: the version's notes keep
+    # growing, and the Mac and GitHub release still show all of them.
+    lines = [l for l in open(notes_path).read().strip().splitlines() if l.strip()]
+    version = api("GET", f"/v1/builds/{build['id']}/preReleaseVersion")["data"]["attributes"]["version"]
+    earlier = api("GET", "/v1/builds?" + urllib.parse.urlencode({
+        "filter[app]": app, "filter[preReleaseVersion.version]": version, "filter[betaGroups]": friends["id"],
+        "sort": "-uploadedDate", "limit": "10", "fields[builds]": "version"}))["data"]
+    seen = set()   # every line friends' earlier builds of this version showed
+    for b in earlier:
+        if b["id"] != build["id"]:
+            for loc in api("GET", f"/v1/builds/{b['id']}/betaBuildLocalizations")["data"]:
+                seen |= set((loc["attributes"].get("whatsNew") or "").splitlines())
+    fresh = [l for l in lines if l not in seen]
+    text = (("What's new in this build:\n" + "\n".join(fresh) if fresh else "Small fixes.")
+            + "\n\nNeeds a Mac running YMCA Booker on the same Apple Account "
               "(download: github.com/thomashan1/ymca-autobook).")[:4000]
+    if not seen:
+        text = text.replace("What's new in this build:", f"What's new in {version}:", 1)
     locs = api("GET", f"/v1/builds/{build['id']}/betaBuildLocalizations")["data"]
     if locs:
         api("PATCH", f"/v1/betaBuildLocalizations/{locs[0]['id']}",

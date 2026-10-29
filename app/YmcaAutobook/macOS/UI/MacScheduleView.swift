@@ -100,7 +100,12 @@ struct MacScheduleView: View {
             }
             HStack(spacing: 12) {
                 nextBanner(entries)
-                if !watchOnly { Button("Away dates…") { showAway = true } }
+                if !watchOnly {
+                    // Same look as Classes' "Add a class", and as both on the iPhone.
+                    Button { showAway = true } label: { Label("Away dates", systemImage: "airplane") }
+                        .buttonStyle(.borderedProminent)
+                        .help("Days to book nothing, like a trip or a holiday")
+                }
             }
             if engine.schedule == nil {
                 // In place of the calendar, not over it: empty day boxes behind

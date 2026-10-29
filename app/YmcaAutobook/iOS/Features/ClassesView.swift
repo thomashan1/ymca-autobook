@@ -169,7 +169,7 @@ private struct ClassInfoRow: View {
             }
             Spacer(minLength: 4)
             if let fill {
-                Text(fill.filled == 0 ? "Rarely fills" : "Fills in \(FillStatsRepository.duration(fill.median_fill_s))")
+                Text(FillSpeed.label(filledWeeks: fill.filled, median: fill.median_fill_s))
                     .font(.caption.weight(.bold))
                     .padding(.horizontal, 8).padding(.vertical, 3)
                     .background((fill.fillsFast ? Color.orange : Color.secondary).opacity(0.16), in: Capsule())

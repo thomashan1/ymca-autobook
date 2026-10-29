@@ -18,6 +18,7 @@ struct MacApp: App {
 
         Window("YMCA Booker", id: "main") {
             SettingsView(engine: engine)
+                .tint(Theme.accent)
         }
         .windowResizability(.contentMinSize)
         .commands {

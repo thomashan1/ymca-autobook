@@ -19,11 +19,21 @@ struct MacApp: App {
         Window("YMCA Booker", id: "main") {
             SettingsView(engine: engine)
                 .tint(Theme.accent)
+                .modifier(FrontWindowInScreenshots())
         }
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(after: .appInfo) { CheckForUpdatesButton() }
         }
+    }
+}
+
+/// Screenshot mode draws the window as the front one even when another app
+/// is, so its buttons keep their color.
+private struct FrontWindowInScreenshots: ViewModifier {
+    @Environment(\.controlActiveState) private var state
+    func body(content: Content) -> some View {
+        content.environment(\.controlActiveState, MacSample.active ? .key : state)
     }
 }
 

@@ -151,7 +151,8 @@ struct ClassesEditor: View {
                         HStack(spacing: 10) {
                             Text(k.weekday).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
                             Text(k.name).bold()
-                            Text("\(k.start) · \(k.branch)").foregroundStyle(.secondary)
+                            Text(timeRange(k)).foregroundStyle(.secondary).monospacedDigit()
+                            if let id = k.locationIds.first { BranchChip(branch: Branch(id)) }
                             if !engine.isOnSchedule(k) {
                                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                                     .help("No matching class on the YMCA schedule in the next 16 days — check the name and time")
@@ -173,7 +174,7 @@ struct ClassesEditor: View {
                         Text("Every week")
                         Spacer()
                         Button { sheet = .fill } label: { Label("How fast classes fill", systemImage: "chart.bar") }
-                            .buttonStyle(.link)
+                            .buttonStyle(.borderless)
                             .font(.callout)
                     }
                 }
@@ -187,7 +188,7 @@ struct ClassesEditor: View {
                                 Spacer()
                                 Text(p.openAt > Date() ? "books \(MacScheduleView.when(p.openAt))" : "booking…")
                                     .foregroundStyle(.blue)
-                                if !watchOnly { Button("Don't book") { engine.perform(.withdraw, on: p) } }
+                                if !watchOnly { Button("Don't book") { engine.perform(.withdraw, on: p) }.tint(.orange) }
                             }
                         }
                     }
@@ -204,11 +205,18 @@ struct ClassesEditor: View {
         }
     }
 
+    /// "09:00–09:45" when the YMCA schedule gives the length, else just the start.
+    private func timeRange(_ k: RecurringClass) -> String {
+        guard let o = engine.openings.first(where: { $0.klass.key == k.key })?.occurrence, o.durationMinutes > 0
+        else { return k.start }
+        return "\(k.start)\u{2013}\(Slot.hhmm(o.occursAt.addingTimeInterval(Double(o.durationMinutes) * 60)))"
+    }
+
     private var upcomingPicks: [ClassPick] { engine.picks.filter { $0.occursAt > Date() } }
 
     private func fillBadge(_ s: SlotStats) -> some View {
         let fast = (s.medianFill ?? .infinity) <= 300
-        return Text(s.filledWeeks == 0 ? "rarely fills" : "fills in \(Self.duration(s.medianFill))")
+        return Text(FillSpeed.label(filledWeeks: s.filledWeeks, median: s.medianFill))
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 7).padding(.vertical, 2)
             .background((fast ? Color.orange : Color.gray).opacity(0.15), in: Capsule())
@@ -216,11 +224,7 @@ struct ClassesEditor: View {
     }
 
     static func duration(_ seconds: Double?) -> String {
-        guard let s = seconds else { return "—" }
-        if s < 120 { return "\(Int(s.rounded())) s" }
-        if s < 7200 { return "\(Int(s / 60)) min" }
-        if s < 2 * 86400 { return String(format: "%.0f h", s / 3600) }
-        return String(format: "%.0f d", s / 86400)
+        FillSpeed.duration(seconds)
     }
 
     private var sorted: [RecurringClass] {

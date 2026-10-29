@@ -1,7 +1,6 @@
-#if os(iOS)
 import SwiftUI
 
-/// Design tokens mirroring the concept mockup. Semantic colors (booked/queued/
+/// Design tokens, the same on the Mac and the iPhone/iPad. Semantic colors (booked/queued/
 /// away) are kept separate from the accent so state reads at a glance.
 enum Theme {
     static let accent = Color(red: 0.88, green: 0.21, blue: 0.16)   // YMCA-nod red
@@ -56,4 +55,18 @@ struct BranchChip: View {
             .foregroundStyle(Theme.color(for: branch))
     }
 }
-#endif
+
+/// How fast a class fills, worded the same everywhere: "Fills in 43 s".
+enum FillSpeed {
+    static func duration(_ seconds: Double?) -> String {
+        guard let s = seconds else { return "\u{2014}" }
+        if s < 120 { return "\(Int(s.rounded())) s" }
+        if s < 7200 { return "\(Int(s / 60)) min" }
+        if s < 2 * 86400 { return "\(Int((s / 3600).rounded())) h" }
+        return "\(Int((s / 86400).rounded())) d"
+    }
+
+    static func label(filledWeeks: Int, median: Double?) -> String {
+        filledWeeks == 0 ? "Rarely fills" : "Fills in \(duration(median))"
+    }
+}

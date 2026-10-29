@@ -80,11 +80,7 @@ final class FillStatsRepository: ObservableObject {
 
     /// "37s", "4 min", "2 h", "3 d"
     static func duration(_ seconds: Double?) -> String {
-        guard let s = seconds else { return "—" }
-        if s < 120 { return "\(Int(s.rounded()))s" }
-        if s < 7200 { return "\(Int(s / 60)) min" }
-        if s < 2 * 86400 { return "\(Int((s / 3600).rounded())) h" }
-        return "\(Int((s / 86400).rounded())) d"
+        FillSpeed.duration(seconds)
     }
 
     /// Simulator sample: real stats (10/10) for the made-up sample lineup and a

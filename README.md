@@ -30,10 +30,12 @@ week ahead. YMCA Booker books them for you, every week, the second they open.
 
   <img src="app/screenshots/mac-update.png" width="560" alt="YMCA Booker offering an update, with what's new in it: Install Update, Remind Me Later or Skip This Version">
 
-- **iPhone / iPad** (optional, a beta through Apple's TestFlight): email
-  **[thomashan@icloud.com](mailto:thomashan@icloud.com)** for the invite link. Install the
-  free [TestFlight](https://apps.apple.com/app/testflight/id899247664) app, open the link,
-  and tap **Install**. TestFlight keeps it up to date.
+- **iPhone / iPad** (optional, a beta through Apple's TestFlight): on the iPhone or iPad,
+  open **[testflight.apple.com/join/bg4rZECr](https://testflight.apple.com/join/bg4rZECr)**,
+  install the free [TestFlight](https://apps.apple.com/app/testflight/id899247664) app when
+  it asks, and tap **Install**. TestFlight keeps it up to date.
+
+Questions: **[thomashan@icloud.com](mailto:thomashan@icloud.com)**.
 
 ## Set it up
 

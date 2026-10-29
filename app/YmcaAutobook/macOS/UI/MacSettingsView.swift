@@ -269,7 +269,6 @@ struct MacAwayView: View {
             }
             .onChange(of: start) { _, s in if end < s { end = s } }
             HStack {
-                if RepoSync.isEnabled { SyncStatus(engine: engine) }
                 Spacer()
                 Toggle("Show past", isOn: $showPast)
             }
@@ -316,8 +315,7 @@ struct MacAwayView: View {
                     }
                 }
             }
-            Text("For a single day's change, use Book: Skip a weekly class, or Book a different one. "
-                 + (RepoSync.isEnabled ? "A copy of your classes, away dates and one-day changes goes to \(RepoSync.repo ?? "your repo") for the GitHub backup." : ""))
+            Text("For a single day, click the class in Schedule to skip it, or add one under Classes \u{2192} Add a class.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

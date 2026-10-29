@@ -303,6 +303,12 @@ private struct NextUpCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if DataSource.isCloud, !SampleMode.active, cloud.lastRefresh != nil || cloud.error != nil, cloud.mac == nil {
+                Label("Nothing from your Mac yet", systemImage: "icloud.slash").font(.headline)
+                Text(cloud.error ?? "YMCA Booker on your Mac does the booking and sends your classes here through your own iCloud. Open it on the Mac, signed in to the same Apple Account as this device (Settings \u{2192} your name).")
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .padding(.bottom, 6)
+            }
             if let m = cloud.mac, m.looksDown, DataSource.isCloud {
                 Label("\(Cloud.MacDevice.booker(cloud.macs)?.name ?? "Your Mac") hasn't checked in since \(m.updatedAt.formatted(.relative(presentation: .named))). Nothing books until it's back.",
                       systemImage: "exclamationmark.triangle.fill")

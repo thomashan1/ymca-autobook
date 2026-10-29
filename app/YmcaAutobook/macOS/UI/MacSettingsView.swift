@@ -65,6 +65,8 @@ private struct WelcomeView: View {
                 .multilineTextAlignment(.center).foregroundStyle(.secondary).frame(maxWidth: 460)
             SignInForm(engine: engine).frame(width: 360)
             WatchOnlyToggle(engine: engine).frame(width: 360)
+            Text("Want your classes on an iPhone or iPad too? Install YMCA Booker there and sign in to the same Apple Account as this Mac: everything shows up through your own iCloud.")
+                .font(.caption).multilineTextAlignment(.center).foregroundStyle(.secondary).frame(maxWidth: 460)
             VersionTag()
         }
         .padding(40)
@@ -439,7 +441,7 @@ struct GeneralSettings: View {
                     Spacer()
                     Button("Send now") { Task { await engine.pushToCloud() } }
                 }
-                Text("Your classes, away dates, swaps, booking results and fill stats go to your own iCloud so the iPhone app can show them. Booking never waits on iCloud.")
+                Text("Your classes, away dates, swaps, booking results and fill stats go to your own iCloud so the iPhone app can show them. Sign in to the same Apple Account on the iPhone and iPad. Booking never waits on iCloud.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Updates") {

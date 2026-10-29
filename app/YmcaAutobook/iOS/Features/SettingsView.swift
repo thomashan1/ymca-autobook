@@ -114,6 +114,8 @@ struct SettingsView: View {
                 }
             }
             .disabled(reloading)
+        } footer: {
+            Text("Everything here comes from YMCA Booker on your Mac, through your own iCloud. Sign in to the same Apple Account on the Mac and on this device.")
         }
     }
 

@@ -153,19 +153,18 @@ Ed25519 key kept in `~/.appstoreconnect/`, and `Updates.swift` holds an install 
 
 ## Inviting someone
 
-Nothing to set up per person; the links are the same for everyone.
+Nothing to set up per person: the README has both links (the Mac download and the
+TestFlight invite), the same for everyone. If someone asks, send them these:
 
-1. They email you (the README's contact).
-2. You reply with both links:
-   > **Mac app** (books for you): https://github.com/thomashan1/ymca-autobook/releases/latest
-   > Open the .dmg, drag YMCA Booker into Applications, sign in with your YMCA account and
-   > add your classes. Keep that Mac awake.
-   >
-   > **iPhone/iPad app** (optional): install TestFlight from the App Store, then open
-   > https://testflight.apple.com/join/bg4rZECr and tap Install. Use the same iCloud
-   > account as the Mac.
-3. That's all. Their Mac updates itself (Sparkle) and TestFlight updates the phone, each
-   time a build is promoted.
+> **Mac app** (books for you): https://github.com/thomashan1/ymca-autobook/releases/latest
+> Open the .dmg, drag YMCA Booker into Applications, sign in with your YMCA account and
+> add your classes. Keep that Mac awake.
+>
+> **iPhone/iPad app** (optional): install TestFlight from the App Store, then open
+> https://testflight.apple.com/join/bg4rZECr and tap Install. Use the same iCloud
+> account as the Mac.
+
+Their Mac updates itself (Sparkle) and TestFlight updates the phone, each time a build is promoted.
 
 The TestFlight link joins the external group *YMCA friends*: no access to your App Store
 Connect account, up to 10,000 people, and each version passes Apple's beta review first

@@ -207,9 +207,11 @@ struct ClassesEditor: View {
 
     /// "09:00–09:45" when the YMCA schedule gives the length, else just the start.
     private func timeRange(_ k: RecurringClass) -> String {
-        guard let o = engine.openings.first(where: { $0.klass.key == k.key })?.occurrence, o.durationMinutes > 0
-        else { return k.start }
-        return "\(k.start)\u{2013}\(Slot.hhmm(o.occursAt.addingTimeInterval(Double(o.durationMinutes) * 60)))"
+        guard let i = engine.schedule?.first(where: {
+            $0.minutes > 0 && $0.branchId == k.locationIds.first && $0.name.lowercased() == k.name.lowercased()
+                && Slot.weekday($0.occursAt) == k.weekday && Slot.hhmm($0.occursAt) == k.start
+        }) else { return k.start }
+        return "\(k.start)\u{2013}\(Slot.hhmm(i.occursAt.addingTimeInterval(Double(i.minutes) * 60)))"
     }
 
     private var upcomingPicks: [ClassPick] { engine.picks.filter { $0.occursAt > Date() } }

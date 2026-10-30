@@ -62,12 +62,6 @@ struct StatsView: View {
 
     private func isMine(_ s: SlotStats) -> Bool { engine.classes.contains { $0.slotKey == s.id } }
 
-    private func duration(_ seconds: Double?) -> String {
-        guard let s = seconds else { return "—" }
-        if s < 120 { return "\(Int(s.rounded()))s" }
-        if s < 7200 { return "\(Int(s / 60)) min" }
-        if s < 2 * 86400 { return String(format: "%.0f h", s / 3600) }
-        return String(format: "%.0f d", s / 86400)
-    }
+    private func duration(_ seconds: Double?) -> String { FillSpeed.duration(seconds) }
 }
 #endif

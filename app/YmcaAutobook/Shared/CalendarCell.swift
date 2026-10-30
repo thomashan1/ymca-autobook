@@ -14,7 +14,7 @@ struct CalendarCell: View {
     var queued = false
     /// An extra symbol after the time (the iPhone's swap arrows).
     var symbol: (name: String, color: Color)? = nil
-    /// A line under the name, e.g. "Filled in 43 s".
+    /// A line under the name, e.g. "Filled in 43 sec".
     var note: String? = nil
     var font: CGFloat = 13
 

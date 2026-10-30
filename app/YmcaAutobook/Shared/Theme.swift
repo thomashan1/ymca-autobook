@@ -56,17 +56,17 @@ struct BranchChip: View {
     }
 }
 
-/// How fast a class fills, worded the same everywhere: "Fills in 43 s".
+/// How fast a class fills, worded the same everywhere: "Fills in 43 sec".
 enum FillSpeed {
     static func duration(_ seconds: Double?) -> String {
         guard let s = seconds else { return "\u{2014}" }
-        if s < 120 { return "\(Int(s.rounded())) s" }
+        if s < 120 { return "\(Int(s.rounded())) sec" }
         if s < 7200 { return "\(Int(s / 60)) min" }
-        if s < 2 * 86400 { return "\(Int((s / 3600).rounded())) h" }
-        return "\(Int((s / 86400).rounded())) d"
+        if s < 2 * 86400 { return "\(Int((s / 3600).rounded())) hrs" }
+        return "\(Int((s / 86400).rounded())) days"
     }
 
-    /// One class that filled: "Filled in 43 s".
+    /// One class that filled: "Filled in 43 sec".
     static func filled(_ seconds: Double) -> String { "Filled in \(duration(seconds))" }
 
     static func label(filledWeeks: Int, median: Double?) -> String {

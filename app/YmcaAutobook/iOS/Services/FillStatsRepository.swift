@@ -78,7 +78,7 @@ final class FillStatsRepository: ObservableObject {
                        branchId: c.locationIds.first ?? 1392)]
     }
 
-    /// "37s", "4 min", "2 h", "3 d"
+    /// "37 sec", "4 min", "2 hrs", "3 days"
     static func duration(_ seconds: Double?) -> String {
         FillSpeed.duration(seconds)
     }

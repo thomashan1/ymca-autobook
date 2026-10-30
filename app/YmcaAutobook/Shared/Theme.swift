@@ -66,6 +66,9 @@ enum FillSpeed {
         return "\(Int((s / 86400).rounded())) d"
     }
 
+    /// One class that filled: "Filled in 43 s".
+    static func filled(_ seconds: Double) -> String { "Filled in \(duration(seconds))" }
+
     static func label(filledWeeks: Int, median: Double?) -> String {
         filledWeeks == 0 ? "Rarely fills" : "Fills in \(duration(median))"
     }

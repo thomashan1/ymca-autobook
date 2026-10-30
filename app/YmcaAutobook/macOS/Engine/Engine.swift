@@ -775,7 +775,8 @@ final class Engine: ObservableObject {
                     upcoming.append(ScheduleItem(
                         id: o.id, name: o.title, occursAt: o.occursAt, openAt: o.openAt, minutes: o.durationMinutes,
                         branchId: branch, room: o.room, trainer: o.trainer, capacity: o.capacity,
-                        full: o.isFull, joined: o.isJoined, autoBook: false))
+                        full: o.isFull, joined: o.isJoined, autoBook: false,
+                        fillSeconds: o.fullGroupAt.map { $0.timeIntervalSince(o.openAt) }.flatMap { $0 >= 0 ? $0 : nil }))
                 }
             }
             // Picked sessions: wait for the opening, book now, or let go.
@@ -795,7 +796,7 @@ final class Engine: ObservableObject {
                 .map { i in ScheduleItem(id: i.id, name: i.name, occursAt: i.occursAt, openAt: i.openAt,
                                          minutes: i.minutes, branchId: i.branchId, room: i.room, trainer: i.trainer,
                                          capacity: i.capacity, full: i.full, joined: i.joined,
-                                         autoBook: lineup.contains(i.id)) }
+                                         autoBook: lineup.contains(i.id), fillSeconds: i.fillSeconds) }
                 .sorted { ($0.occursAt, $0.id) < ($1.occursAt, $1.id) }
             openings = found.sorted { $0.openAt < $1.openAt }
             bookings = joined.sorted { $0.occursAt < $1.occursAt }
@@ -939,7 +940,7 @@ final class Engine: ObservableObject {
             ids.contains(i.id) && !i.joined
                 ? ScheduleItem(id: i.id, name: i.name, occursAt: i.occursAt, openAt: i.openAt, minutes: i.minutes,
                                branchId: i.branchId, room: i.room, trainer: i.trainer, capacity: i.capacity,
-                               full: i.full, joined: true, autoBook: i.autoBook)
+                               full: i.full, joined: true, autoBook: i.autoBook, fillSeconds: i.fillSeconds)
                 : i
         }
         return (list, items)

@@ -14,6 +14,8 @@ struct CalendarCell: View {
     var queued = false
     /// An extra symbol after the time (the iPhone's swap arrows).
     var symbol: (name: String, color: Color)? = nil
+    /// A line under the name, e.g. "Filled in 43 s".
+    var note: String? = nil
     var font: CGFloat = 13
 
     static let booked = Color.green
@@ -40,6 +42,10 @@ struct CalendarCell: View {
                 }
             }
             nameText
+            if let note {
+                Text(note).font(.system(size: font - 2, weight: .semibold)).foregroundStyle(Self.queued)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(5)

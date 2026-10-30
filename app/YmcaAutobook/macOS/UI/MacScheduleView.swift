@@ -188,7 +188,8 @@ struct MacScheduleView: View {
         return Button { open = e.id } label: {
             CalendarCell(time: Self.hhmm(e.item.occursAt), name: e.item.name,
                          booked: e.state == .booked, dropped: dropped,
-                         queued: e.state == .queued || e.state == .booking)
+                         queued: e.state == .queued || e.state == .booking,
+                         note: e.item.fillSeconds.map(FillSpeed.filled))
                 .contentShape(Rectangle())
         }
         .help(status(e).0)
@@ -221,7 +222,9 @@ struct MacScheduleView: View {
     }
 
     private func pastCell(_ p: Past) -> some View {
-        CalendarCell(time: Self.hhmm(p.occursAt), name: p.name, booked: p.booked, past: true)
+        let fill = engine.history.first { $0.occursAt == p.occursAt && $0.name.lowercased() == p.name.lowercased() }?.fillSeconds
+        return CalendarCell(time: Self.hhmm(p.occursAt), name: p.name, booked: p.booked, past: true,
+                            note: fill.map(FillSpeed.filled))
             .help(p.verdict)
     }
 

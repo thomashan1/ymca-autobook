@@ -54,7 +54,8 @@ enum MacSample {
                 id += 1
                 out.append(ScheduleItem(id: id, name: c.2, occursAt: at, openAt: at.addingTimeInterval(-lead),
                                         minutes: c.4, branchId: c.3, room: c.5, trainer: c.6, capacity: 30,
-                                        full: false, joined: c.7 && at.addingTimeInterval(-lead) <= now, autoBook: c.7))
+                                        full: false, joined: c.7 && at.addingTimeInterval(-lead) <= now, autoBook: c.7,
+                                        fillSeconds: c.7 && at.addingTimeInterval(-lead) <= now ? [43, nil, 28, nil, 103][id % 5] : nil))
             }
         }
         return out.sorted { $0.occursAt < $1.occursAt }

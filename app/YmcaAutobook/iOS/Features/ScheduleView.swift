@@ -378,6 +378,9 @@ private struct ScheduleRow: View {
                     Text(timeRange).font(.caption).foregroundStyle(.secondary).monospacedDigit()
                     BranchChip(branch: row.occ.branch)
                 }
+                if let f = row.item?.fillSeconds {
+                    Text(FillSpeed.filled(f)).font(.caption.weight(.semibold)).foregroundStyle(Theme.queued)
+                }
             }
             Spacer(minLength: 4)
             chip
@@ -610,6 +613,10 @@ private struct TwoWeekGrid: View {
             ForEach(occs) { occ in
                 let away = occ.classKey.map { awayRanges.isAway(date, classKey: $0) } ?? false
                 GridCell(occ: occ, away: away || skipped(occ, on: date),
+                         fill: CloudSource.shared.schedule?.first {
+                             $0.name == occ.name && ClubTime.hhmm($0.occursAt) == occ.start
+                                 && CalendarHelper.pacific.isDate($0.occursAt, inSameDayAs: date)
+                         }?.fillSeconds,
                          swapRole: swaps.role(name: occ.name, start: occ.start,
                                               classKey: occ.classKey, on: date),
                          past: CalendarHelper.startDate(occ.start, on: date).map { $0 < Date() } ?? false,
@@ -623,6 +630,7 @@ private struct TwoWeekGrid: View {
 private struct GridCell: View {
     let occ: Occurrence
     let away: Bool
+    var fill: Double? = nil
     var swapRole: SwapRole? = nil
     let past: Bool
     let font: CGFloat
@@ -637,7 +645,7 @@ private struct GridCell: View {
         CalendarCell(time: occ.start, name: occ.name, booked: occ.booked, dropped: dropped, past: past,
                      queued: swapRole == .replacement,
                      symbol: swapRole.map { ("arrow.triangle.swap", $0 == .replacement ? Theme.queued : Theme.away) },
-                     font: font)
+                     note: fill.map(FillSpeed.filled), font: font)
     }
 }
 // MARK: - Zoomable full-screen calendar

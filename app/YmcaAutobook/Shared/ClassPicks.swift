@@ -35,6 +35,9 @@ struct ScheduleItem: Codable, Hashable, Identifiable, Sendable {
     let joined: Bool
     /// In the weekly lineup: the Mac books it at the opening anyway.
     let autoBook: Bool
+    /// Seconds from the booking window opening to the class filling, once it
+    /// has (the YMCA stamps the moment). Added in 1.2; older iPhones ignore it.
+    var fillSeconds: Double? = nil
 
     var pick: ClassPick {
         ClassPick(occurrenceId: id, name: name, occursAt: occursAt, openAt: openAt, branchId: branchId,

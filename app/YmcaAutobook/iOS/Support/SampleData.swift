@@ -147,7 +147,8 @@ enum SampleData {
                 out.append(ScheduleItem(id: id, name: c.3, occursAt: at, openAt: open, minutes: c.2, branchId: c.4,
                                         room: c.5, trainer: c.6, capacity: c.8 ? 40 : 25,
                                         full: c.8 && open <= now && !c.7, joined: c.7 && open <= now,
-                                        autoBook: c.7))
+                                        autoBook: c.7,
+                                        fillSeconds: c.7 && open <= now ? [44, nil, 61, nil, 15][id % 5] : nil))
             }
         }
         return out.sorted { ($0.occursAt, $0.id) < ($1.occursAt, $1.id) }

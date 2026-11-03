@@ -421,10 +421,11 @@ enum CalendarHelper {
 
     /// The Monday that starts the week the app calls "this week".
     ///
-    /// Not simply the calendar week: the schedule is Mon–Fri, so from Saturday
-    /// on there is nothing left in it — "This week" would head five days that
-    /// have all already happened, and the only useful week is the one ahead.
-    /// So once Friday is done, Saturday and Sunday anchor to the coming Monday.
+    /// Not simply the calendar week: for weekday classes there is nothing left
+    /// from Saturday on — "This week" would head five days that have all
+    /// already happened, and the only useful week is the one ahead. So once
+    /// Friday is done, Saturday and Sunday anchor to the coming Monday, unless
+    /// one of your classes is still to come this weekend.
     ///
     /// Every screen that divides classes into weeks reads this, so the grid,
     /// the agenda and the Jobs headings roll over together.
@@ -438,7 +439,15 @@ enum CalendarHelper {
         // the tail of the week: .weekday 7 = Saturday, 1 = Sunday.
         let wd = cal.component(.weekday, from: now)
         guard wd == 7 || wd == 1 else { return mon }
-        return cal.date(byAdding: .day, value: 7, to: mon) ?? mon
+        let next = cal.date(byAdding: .day, value: 7, to: mon) ?? mon
+        // Every screen calls this on the main thread; elsewhere, assume no weekend class.
+        let weekendClass = Thread.isMainThread && MainActor.assumeIsolated {
+            let cloud = CloudSource.shared
+            return cloud.schedule?.contains {
+                $0.occursAt < next && [.booked, .queued, .booking, .lineup].contains(cloud.state(of: $0))
+            } ?? false
+        }
+        return weekendClass ? mon : next
     }
 
     /// 0 = the week starting at `currentMonday`, 1 = the one after, and so on.
@@ -566,7 +575,10 @@ private struct TwoWeekGrid: View {
         let cal = CalendarHelper.pacific
         let thisMon = CalendarHelper.currentMonday
         return (0..<2).map { w in
-            (0..<5).compactMap { d in cal.date(byAdding: .day, value: w * 7 + d, to: thisMon) }
+            // Weekends only when something's on them, as on the Mac.
+            (0..<7).compactMap { d in
+                cal.date(byAdding: .day, value: w * 7 + d, to: thisMon).flatMap { d < 5 || !occurrences($0).isEmpty ? $0 : nil }
+            }
         }
     }
 
@@ -598,11 +610,15 @@ private struct TwoWeekGrid: View {
         return cloud.state(of: item) == .skipped
     }
 
-    private func dayColumn(_ date: Date) -> some View {
-        let occs = CalendarHelper.weekday(of: date).map {
+    private func occurrences(_ date: Date) -> [Occurrence] {
+        CalendarHelper.weekday(of: date).map {
             Occurrence.build(date: date, weekday: $0, classes: classes, bookings: bookings,
                              snapshot: snapshot, fullClasses: fullClasses)
         } ?? []
+    }
+
+    private func dayColumn(_ date: Date) -> some View {
+        let occs = occurrences(date)
         return VStack(spacing: 4) {
             VStack(spacing: 1) {
                 Text(date.formatted(.dateTime.weekday(.abbreviated)))

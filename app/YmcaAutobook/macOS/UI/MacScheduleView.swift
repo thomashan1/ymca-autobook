@@ -78,16 +78,19 @@ struct MacScheduleView: View {
         return k.map { engine.skipReason($0, on: i.occursAt) != nil } ?? false
     }
 
-    /// The Mondays of this week and next (from Saturday on, next week and the one after).
-    private var mondays: [Date] {
+    /// The Mondays of this week and next (from Saturday on, next week and the
+    /// one after, unless one of your classes is still to come this weekend).
+    private func mondays(_ entries: [Entry]) -> [Date] {
         let cal = Self.cal
         var mon = cal.dateInterval(of: .weekOfYear, for: Date())?.start ?? cal.startOfDay(for: Date())
-        if [7, 1].contains(cal.component(.weekday, from: Date())) { mon = cal.date(byAdding: .day, value: 7, to: mon) ?? mon }
+        let next = cal.date(byAdding: .day, value: 7, to: mon) ?? mon
+        if [7, 1].contains(cal.component(.weekday, from: Date())), !entries.contains(where: { $0.item.occursAt < next }) { mon = next }
         return [mon, cal.date(byAdding: .day, value: 7, to: mon) ?? mon]
     }
 
     var body: some View {
         let entries = entries
+        let mondays = mondays(entries)
         let past = past(since: mondays[0])
         VStack(alignment: .leading, spacing: 16) {
             if watchOnly {

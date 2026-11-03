@@ -28,8 +28,15 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 if auth.isCloud || SampleMode.active {
-                    Section("Your Macs") {
+                    Section {
                         MacsList(macs: SampleMode.active ? Self.sampleMacs : cloud.macs)
+                        Link(destination: Links.macDownload) {
+                            Label("Get YMCA Booker for Mac", systemImage: "desktopcomputer")
+                        }
+                    } header: {
+                        Text("Your Macs")
+                    } footer: {
+                        Text("Open the link on your Mac to download it.")
                     }
                 }
                 if auth.isCloud {
@@ -115,7 +122,7 @@ struct SettingsView: View {
             }
             .disabled(reloading)
         } footer: {
-            Text("Everything here comes from YMCA Booker on your Mac, through your own iCloud. Sign in to the same Apple Account on the Mac and on this device.")
+            Text("Everything here comes from YMCA Booker on your Mac, through your own iCloud. Sign in to the same Apple Account on the Mac and on this device. [Get the Mac app](https://github.com/thomashan1/ymca-autobook/releases/latest)")
         }
     }
 

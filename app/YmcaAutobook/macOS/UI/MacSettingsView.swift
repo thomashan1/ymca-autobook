@@ -67,6 +67,7 @@ private struct WelcomeView: View {
             WatchOnlyToggle(engine: engine).frame(width: 360)
             Text("Want your classes on an iPhone or iPad too? Install YMCA Booker there and sign in to the same Apple Account as this Mac: everything shows up through your own iCloud.")
                 .font(.caption).multilineTextAlignment(.center).foregroundStyle(.secondary).frame(maxWidth: 460)
+            Link("Get it for iPhone and iPad (TestFlight)", destination: Links.testFlight).font(.caption)
             VersionTag()
         }
         .padding(40)
@@ -414,6 +415,9 @@ struct GeneralSettings: View {
                 MacsList(macs: engine.macs, thisMac: UserDefaults.standard.string(forKey: "macDeviceId"))
                 Text("Every Mac with YMCA Booker on your iCloud account. One books; the others can just watch.")
                     .font(.caption).foregroundStyle(.secondary)
+                Link(destination: Links.testFlight) {
+                    Label("Get YMCA Booker for iPhone and iPad (TestFlight)", systemImage: "iphone")
+                }
             }
             Section("Startup") {
                 Toggle("Open YMCA Booker at login", isOn: $launchAtLogin)
@@ -447,6 +451,7 @@ struct GeneralSettings: View {
                 }
                 Text("Your classes, away dates, swaps, booking results and fill stats go to your own iCloud so the iPhone app can show them. Sign in to the same Apple Account on the iPhone and iPad. Booking never waits on iCloud.")
                     .font(.caption).foregroundStyle(.secondary)
+                Link("Get YMCA Booker for iPhone and iPad (TestFlight)", destination: Links.testFlight).font(.caption)
             }
             Section("Updates") {
                 HStack {

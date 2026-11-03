@@ -80,9 +80,13 @@ echo "== Update feed (Sparkle)"
 # the public key built into the app. The private key never enters the repo.
 REPO="$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')"
 SPARKLE_KEY="${SPARKLE_KEY:-$HOME/.appstoreconnect/sparkle_ed25519_private.txt}"
+# What friends already saw: the bullets of the last published release of this version.
+PREV="$(gh release list --repo "$REPO" --limit 100 --json tagName --jq '.[].tagName' | grep "^v$VERSION-" | head -1 || true)"
+if [ -n "$PREV" ]; then gh release view "$PREV" --repo "$REPO" --json body --jq .body | grep '^- ' > "$OUT/notes-earlier.txt" || true
+else : > "$OUT/notes-earlier.txt"; fi
 python3 "$HERE/scripts/appcast.py" "$DMG" "$SPARKLE_KEY" "$VERSION" "$BUILD" \
   "https://github.com/$REPO/releases/download/v$VERSION-$BUILD/$(basename "$DMG")" \
-  "$HERE/release-notes/$VERSION.md" > "$OUT/appcast.xml"
+  "$HERE/release-notes/$VERSION.md" "$OUT/notes-earlier.txt" > "$OUT/appcast.xml"
 
 echo "Built $DMG. Install it on your own Mac to try it; when it's ready for friends:"
 echo "  scripts/promote.sh $VERSION $BUILD $OUT"

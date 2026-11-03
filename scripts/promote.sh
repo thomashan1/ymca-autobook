@@ -23,9 +23,19 @@ NOTES="$HERE/release-notes/$VERSION.md"
 [ -f "$NOTES" ] || { echo "Write $NOTES first (one '- ' line per change)"; exit 1; }
 
 echo "== GitHub release (Mac download + updates)"
+# Lines the last release of this version already had go under a fold; the rest lead.
+PREV="$(gh release list --repo "$REPO" --limit 100 --json tagName --jq '.[].tagName' | grep "^v$VERSION-" | head -1 || true)"
+SEEN="$( [ -n "$PREV" ] && gh release view "$PREV" --repo "$REPO" --json body --jq .body | grep '^- ' || true)"
+ALL="$(grep '^- ' "$NOTES")"
+if [ -z "$SEEN" ]; then
+  BODY="$(printf "## What's new in %s\n\n%s" "$VERSION" "$ALL")"
+else
+  FRESH="$(grep -vxF -f <(printf '%s\n' "$SEEN") <<<"$ALL" || true)"
+  BODY="$(printf "## New in this build\n\n%s\n\n<details><summary>Everything in %s</summary>\n\n%s\n\n</details>" "${FRESH:-Small fixes.}" "$VERSION" "$ALL")"
+fi
 gh release create "v$VERSION-$BUILD" "$DMG" "$OUT/appcast.xml" --target "$(git -C "$HERE" rev-parse HEAD)" --repo "$REPO" \
   --title "YMCA Booker $VERSION ($BUILD) for Mac" \
-  --notes "$(printf "## What's new\n\n%s\n\n---\nOpen the .dmg and drag **YMCA Booker** into Applications. Signed with Developer ID and notarized by Apple. Already installed? It offers this update itself." "$(cat "$NOTES")")"
+  --notes "$(printf "%s\n\n---\nOpen the .dmg and drag **YMCA Booker** into Applications. Signed with Developer ID and notarized by Apple. Already installed? It offers this update itself." "$BODY")"
 # One release per version: this build replaces earlier builds of the same version.
 for old in $(gh release list --repo "$REPO" --limit 100 --json tagName --jq '.[].tagName' | grep "^v$VERSION-" | grep -vx "v$VERSION-$BUILD"); do
   gh release delete "$old" --repo "$REPO" --yes --cleanup-tag

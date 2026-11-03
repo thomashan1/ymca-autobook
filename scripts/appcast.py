@@ -1,6 +1,8 @@
 """Write the Sparkle update feed for one Mac release to stdout:
-appcast.py DMG PRIVATE_KEY_FILE VERSION BUILD DOWNLOAD_URL [NOTES.md]
+appcast.py DMG PRIVATE_KEY_FILE VERSION BUILD DOWNLOAD_URL [NOTES.md [EARLIER.txt]]
 NOTES.md is the version's "What's new": one "- " bullet per line, shown in the update window.
+EARLIER.txt holds the bullets friends already saw (the last release of this version): the
+window lists only the rest, with the whole version folded underneath.
 The key file holds the base64 Ed25519 seed (made once, kept outside the repo).
 Needs the cryptography package (pip install cryptography)."""
 import base64, os, sys
@@ -13,9 +15,16 @@ dmg, key_file, version, build, url = sys.argv[1:6]
 notes = ""
 if len(sys.argv) > 6 and os.path.exists(sys.argv[6]):
     items = [l[2:].strip() for l in open(sys.argv[6]) if l.startswith("- ")]
-    if items:
-        notes = ("<h3>What's new in " + escape(version) + "</h3><ul>"
-                 + "".join(f"<li>{escape(i)}</li>" for i in items) + "</ul>")
+    seen = set()
+    if len(sys.argv) > 7 and os.path.exists(sys.argv[7]):
+        seen = {l[2:].strip() for l in open(sys.argv[7]) if l.startswith("- ")}
+    fresh = [i for i in items if i not in seen]
+    bullets = lambda xs: "<ul>" + "".join(f"<li>{escape(i)}</li>" for i in xs) + "</ul>"
+    if items and not seen:
+        notes = f"<h3>What's new in {escape(version)}</h3>" + bullets(items)
+    elif items:
+        notes = ("<h3>New in this build</h3>" + (bullets(fresh) if fresh else "<p>Small fixes.</p>")
+                 + f"<details><summary>Everything in {escape(version)}</summary>" + bullets(items) + "</details>")
 key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(open(key_file).read().strip()))
 data = open(dmg, "rb").read()
 signature = base64.b64encode(key.sign(data)).decode()

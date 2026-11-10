@@ -84,6 +84,7 @@ SPARKLE_KEY="${SPARKLE_KEY:-$HOME/.appstoreconnect/sparkle_ed25519_private.txt}"
 PREV="$(gh release list --repo "$REPO" --limit 100 --json tagName --jq '.[].tagName' | grep "^v$VERSION-" | head -1 || true)"
 if [ -n "$PREV" ]; then gh release view "$PREV" --repo "$REPO" --json body --jq .body | grep '^- ' > "$OUT/notes-earlier.txt" || true
 else : > "$OUT/notes-earlier.txt"; fi
+MIN_MACOS="$(/usr/libexec/PlistBuddy -c "Print LSMinimumSystemVersion" "$APP/Contents/Info.plist")" \
 python3 "$HERE/scripts/appcast.py" "$DMG" "$SPARKLE_KEY" "$VERSION" "$BUILD" \
   "https://github.com/$REPO/releases/download/v$VERSION-$BUILD/$(basename "$DMG")" \
   "$HERE/release-notes/$VERSION.md" "$OUT/notes-earlier.txt" > "$OUT/appcast.xml"

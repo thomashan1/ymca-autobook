@@ -3,7 +3,6 @@ import SwiftUI
 
 struct MenuView: View {
     @ObservedObject var engine: Engine
-    @Environment(\.openWindow) private var openWindow
     @AppStorage(WatchOnly.key) private var watchOnly = false
 
     var body: some View {
@@ -107,10 +106,7 @@ struct MenuView: View {
 
     /// Opens the app's window on whichever tab was last picked; its tabs
     /// (Schedule, Classes, Settings) are one click away there.
-    private func open() {
-        openWindow(id: "main")
-        NSApp.activate(ignoringOtherApps: true)
-    }
+    private func open() { MainWindow.open?() }
 
     private func dayLabel(_ date: Date) -> String {
         let cal = Calendar.current

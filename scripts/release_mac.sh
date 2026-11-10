@@ -89,6 +89,8 @@ python3 "$HERE/scripts/appcast.py" "$DMG" "$SPARKLE_KEY" "$VERSION" "$BUILD" \
   "https://github.com/$REPO/releases/download/v$VERSION-$BUILD/$(basename "$DMG")" \
   "$HERE/release-notes/$VERSION.md" "$OUT/notes-earlier.txt" > "$OUT/appcast.xml"
 
-echo "Built $DMG. Install it on your own Mac to try it; when it's ready for friends:"
+echo "Built $DMG. Install it on your own Mac to try it, check it on macOS 12:"
+echo "  scripts/test_macos12.sh $OUT"
+echo "and when it's ready for friends:"
 echo "  scripts/promote.sh $VERSION $BUILD $OUT"
 echo "Done: $DMG"

@@ -21,7 +21,7 @@ struct StatsView: View {
                 Spacer()
             }
             Table(rows) {
-                TableColumn("Class") { s in Text(s.name).bold(isMine(s)) }.width(min: 140, ideal: 170)
+                TableColumn("Class") { s in Text(s.name).fontWeight(isMine(s) ? .bold : nil) }.width(min: 140, ideal: 170)
                 TableColumn("Slot") { s in Text("\(s.weekday) \(s.start) · \(s.branch)") }.width(min: 150, ideal: 160)
                 TableColumn("Filled") { s in Text("\(s.filledWeeks) of \(s.weeks) wk").monospacedDigit() }.width(80)
                 TableColumn("Typical fill") { s in

@@ -3,7 +3,9 @@ import SwiftUI
 
 /// A regular Mac app (Dock icon, opens its window like any other app) with a
 /// menu bar extra for a glance at the next opening. Closing the window doesn't
-/// quit, so booking carries on; only Quit stops it.
+/// quit, so booking carries on; only Quit stops it. (macOS 12 runs
+/// `LegacyMacApp` instead.)
+@available(macOS 13, *)
 struct MacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var engine = Engine()
@@ -39,6 +41,7 @@ private struct FrontWindowInScreenshots: ViewModifier {
 
 /// The menu bar icon. It's the one view that exists from launch on, so it's
 /// where the app gets hold of SwiftUI's openWindow for the Dock and launch.
+@available(macOS 13, *)
 private struct MenuBarIcon: View {
     let engine: Engine
     @Environment(\.openWindow) private var openWindow

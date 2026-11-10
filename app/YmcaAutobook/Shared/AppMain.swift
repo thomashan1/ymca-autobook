@@ -12,7 +12,12 @@ enum AppMain {
         }
         #if os(macOS)
         LegacySettings.migrate()
-        MacApp.main()
+        // `-legacyShell YES` tries the macOS 12 version on a newer Mac.
+        if #available(macOS 13, *), !UserDefaults.standard.bool(forKey: "legacyShell") {
+            MacApp.main()
+        } else {
+            LegacyMacApp.main()
+        }
         #else
         YmcaAutobookApp.main()
         #endif

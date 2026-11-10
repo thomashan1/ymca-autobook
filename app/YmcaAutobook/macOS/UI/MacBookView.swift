@@ -24,7 +24,7 @@ struct MacBookView: View {
             filters
             Table(filtered) {
                 TableColumn("") { i in actionButton(i) }.width(130)
-                TableColumn("Class") { i in Text(i.name).bold(isMine(i)) }.width(min: 140, ideal: 170)
+                TableColumn("Class") { i in Text(i.name).fontWeight(isMine(i) ? .bold : nil) }.width(min: 140, ideal: 170)
                 TableColumn("When") { i in
                     Text("\(i.occursAt.formatted(.dateTime.weekday().month().day())) \(time(i.occursAt))–\(time(i.occursAt.addingTimeInterval(Double(i.minutes) * 60)))")
                         .monospacedDigit()

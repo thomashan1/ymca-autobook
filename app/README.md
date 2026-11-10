@@ -102,7 +102,7 @@ In GitHub mode, the app stores a **fine-grained GitHub PAT** in the Keychain (`K
 The `.xcodeproj` is committed. Folders are synced, so a new file under
 `YmcaAutobook/` or `YmcaAutobookTests/` is picked up without editing the project.
 Each file is wrapped in `#if os(iOS)` or `#if os(macOS)` unless both platforms
-share it. Minimum versions are iOS 17 and macOS 14.
+share it. Minimum versions are iOS 17 and macOS 12 Monterey (Late 2015 iMac and later; macOS 12 uses an AppKit menu bar and window, `LegacyMacApp`, around the same views).
 
 ```bash
 open app/YmcaAutobook.xcodeproj           # pick "My Mac" or a device, then ⌘R

@@ -83,7 +83,7 @@ struct WatchOnlyToggle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle("Don't book on this Mac", isOn: $on)
-                .onChange(of: on) { _, now in if now { engine.enterWatchOnly() } else { engine.leaveWatchOnly() } }
+                .onChange(of: on) { now in if now { engine.enterWatchOnly() } else { engine.leaveWatchOnly() } }
             Text(on ? "Watch only: this Mac shows the booking Mac's classes and away dates (same iCloud account) but never books, cancels or changes anything. Make changes on that Mac or the iPhone."
                     : "Turn on for a second Mac that should only watch, so two Macs never book the same classes.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -274,7 +274,7 @@ struct MacAwayView: View {
                 }
                 .padding(4)
             }
-            .onChange(of: start) { _, s in if end < s { end = s } }
+            .onChange(of: start) { s in if end < s { end = s } }
             HStack {
                 Spacer()
                 Toggle("Show past", isOn: $showPast)
@@ -421,7 +421,7 @@ struct GeneralSettings: View {
             }
             Section("Startup") {
                 Toggle("Open YMCA Booker at login", isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { _, on in
+                    .onChange(of: launchAtLogin) { on in
                         do { try LoginItem.set(on); loginError = nil }
                         catch { loginError = error.localizedDescription; launchAtLogin = LoginItem.isEnabled }
                     }
@@ -430,7 +430,7 @@ struct GeneralSettings: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Notifications") {
-                LabeledContent("Status", value: notifications)
+                Labeled("Status", value: notifications)
                 Text("A notification per opening with the booking result, plus a warning if the YMCA can't be reached.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -470,12 +470,12 @@ struct GeneralSettings: View {
                 }
             }
             Section("Account") {
-                LabeledContent("Signed in as", value: engine.signedInAs ?? "—")
+                Labeled("Signed in as", value: engine.signedInAs ?? "—")
                 Button("Sign out", role: .destructive) { Task { await engine.signOut() } }
             }
             GitHubBackupSection(engine: engine)
         }
-        .formStyle(.grouped)
+        .modifier(GroupedForm())
         .sheet(isPresented: $showLog) { SheetFrame(close: { showLog = false }) { LogView(engine: engine) } }
         .task {
             let s = await UNUserNotificationCenter.current().notificationSettings()
@@ -509,7 +509,7 @@ struct GitHubBackupSection: View {
         Section {
             DisclosureGroup(isExpanded: $expanded) {
                 Toggle("Also keep a GitHub backup", isOn: $on)
-                    .onChange(of: on) { _, enabled in
+                    .onChange(of: on) { enabled in
                         if !enabled { repo = ""; token = ""; engine.turnOffGitHub() }
                     }
                 Text("Not needed. YMCA Booker books from this Mac and shows everything on your iPhone and iPad through iCloud, without GitHub. Turn this on only if you also run the GitHub Actions booker (see the project README) as a backup for when the Mac is asleep or offline.")
@@ -540,6 +540,25 @@ struct GitHubBackupSection: View {
                 }
             }
         } header: { Text("Advanced mode") }
+    }
+}
+/// A label and its value on one row. macOS 12 has no LabeledContent.
+private struct Labeled: View {
+    let title: String, value: String
+    init(_ title: String, value: String) { self.title = title; self.value = value }
+    var body: some View {
+        if #available(macOS 13, *) {
+            LabeledContent(title, value: value)
+        } else {
+            HStack { Text(title); Spacer(); Text(value).foregroundStyle(.secondary) }
+        }
+    }
+}
+
+/// System Settings–style grouped boxes, from macOS 13; plain rows on 12.
+private struct GroupedForm: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 13, *) { content.formStyle(.grouped) } else { content }
     }
 }
 #endif

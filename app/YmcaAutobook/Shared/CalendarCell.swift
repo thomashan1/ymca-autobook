@@ -52,7 +52,7 @@ struct CalendarCell: View {
         .background((tint ?? .secondary).opacity(tint == nil ? 0.10 : 0.18), in: RoundedRectangle(cornerRadius: 7))
         .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(tint?.opacity(0.5) ?? .clear, lineWidth: 1))
         .foregroundStyle(dropped ? .secondary : .primary)
-        .strikethrough(dropped, color: .secondary)
+        .modifier(StrikeThrough(on: dropped))
         .opacity(past ? 0.4 : (dropped ? 0.6 : 1))
     }
 
@@ -62,11 +62,22 @@ struct CalendarCell: View {
     @ViewBuilder private var nameText: some View {
         if name.contains(" ") {
             Text(name).font(.system(size: font)).lineLimit(3)
-        } else {
+        } else if #available(macOS 13, iOS 16, *) {
             ViewThatFits(in: .horizontal) {
                 Text(name).font(.system(size: font)).lineLimit(1)
                 Text(name).font(.system(size: font)).lineLimit(1).minimumScaleFactor(0.6)
             }
+        } else {
+            Text(name).font(.system(size: font)).lineLimit(1).minimumScaleFactor(0.6)
         }
+    }
+}
+
+/// Strikes the whole cell through; macOS 12 can only do that per Text, so
+/// there the dimming alone says it's dropped.
+private struct StrikeThrough: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View {
+        if #available(macOS 13, iOS 16, *) { content.strikethrough(on, color: .secondary) } else { content }
     }
 }

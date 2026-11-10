@@ -62,11 +62,11 @@ private struct WelcomeView: View {
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 96, height: 96)
             Text("Welcome to YMCA Booker").font(.largeTitle.bold())
             Text("Sign in with the account you use in the YMCA app. Then pick your classes: this Mac books each one the second it opens, every week.")
-                .multilineTextAlignment(.center).foregroundStyle(.secondary).frame(maxWidth: 460)
+                .multilineTextAlignment(.center).foregroundStyle(.secondary).wrapsOnMacOS12().frame(maxWidth: 460)
             SignInForm(engine: engine).frame(width: 360)
             WatchOnlyToggle(engine: engine).frame(width: 360)
             Text("Want your classes on an iPhone or iPad too? Install YMCA Booker there and sign in to the same Apple Account as this Mac: everything shows up through your own iCloud.")
-                .font(.caption).multilineTextAlignment(.center).foregroundStyle(.secondary).frame(maxWidth: 460)
+                .font(.caption).multilineTextAlignment(.center).foregroundStyle(.secondary).wrapsOnMacOS12().frame(maxWidth: 460)
             Link("Get it for iPhone and iPad (TestFlight)", destination: Links.testFlight).font(.caption)
             VersionTag()
         }

@@ -19,6 +19,14 @@ final class LegacyMacApp: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // One booker per Mac: macOS 12 can start a second copy at login (its
+        // window restore plus the login item), and both would book.
+        let me = NSRunningApplication.current
+        if let other = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
+            .first(where: { $0.processIdentifier != me.processIdentifier }) {
+            other.activate(options: [])
+            exit(0)
+        }
         NSApp.setActivationPolicy(.regular)
         NSApp.mainMenu = mainMenu()
         if LoginItem.launchedAtLogin { MainWindow.showAtLaunch = false }
@@ -27,7 +35,7 @@ final class LegacyMacApp: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(systemSymbolName: "figure.strengthtraining.traditional", accessibilityDescription: "YMCA Booker")
-            ?? NSImage(systemSymbolName: "calendar", accessibilityDescription: "YMCA Booker")
+            ?? NSImage(systemSymbolName: "figure.walk", accessibilityDescription: "YMCA Booker")   // macOS 12 lacks the first
         item.button?.target = self
         item.button?.action = #selector(togglePopover)
         statusItem = item

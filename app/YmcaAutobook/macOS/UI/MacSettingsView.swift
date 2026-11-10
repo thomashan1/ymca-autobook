@@ -86,7 +86,7 @@ struct WatchOnlyToggle: View {
                 .onChange(of: on) { now in if now { engine.enterWatchOnly() } else { engine.leaveWatchOnly() } }
             Text(on ? "Watch only: this Mac shows the booking Mac's classes and away dates (same iCloud account) but never books, cancels or changes anything. Make changes on that Mac or the iPhone."
                     : "Turn on for a second Mac that should only watch, so two Macs never book the same classes.")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
         }
     }
 }
@@ -292,7 +292,7 @@ struct MacAwayView: View {
                                 if let note = p.note { Text(note) }
                                 if let ex = p.except, !ex.isEmpty {
                                     Text("still booking: \(ex.map(className).joined(separator: ", "))")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
                                 }
                             }
                             Spacer()
@@ -323,7 +323,7 @@ struct MacAwayView: View {
                 }
             }
             Text("For a single day, click the class in Schedule to skip it, or add one under Classes \u{2192} Add a class.")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
         }
     }
 
@@ -414,7 +414,7 @@ struct GeneralSettings: View {
             Section("Your Macs") {
                 MacsList(macs: engine.macs, thisMac: UserDefaults.standard.string(forKey: "macDeviceId"))
                 Text("Every Mac with YMCA Booker on your iCloud account. One books; the others can just watch.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
                 Link(destination: Links.testFlight) {
                     Label("Get YMCA Booker for iPhone and iPad (TestFlight)", systemImage: "iphone")
                 }
@@ -427,12 +427,12 @@ struct GeneralSettings: View {
                     }
                 if let loginError { Text(loginError).foregroundStyle(.red) }
                 Text("Keeps the Mac from idle-sleeping while running (the display can still sleep). Booking needs the Mac awake and online at each opening.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
             }
             Section("Notifications") {
                 Labeled("Status", value: notifications)
                 Text("A notification per opening with the booking result, plus a warning if the YMCA can't be reached.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
             }
             Section("iCloud (for the iPhone app)") {
                 if let err = engine.cloudError {
@@ -450,13 +450,13 @@ struct GeneralSettings: View {
                     Button("Send now") { Task { await engine.pushToCloud() } }
                 }
                 Text("Your classes, away dates, swaps, booking results and fill stats go to your own iCloud so the iPhone app can show them. Sign in to the same Apple Account on the iPhone and iPad. Booking never waits on iCloud.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
                 Link("Get YMCA Booker for iPhone and iPad (TestFlight)", destination: Links.testFlight).font(.caption)
             }
             Section("Updates") {
                 HStack {
                     Text("YMCA Booker \(AppVersion.label). Checks for a new version once a day and asks before installing; it never restarts around an opening.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
                     Spacer()
                     CheckForUpdatesButton()
                 }
@@ -464,7 +464,7 @@ struct GeneralSettings: View {
             Section("Booking history") {
                 HStack {
                     Text("Every opening your Mac handled: when the booking went out, the reply, and how fast the class filled.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
                     Spacer()
                     Button("Show…") { showLog = true }
                 }
@@ -480,7 +480,7 @@ struct GeneralSettings: View {
         .task {
             let s = await UNUserNotificationCenter.current().notificationSettings()
             notifications = s.authorizationStatus == .authorized ? "allowed"
-                : s.authorizationStatus == .denied ? "off — turn on in System Settings → Notifications → YMCA Booker"
+                : s.authorizationStatus == .denied ? "off — turn on in \(SystemSettings.name) → Notifications → YMCA Booker"
                 : "not decided yet"
         }
     }
@@ -513,7 +513,7 @@ struct GitHubBackupSection: View {
                         if !enabled { repo = ""; token = ""; engine.turnOffGitHub() }
                     }
                 Text("Not needed. YMCA Booker books from this Mac and shows everything on your iPhone and iPad through iCloud, without GitHub. Turn this on only if you also run the GitHub Actions booker (see the project README) as a backup for when the Mac is asleep or offline.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
                 if on {
                     TextField("Private repo", text: $repo, prompt: Text("owner/repo"))
                         .onSubmit(save)
@@ -527,7 +527,7 @@ struct GitHubBackupSection: View {
                                       || (repo.trimmingCharacters(in: .whitespaces) == (RepoSync.repo ?? "") && token.isEmpty))
                     }
                     Text("After each change the Mac writes a copy of your classes, away dates and one-day changes into that private repo's classes.yml, away.yml and swaps.yml, for the backup to follow. It never reads them back, so keep editing here or on the iPhone, not in the repo. Use a fine-grained token for that repo only, with Contents: Read and write. It's stored in this Mac's Keychain. Turning the backup off forgets the repo and token.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
                 }
             } label: {
                 // Collapsed even with the backup on, but a problem still shows.
@@ -555,10 +555,28 @@ private struct Labeled: View {
     }
 }
 
+extension View {
+    /// macOS 12 cuts a long caption off with "…" where 13 and later wrap it.
+    func wrapsOnMacOS12() -> some View { modifier(WrapsOnMacOS12()) }
+}
+
+private struct WrapsOnMacOS12: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 13, *) { content } else { content.fixedSize(horizontal: false, vertical: true) }
+    }
+}
+
 /// System Settings–style grouped boxes, from macOS 13; plain rows on 12.
 private struct GroupedForm: ViewModifier {
     func body(content: Content) -> some View {
         if #available(macOS 13, *) { content.formStyle(.grouped) } else { content }
+    }
+}
+/// What macOS calls its settings app: System Preferences until macOS 13.
+enum SystemSettings {
+    static var name: String {
+        if #available(macOS 13, *) { return "System Settings" }
+        return "System Preferences"
     }
 }
 #endif

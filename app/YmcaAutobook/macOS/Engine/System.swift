@@ -22,7 +22,7 @@ enum Notifier {
 /// Open at login, via the system's own Login Items (System Settings → General →
 /// Login Items). Registers this exact app bundle where it currently lives.
 /// macOS 12 has no SMAppService, so there it's a launch agent in
-/// ~/Library/LaunchAgents that starts the app with `-launchedAtLogin YES`.
+/// ~/Library/LaunchAgents that opens the app with `-launchedAtLogin YES`.
 enum LoginItem {
     static var isEnabled: Bool {
         if #available(macOS 13, *) { return SMAppService.mainApp.status == .enabled }
@@ -54,10 +54,11 @@ enum LoginItem {
             try SMAppService.mainApp.register()
             return
         }
-        guard let exe = Bundle.main.executablePath else { return }
+        // Through `open`, so a copy macOS already restored at login is reused
+        // rather than joined by a second one.
         let plist: [String: Any] = [
             "Label": agentLabel,
-            "ProgramArguments": [exe, "-launchedAtLogin", "YES"],
+            "ProgramArguments": ["/usr/bin/open", "-a", Bundle.main.bundlePath, "--args", "-launchedAtLogin", "YES"],
             "RunAtLoad": true,
             "LimitLoadToSessionType": "Aqua",
         ]

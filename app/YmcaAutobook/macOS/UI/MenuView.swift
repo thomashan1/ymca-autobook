@@ -140,7 +140,7 @@ struct SignInForm: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Sign in with your YMCA (egym) account. Stored only in this Mac's Keychain.")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.secondary).wrapsOnMacOS12()
             TextField("Email", text: $email).textContentType(.username)
             SecureField("Password", text: $password).textContentType(.password)
             if let error { Text(error).font(.caption).foregroundStyle(.red) }

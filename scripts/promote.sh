@@ -15,6 +15,11 @@ OUT="${3:?usage: promote.sh <version> <build> <release dir>}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 DMG="$OUT/YMCA-Booker-$VERSION.dmg"
 [ -f "$DMG" ] && [ -f "$OUT/appcast.xml" ] || { echo "No $DMG and appcast.xml in $OUT"; exit 1; }
+# The oldest macOS the app supports, in a VM (scripts/test_macos12.sh); every Mac
+# that builds releases runs a newer one. SKIP_MACOS12_TEST=1 only for a reason you'd write down.
+if [ "$(cat "$OUT/macos12-ok" 2>/dev/null)" != "$BUILD" ] && [ "${SKIP_MACOS12_TEST:-}" != 1 ]; then
+  echo "$BUILD hasn't passed on macOS 12: run scripts/test_macos12.sh $OUT"; exit 1
+fi
 [ "$(defaults read "$OUT/YMCA Booker.app/Contents/Info.plist" CFBundleVersion)" = "$BUILD" ] || { echo "$OUT holds a different build"; exit 1; }
 REPO="$(git -C "$HERE" remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')"
 # What's new in this version (release-notes/<version>.md): the release page, the Mac's

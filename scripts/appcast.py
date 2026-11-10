@@ -1,5 +1,7 @@
 """Write the Sparkle update feed for one Mac release to stdout:
 appcast.py DMG PRIVATE_KEY_FILE VERSION BUILD DOWNLOAD_URL [NOTES.md [EARLIER.txt]]
+MIN_MACOS (env) is the oldest macOS the build runs on, from its LSMinimumSystemVersion;
+Sparkle offers the update only there.
 NOTES.md is the version's "What's new": one "- " bullet per line, shown in the update window.
 EARLIER.txt holds the bullets friends already saw (the last release of this version): the
 window lists only the rest, with the whole version folded underneath.
@@ -38,7 +40,7 @@ print(f"""<?xml version="1.0" encoding="utf-8"?>
       <pubDate>{formatdate(usegmt=True)}</pubDate>
       <sparkle:version>{escape(build)}</sparkle:version>
       <sparkle:shortVersionString>{escape(version)}</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>{f"""
+      <sparkle:minimumSystemVersion>{escape(os.environ.get("MIN_MACOS", "14.0"))}</sparkle:minimumSystemVersion>{f"""
       <description><![CDATA[{notes}]]></description>""" if notes else ""}
       <enclosure url="{escape(url)}" length="{len(data)}" type="application/octet-stream" sparkle:edSignature="{signature}"/>
     </item>

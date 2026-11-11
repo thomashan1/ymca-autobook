@@ -38,9 +38,15 @@ else
   FRESH="$(grep -vxF -f <(printf '%s\n' "$SEEN") <<<"$ALL" || true)"
   BODY="$(printf "## New in this build\n\n%s\n\n<details><summary>Everything in %s</summary>\n\n%s\n\n</details>" "${FRESH:-Small fixes.}" "$VERSION" "$ALL")"
 fi
-gh release create "v$VERSION-$BUILD" "$DMG" "$OUT/appcast.xml" --target "$(git -C "$HERE" rev-parse HEAD)" --repo "$REPO" \
+# Friends only need the .dmg: say so first, with a direct link, and label the other files
+# (labels change what the page shows, not the download address every Mac's updater uses).
+MIN="$(defaults read "$OUT/YMCA Booker.app/Contents/Info.plist" LSMinimumSystemVersion)"
+GET="https://github.com/$REPO/releases/download/v$VERSION-$BUILD/$(basename "$DMG")"
+HOWTO="$(printf '> [!IMPORTANT]\n> **To install: download [%s](%s)** — that is the only file you need.\n> Open it and drag **YMCA Booker** into Applications. Needs macOS %s or later.\n>\n> Ignore the other files below: appcast.xml is read by the app to find updates, and the two Source code files are added by GitHub.' "$(basename "$DMG")" "$GET" "$MIN")"
+gh release create "v$VERSION-$BUILD" "$DMG#$(basename "$DMG") ⬅ download this" "$OUT/appcast.xml#appcast.xml (used by the app for updates, not for download)" \
+  --target "$(git -C "$HERE" rev-parse HEAD)" --repo "$REPO" \
   --title "YMCA Booker $VERSION ($BUILD) for Mac" \
-  --notes "$(printf "%s\n\n---\nOpen the .dmg and drag **YMCA Booker** into Applications. Signed with Developer ID and notarized by Apple. Already installed? It offers this update itself." "$BODY")"
+  --notes "$(printf "%s\n\n%s\n\n---\nSigned with Developer ID and notarized by Apple. Already installed? It offers this update itself." "$HOWTO" "$BODY")"
 # One release per version: this build replaces earlier builds of the same version.
 for old in $(gh release list --repo "$REPO" --limit 100 --json tagName --jq '.[].tagName' | grep "^v$VERSION-" | grep -vx "v$VERSION-$BUILD"); do
   gh release delete "$old" --repo "$REPO" --yes --cleanup-tag

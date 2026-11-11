@@ -42,7 +42,7 @@ fi
 # (labels change what the page shows, not the download address every Mac's updater uses).
 MIN="$(defaults read "$OUT/YMCA Booker.app/Contents/Info.plist" LSMinimumSystemVersion)"
 GET="https://github.com/$REPO/releases/download/v$VERSION-$BUILD/$(basename "$DMG")"
-HOWTO="$(printf '> [!IMPORTANT]\n> **To install: download [%s](%s)** — that is the only file you need.\n> Open it and drag **YMCA Booker** into Applications. Needs macOS %s or later.\n>\n> Ignore the other files below: appcast.xml is read by the app to find updates, and the two Source code files are added by GitHub.' "$(basename "$DMG")" "$GET" "$MIN")"
+HOWTO="$(printf '# ⬇️ [Download %s](%s)\n\n## 👉 This is the ONLY file you need.\n\n> [!IMPORTANT]\n> Open it and drag **YMCA Booker** into Applications. Needs macOS %s or later.\n>\n> **Don\x27t download the other files below.** appcast.xml is read by the app to find updates, and the two Source code files are added by GitHub.' "$(basename "$DMG")" "$GET" "$MIN")"
 gh release create "v$VERSION-$BUILD" "$DMG#$(basename "$DMG") ⬅ download this" "$OUT/appcast.xml#appcast.xml (used by the app for updates, not for download)" \
   --target "$(git -C "$HERE" rev-parse HEAD)" --repo "$REPO" \
   --title "YMCA Booker $VERSION ($BUILD) for Mac" \

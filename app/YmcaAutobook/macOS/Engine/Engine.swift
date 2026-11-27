@@ -47,6 +47,9 @@ final class Engine: ObservableObject {
     @Published private(set) var schedule: [ScheduleItem]?
     /// Picks being booked right now (their window was already open).
     @Published private(set) var bookingNow: Set<Int> = []
+    /// A Book or Cancel clicked on this Mac, shown as a dialog in the window from
+    /// the click to its result. (The phone's requests get their result on the phone.)
+    @Published var activity: BookingActivity?
     private var inboxLoop: Task<Void, Never>?
     /// How often to look for requests from the iPhone.
     private let inboxEvery: TimeInterval = 30
@@ -214,6 +217,16 @@ final class Engine: ObservableObject {
 
     func perform(_ action: Cloud.Request.Action, on p: ClassPick) {
         guard !WatchOnly.isOn else { return }   // the booking Mac does that
+        if action == .cancel || (action == .book && p.openAt <= Date()) {
+            activity = BookingActivity(id: p.id, cancelling: action == .cancel,
+                                       what: "\(p.name) · \(Self.day(p.occursAt))")
+            // Never a dialog that spins for good, whatever happens to the request.
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 120 * 1_000_000_000)
+                guard let self, !self.bookingNow.contains(p.id), !self.cancelling.contains(p.id) else { return }
+                self.finish(p.id, ok: false, "No answer from the YMCA after two minutes. Check Schedule in a moment.")
+            }
+        }
         switch action {
         case .book: setSkips(skips.filter { $0.id != p.id }); pick(p)
         case .withdraw: unpick(p.id)
@@ -232,6 +245,7 @@ final class Engine: ObservableObject {
         cancelling.insert(p.id)
         defer { cancelling.remove(p.id) }
         while isFiring { await sleep(until: Date().addingTimeInterval(5)) }
+        progress(p.id, "Cancelling with the YMCA…")
         var outcome: String
         var ok = false
         do {
@@ -251,6 +265,7 @@ final class Engine: ObservableObject {
         // A lineup class would otherwise be booked again if its window is still ahead.
         if ok, p.openAt > Date() { setSkips(skips + [p]) }
         Notifier.post("\(ok ? "🗑" : "❌") \(p.name) · \(p.occursAt.formatted(.dateTime.weekday().month().day()))", outcome)
+        finish(p.id, ok: ok, ok ? "Cancelled. The seat is back with the YMCA." : outcome)
         replanSoon()   // refreshes the booking list and pushes it to the phone
     }
 
@@ -284,14 +299,17 @@ final class Engine: ObservableObject {
         guard !WatchOnly.isOn, !bookingNow.contains(p.id) else { return }
         bookingNow.insert(p.id)
         defer { bookingNow.remove(p.id) }
+        if isFiring { progress(p.id, "Waiting for another class's opening to finish…") }
         while isFiring { await sleep(until: Date().addingTimeInterval(5)) }
 
         let k = RecurringClass.oneOff(p)
         var entry = ShadowEntry(classKey: k.key, className: p.name, occurrenceId: p.occurrenceId,
                                 occursAt: p.occursAt, openAt: p.openAt, away: false)
         do {
+            progress(p.id, "Signing in to the YMCA…")
             entry.sessionPath = try await FisikalClient.shared.ensureSession()
             entry.sessionReadyAt = Date()
+            progress(p.id, "Checking the session…")
             let occs = try await FisikalClient.shared.occurrences(
                 locationIds: [p.branchId], since: p.occursAt.addingTimeInterval(-60), till: p.occursAt.addingTimeInterval(60))
             guard let o = occs.first(where: { $0.id == p.occurrenceId }) else {
@@ -300,10 +318,14 @@ final class Engine: ObservableObject {
             entry.capacity = o.capacity
             if o.isJoined {   // booked already, by hand or another trigger
                 dropPicks([p.id])
+                finish(p.id, ok: true, "Already booked.")
                 return
             }
             let opening = Opening(klass: k, occurrence: o, away: false)
-            entry.booking = await Self.book(opening)
+            let id = p.id
+            entry.booking = await Self.book(opening) { n in
+                await MainActor.run { self.progress(id, "Asking the YMCA for a seat (try \(n))…") }
+            }
             if entry.booking?.booked == true { noteBooked([(o, p.branchId)]) }
             let (_, s, fullAt, _) = await Self.sample(opening, index: 0)
             entry.firedAt = s?.at ?? Date()
@@ -316,8 +338,23 @@ final class Engine: ObservableObject {
         dropPicks([p.id])
         Notifier.post("\(entry.booking?.booked == true ? "✅" : "❌") \(p.name) · \(p.occursAt.formatted(.dateTime.weekday().month().day()))",
                       entry.verdict)
+        finish(p.id, ok: entry.booking?.booked == true,
+               entry.booking?.booked == true ? "Booked. You're in." : BookingActivity.reason(entry.verdict))
         replanSoon()   // refreshes the booking list, then pushes it
         pushToCloudSoon(after: 1)   // the phone's alert comes from this result
+    }
+
+    /// The dialog's next line, if it's showing this session.
+    private func progress(_ id: Int, _ step: String) {
+        if activity?.id == id, activity?.result == nil { activity?.step = step }
+    }
+
+    private func finish(_ id: Int, ok: Bool, _ message: String) {
+        if activity?.id == id, activity?.result == nil { activity?.result = .init(ok: ok, message: message) }
+    }
+
+    private static func day(_ d: Date) -> String {
+        d.formatted(.dateTime.weekday(.abbreviated).month(.defaultDigits).day().hour().minute())
     }
 
     enum PickFailure: LocalizedError {
@@ -791,6 +828,11 @@ final class Engine: ObservableObject {
                 .filter { !$0.value.hasPrefix(RecurringClass.oneOffPrefix) }
             publishToRepoSoon()
             for p in picks where triage.now.contains(p.id) { Task { await bookNow(p) } }
+            if let a = activity, !a.cancelling, a.result == nil, !bookingNow.contains(a.id), !triage.now.contains(a.id) {
+                if byId[a.id]?.isJoined == true { finish(a.id, ok: true, "Already booked.") }
+                else if byId[a.id] == nil { finish(a.id, ok: false, PickFailure.notOnSchedule.errorDescription!) }
+                else if !picks.contains(where: { $0.id == a.id }) { finish(a.id, ok: false, "Not booked.") }
+            }
 
             schedule = upcoming
                 .map { i in ScheduleItem(id: i.id, name: i.name, occursAt: i.occursAt, openAt: i.openAt,
@@ -806,6 +848,9 @@ final class Engine: ObservableObject {
             pushToCloudSoon()   // fresh stats, next opening, heartbeat
         } catch {
             status = "Planning failed: \(error.localizedDescription)"
+            if let a = activity, !a.cancelling, !bookingNow.contains(a.id) {
+                finish(a.id, ok: false, "Couldn't reach the YMCA: \(error.localizedDescription)")
+            }
             // Once an hour at most: a flaky YMCA server shouldn't spam the Mac.
             if lastFailureNotice.map({ Date().timeIntervalSince($0) > 3600 }) ?? true {
                 lastFailureNotice = Date()
@@ -950,7 +995,8 @@ final class Engine: ObservableObject {
     /// retry "not open yet" (clock skew) and lock conflicts (with a fresh
     /// lock_version), stop on full/terminal errors, and treat "taken" as success
     /// only if a re-read shows the seat is ours (another trigger won the race).
-    private nonisolated static func book(_ o: Opening) async -> ShadowEntry.BookingLog {
+    private nonisolated static func book(_ o: Opening,
+                                         tried: (@Sendable (Int) async -> Void)? = nil) async -> ShadowEntry.BookingLog {
         var log = ShadowEntry.BookingLog()
         var lock = o.occurrence.lockVersion
         let retryable: Set<String> = ["advance_time_restriction", "lock_version_conflict", "stale_object", "optimistic_lock"]
@@ -959,6 +1005,7 @@ final class Engine: ObservableObject {
         let terminal: Set<String> = ["spare_schedule_violation", "already_joined", "full", "no_spaces", "group_is_full", "taken"]
 
         for attempt in 1...6 {
+            await tried?(attempt)
             let r: FisikalClient.JoinResult
             do {
                 r = try await FisikalClient.shared.join(occurrenceId: o.occurrence.id, lockVersion: lock)
@@ -984,6 +1031,9 @@ final class Engine: ObservableObject {
                                          : "taken by someone else (\(r.message))"
                 return log
             }
+            // A session the YMCA marked Rescheduled refuses every booking with a
+            // bare 422 (seen 11/26, Cycle Sculpt 12/3): no point trying six times.
+            if o.occurrence.isRescheduled, types.isEmpty, attempt >= 2 { break }
             if !types.isDisjoint(with: terminal) {
                 log.outcome = "not booked — \(r.message)"
                 return log
@@ -996,7 +1046,9 @@ final class Engine: ObservableObject {
             // "Not open yet" (our clock a hair ahead of theirs) or something unknown: brief pause, retry.
             try? await Task.sleep(nanoseconds: types.isDisjoint(with: retryable) ? 1_000_000_000 : 250_000_000)
         }
-        log.outcome = "not booked — gave up after \(log.attempts.count) attempts (last: \(log.attempts.last?.result ?? "?"))"
+        log.outcome = o.occurrence.isRescheduled
+            ? "not booked — \(Occurrence.rescheduledReason)"
+            : "not booked — gave up after \(log.attempts.count) attempts (last: \(log.attempts.last?.result ?? "?"))"
         return log
     }
 

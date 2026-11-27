@@ -258,6 +258,11 @@ struct Occurrence: Identifiable, Hashable, Sendable {
     let capacity: Int
     let waitlist: Int
     let durationMinutes: Int
+    /// Scheduled, Rescheduled, Completed… The YMCA won't take bookings for a
+    /// session it has marked Rescheduled (it answers a bare HTTP 422).
+    var status = ""
+    var isRescheduled: Bool { status == "Rescheduled" }
+    static let rescheduledReason = "the YMCA marked this session Rescheduled and isn't taking bookings for it. Check the YMCA app or ask the front desk."
 
     init?(_ d: [String: Any]) {
         guard let id = d["id"] as? Int, let at = (d["occurs_at"] as? String).flatMap(FisikalDate.parse)
@@ -278,6 +283,7 @@ struct Occurrence: Identifiable, Hashable, Sendable {
         capacity = d["service_group_size"] as? Int ?? 0
         waitlist = d["total_on_waiting_list"] as? Int ?? 0
         durationMinutes = (d["duration_in_hours"] as? Int ?? 0) * 60 + (d["duration_in_minutes"] as? Int ?? 0)
+        status = d["status"] as? String ?? ""
     }
 }
 

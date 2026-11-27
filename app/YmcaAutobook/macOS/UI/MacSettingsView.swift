@@ -31,6 +31,9 @@ struct SettingsView: View {
         // On every tab, so a screenshot or a question always says which build.
         .safeAreaInset(edge: .bottom, alignment: .trailing) { VersionTag().padding(.trailing, 16).padding(.bottom, 6) }
         .frame(minWidth: 960, minHeight: 560)
+        .sheet(item: $engine.activity) { a in
+            BookingActivitySheet(activity: a) { engine.activity = nil }
+        }
     }
 }
 

@@ -346,11 +346,17 @@ final class Engine: ObservableObject {
 
     /// The dialog's next line, if it's showing this session.
     private func progress(_ id: Int, _ step: String) {
-        if activity?.id == id, activity?.result == nil { activity?.step = step }
+        // Whole-value writes: an in-place `activity?.step =` needs a Swift runtime
+        // function macOS 12 lacks (scripts/check_weak_imports.sh caught it).
+        guard var a = activity, a.id == id, a.result == nil else { return }
+        a.step = step
+        activity = a
     }
 
     private func finish(_ id: Int, ok: Bool, _ message: String) {
-        if activity?.id == id, activity?.result == nil { activity?.result = .init(ok: ok, message: message) }
+        guard var a = activity, a.id == id, a.result == nil else { return }
+        a.result = .init(ok: ok, message: message)
+        activity = a
     }
 
     private static func day(_ d: Date) -> String {

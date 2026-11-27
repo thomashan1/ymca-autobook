@@ -291,4 +291,22 @@ final class UpdateTimingTests: XCTestCase {
                        now.addingTimeInterval(240))
     }
 }
+/// The Mac's booking dialog says why a booking failed in words, not HTTP codes.
+final class BookingActivityTests: XCTestCase {
+    func testReasons() {
+        XCTAssertEqual(BookingActivity.reason("not booked — \(Occurrence.rescheduledReason)").prefix(36),
+                       "The YMCA marked this session Resched")
+        XCTAssertTrue(BookingActivity.reason("not booked — gave up after 6 attempts (last: HTTP 422)")
+            .hasPrefix("The YMCA turned down every try without saying why"))
+        XCTAssertEqual(BookingActivity.reason("not booked — full"), "The class is full.")
+        XCTAssertEqual(BookingActivity.reason("error — That session is no longer on the YMCA schedule"),
+                       "That session is no longer on the YMCA schedule.")
+    }
+
+    func testRescheduledStatusIsRead() {
+        let o = Occurrence(["id": 315018, "occurs_at": "2026-12-03T10:15:00-08:00", "status": "Rescheduled"])
+        XCTAssertEqual(o?.isRescheduled, true)
+        XCTAssertEqual(Occurrence(["id": 1, "occurs_at": "2026-12-03T10:15:00-08:00", "status": "Scheduled"])?.isRescheduled, false)
+    }
+}
 #endif

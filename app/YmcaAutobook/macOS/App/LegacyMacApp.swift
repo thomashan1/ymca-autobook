@@ -43,6 +43,7 @@ final class LegacyMacApp: NSObject, NSApplicationDelegate {
         popover.contentViewController = NSHostingController(rootView: MenuView(engine: engine))
 
         Updates.shared.engine = engine   // starts the daily update check
+        BookingActivityPanel.shared.watch(engine)
         MainWindow.open = { [weak self] in self?.showWindow() }
         if MainWindow.showAtLaunch { showWindow() }
         if MacSample.active, let dir = UserDefaults.standard.string(forKey: "screenshotDir") {

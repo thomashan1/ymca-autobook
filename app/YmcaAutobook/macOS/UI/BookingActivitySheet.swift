@@ -60,7 +60,8 @@ struct BookingActivitySheet: View {
             }
         }
         .padding(24)
-        .frame(width: 400)
+        // One size for every step, so the window never has to resize.
+        .frame(width: 400, height: 300)
     }
 
     private var title: String {
@@ -72,6 +73,58 @@ struct BookingActivitySheet: View {
         case (true, true?): return "Cancelled"
         case (true, false?): return "Couldn't cancel"
         }
+    }
+}
+#endif
+
+#if os(macOS)
+import AppKit
+import Combine
+
+/// Shows the booking dialog in its own small window in front of everything.
+/// A sheet on the main window waited behind the popover or sheet the click
+/// came from (macOS shows one sheet per window at a time).
+@MainActor
+final class BookingActivityPanel: NSObject, NSWindowDelegate {
+    static let shared = BookingActivityPanel()
+    private var panel: NSPanel?
+    private var watching: AnyCancellable?
+    private weak var engine: Engine?
+
+    func watch(_ engine: Engine) {
+        self.engine = engine
+        watching = engine.$activity.receive(on: RunLoop.main).sink { [weak self] a in self?.show(a) }
+    }
+
+    private func show(_ a: BookingActivity?) {
+        guard let a else { panel?.close(); panel = nil; return }
+        let view = BookingActivitySheet(activity: a) { [weak self] in self?.engine?.activity = nil }
+        if let panel {
+            (panel.contentViewController as? NSHostingController<BookingActivitySheet>)?.rootView = view
+            return
+        }
+        let p = NSPanel(contentViewController: NSHostingController(rootView: view))
+        p.styleMask = [.titled, .closable]
+        p.title = "YMCA Booker"
+        p.level = .floating
+        p.isReleasedWhenClosed = false
+        p.hidesOnDeactivate = false
+        p.delegate = self
+        if let main = NSApp.windows.first(where: { $0.identifier?.rawValue == "main" && $0.isVisible }) ?? NSApp.mainWindow {
+            let f = main.frame, s = p.frame.size
+            p.setFrameOrigin(NSPoint(x: f.midX - s.width / 2, y: f.midY - s.height / 2))
+        } else {
+            p.center()
+        }
+        panel = p
+        NSApp.activate(ignoringOtherApps: true)
+        p.makeKeyAndOrderFront(nil)
+    }
+
+    /// The close button does what OK / Hide do.
+    func windowWillClose(_ notification: Notification) {
+        panel = nil
+        if engine?.activity != nil { engine?.activity = nil }
     }
 }
 #endif

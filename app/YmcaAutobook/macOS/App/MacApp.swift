@@ -50,6 +50,7 @@ private struct MenuBarIcon: View {
         Image(systemName: "figure.strengthtraining.traditional")
             .task {
                 Updates.shared.engine = engine   // starts the daily update check
+                BookingActivityPanel.shared.watch(engine)
                 MainWindow.open = {
                     openWindow(id: "main")
                     NSApp.activate(ignoringOtherApps: true)

@@ -131,16 +131,16 @@ struct ScheduleView: View {
                         ForEach(groups[wi] ?? []) { day in
                             ForEach(Array(day.rows.enumerated()), id: \.element.id) { n, r in
                                 Button { detail = r } label: {
-                                    ScheduleRow(row: r, showDate: n == 0, awayNote: n == 0 ? awayNote(day.date) : nil)
+                                    ScheduleRow(row: r, showDate: n == 0, awayNote: n == 0 ? awayNote(day.date) : nil,
+                                                continued: n > 0, more: n < day.rows.count - 1)
                                 }
                                 .buttonStyle(.plain)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) { actions(r) }
                                 .contextMenu { actions(r) }
-                                // A full-width line after a day's last class, so days read
-                                // apart; between classes of one day it starts at the name.
-                                .alignmentGuide(.listRowSeparatorLeading) { d in
-                                    n == day.rows.count - 1 ? 0 : 52
-                                }
+                                // A line only after a day's last class: a day's classes form
+                                // one block, joined by the bar under the date.
+                                .listRowSeparator(n == day.rows.count - 1 ? .visible : .hidden, edges: .bottom)
+                                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                             }
                         }
                     }
@@ -360,6 +360,9 @@ private struct ScheduleRow: View {
     let row: ScheduleView.Row
     let showDate: Bool
     let awayNote: String?
+    /// Not the day's first class / not its last: draws the bar that ties a day's classes together.
+    var continued = false
+    var more = false
 
     private var timeRange: String { row.occ.end.map { "\(row.occ.start)–\($0)" } ?? row.occ.start }
 
@@ -370,10 +373,17 @@ private struct ScheduleRow: View {
                     let today = Calendar.current.isDateInToday(row.date)
                     Text(today ? "Today" : row.date.formatted(.dateTime.weekday(.abbreviated)))
                         .font(.headline.weight(.heavy)).foregroundStyle(today ? Theme.accent : .primary)
-                        .lineLimit(1).minimumScaleFactor(0.7)
+                        .lineLimit(1).minimumScaleFactor(0.7).fixedSize(horizontal: false, vertical: true)
                     Text(row.date.formatted(.dateTime.month(.defaultDigits).day()))
                         .font(.subheadline.weight(.semibold)).foregroundStyle(.primary.opacity(0.75))
-                        .monospacedDigit()
+                        .monospacedDigit().fixedSize(horizontal: false, vertical: true)
+                }
+                if continued || more {
+                    // Runs past the row's top and bottom insets so the bars of one day join.
+                    Capsule().fill(Theme.weekDivider.opacity(0.45)).frame(width: 3)
+                        .frame(maxHeight: .infinity)
+                        .padding(.top, showDate ? 6 : -20)
+                        .padding(.bottom, more ? -20 : 4)
                 }
             }
             // Pinned to the top so the weekday lines up with the class name; centred,

@@ -31,11 +31,16 @@ struct ClassesView: View {
                     }
                 }
                 Section {
-                    ForEach(classes.classes) { c in
+                    let list = classes.classes
+                    ForEach(Array(list.enumerated()), id: \.element.id) { n, c in
+                        let first = n == 0 || list[n - 1].weekday != c.weekday
+                        let last = n == list.count - 1 || list[n + 1].weekday != c.weekday
                         Button { detail = classDetail(c) } label: {
-                            ClassInfoRow(gymClass: c, endTime: snapshot.endTime(for: c), fill: fillStats.stats(for: c))
+                            ClassInfoRow(gymClass: c, endTime: snapshot.endTime(for: c), fill: fillStats.stats(for: c),
+                                         first: first, last: last)
                         }
                         .buttonStyle(.plain)
+                        .dayGroupSeparator(last: last)
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) { deleteTarget = c } label: { Label("Remove", systemImage: "trash") }
                         }
@@ -46,8 +51,13 @@ struct ClassesView: View {
                 } header: { Text("Every week") }
                 if viaMac, !cloud.oneOffs.isEmpty {
                     Section("Just once") {
-                        ForEach(cloud.oneOffs) { p in
-                            OneOffRow(pick: p)
+                        let list = cloud.oneOffs
+                        ForEach(Array(list.enumerated()), id: \.element.id) { n, p in
+                            let cal = Calendar.current
+                            let first = n == 0 || !cal.isDate(list[n - 1].occursAt, inSameDayAs: p.occursAt)
+                            let last = n == list.count - 1 || !cal.isDate(list[n + 1].occursAt, inSameDayAs: p.occursAt)
+                            OneOffRow(pick: p, first: first, last: last)
+                                .dayGroupSeparator(last: last)
                                 .swipeActions(edge: .trailing) {
                                     Button("Don't book") { withdraw(p) }.tint(.orange)
                                 }
@@ -147,6 +157,8 @@ private struct ClassInfoRow: View {
     let gymClass: GymClass
     let endTime: String?
     let fill: FillStatsRepository.Slot?
+    var first = true
+    var last = true
 
     private var timeRange: String {
         if let end = endTime { return "\(gymClass.start)–\(end)" }
@@ -155,8 +167,7 @@ private struct ClassInfoRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(gymClass.weekday.rawValue).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                .frame(width: 40, alignment: .leading)
+            DayColumn(title: first ? gymClass.weekday.rawValue : nil, continued: !first, more: !last)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(gymClass.name).font(.body.weight(.medium))
@@ -183,14 +194,14 @@ private struct ClassInfoRow: View {
 /// A single session queued to book once.
 private struct OneOffRow: View {
     let pick: ClassPick
+    var first = true
+    var last = true
 
     var body: some View {
         HStack(spacing: 12) {
-            VStack(spacing: 0) {
-                Text(pick.occursAt.formatted(.dateTime.weekday(.abbreviated))).font(.caption.weight(.bold))
-                Text(pick.occursAt.formatted(.dateTime.month(.defaultDigits).day())).font(.caption2).foregroundStyle(.secondary)
-            }
-            .frame(width: 40)
+            DayColumn(title: first ? pick.occursAt.formatted(.dateTime.weekday(.abbreviated)) : nil,
+                      subtitle: pick.occursAt.formatted(.dateTime.month(.defaultDigits).day()),
+                      continued: !first, more: !last)
             VStack(alignment: .leading, spacing: 2) {
                 Text(pick.name).font(.body.weight(.medium))
                 HStack(spacing: 6) {

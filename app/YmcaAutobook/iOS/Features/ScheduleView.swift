@@ -137,10 +137,7 @@ struct ScheduleView: View {
                                 .buttonStyle(.plain)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) { actions(r) }
                                 .contextMenu { actions(r) }
-                                // A line only after a day's last class: a day's classes form
-                                // one block, joined by the bar under the date.
-                                .listRowSeparator(n == day.rows.count - 1 ? .visible : .hidden, edges: .bottom)
-                                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                                .dayGroupSeparator(last: n == day.rows.count - 1)
                             }
                         }
                     }
@@ -368,28 +365,9 @@ private struct ScheduleRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(spacing: 1) {
-                if showDate {
-                    let today = Calendar.current.isDateInToday(row.date)
-                    Text(today ? "Today" : row.date.formatted(.dateTime.weekday(.abbreviated)))
-                        .font(.headline.weight(.heavy)).foregroundStyle(today ? Theme.accent : .primary)
-                        .lineLimit(1).minimumScaleFactor(0.7).fixedSize(horizontal: false, vertical: true)
-                    Text(row.date.formatted(.dateTime.month(.defaultDigits).day()))
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(.primary.opacity(0.75))
-                        .monospacedDigit().fixedSize(horizontal: false, vertical: true)
-                }
-                if continued || more {
-                    // Runs past the row's top and bottom insets so the bars of one day join.
-                    Capsule().fill(Theme.weekDivider.opacity(0.45)).frame(width: 3)
-                        .frame(maxHeight: .infinity)
-                        .padding(.top, showDate ? 6 : -20)
-                        .padding(.bottom, more ? -20 : 4)
-                }
-            }
-            // Pinned to the top so the weekday lines up with the class name; centred,
-            // it sank in rows with a "Filled in" line.
-            .frame(width: 52)
-            .frame(maxHeight: .infinity, alignment: .top)
+            DayColumn(title: showDate ? (Calendar.current.isDateInToday(row.date) ? "Today" : row.date.formatted(.dateTime.weekday(.abbreviated))) : nil,
+                      subtitle: row.date.formatted(.dateTime.month(.defaultDigits).day()),
+                      highlight: Calendar.current.isDateInToday(row.date), continued: continued, more: more)
             VStack(alignment: .leading, spacing: 2) {
                 if let awayNote, showDate {
                     Text(awayNote).font(.caption.weight(.semibold)).foregroundStyle(.orange)

@@ -125,21 +125,24 @@ struct ScheduleView: View {
                             .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
                     }
                 }
-                // One section per day under a header naming it, the way Reminders'
-                // Scheduled list and Calendar's list view group a day's items.
-                let firstOfWeek = Set(Dictionary(grouping: days) { CalendarHelper.weekIndex(of: $0.date) }
-                                        .values.compactMap { $0.first?.id })
-                ForEach(days) { day in
-                    Section {
-                        ForEach(day.rows) { r in
-                            Button { detail = r } label: { ScheduleRow(row: r) }
+                let groups = Dictionary(grouping: days) { CalendarHelper.weekIndex(of: $0.date) }
+                ForEach(groups.keys.sorted(), id: \.self) { wi in
+                    Section(CalendarHelper.weekLabel(wi)) {
+                        ForEach(groups[wi] ?? []) { day in
+                            ForEach(Array(day.rows.enumerated()), id: \.element.id) { n, r in
+                                Button { detail = r } label: {
+                                    ScheduleRow(row: r, showDate: n == 0, awayNote: n == 0 ? awayNote(day.date) : nil,
+                                                continued: n > 0, more: n < day.rows.count - 1)
+                                }
                                 .buttonStyle(.plain)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) { actions(r) }
                                 .contextMenu { actions(r) }
+                                // A line only after a day's last class: a day's classes form
+                                // one block, joined by the bar under the date.
+                                .listRowSeparator(n == day.rows.count - 1 ? .visible : .hidden, edges: .bottom)
+                                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                            }
                         }
-                    } header: {
-                        DayHeader(date: day.date, awayNote: awayNote(day.date),
-                                  week: firstOfWeek.contains(day.id) ? CalendarHelper.weekLabel(CalendarHelper.weekIndex(of: day.date)) : nil)
                     }
                 }
                 if days.isEmpty {
@@ -351,48 +354,46 @@ private struct NextUpCard: View {
     }
 }
 
-/// A day's section header: "Today", "Tomorrow" or "Monday 11/30", with the week
-/// ("Next week") above the first day of each week and any away note beside it.
-private struct DayHeader: View {
-    let date: Date
-    let awayNote: String?
-    let week: String?
-
-    private var title: String {
-        let cal = Calendar.current
-        if cal.isDateInToday(date) { return "Today" }
-        if cal.isDateInTomorrow(date) { return "Tomorrow · " + date.formatted(.dateTime.weekday(.wide)) }
-        return date.formatted(.dateTime.weekday(.wide))
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let week {
-                Text(week).font(.title3.weight(.bold)).foregroundStyle(.secondary).padding(.top, 8)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(title).font(.headline.weight(.bold))
-                    .foregroundStyle(Calendar.current.isDateInToday(date) ? Theme.accent : .primary)
-                Text(date.formatted(.dateTime.month(.defaultDigits).day()))
-                    .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).monospacedDigit()
-                if let awayNote {
-                    Text(awayNote).font(.caption.weight(.semibold)).foregroundStyle(.orange)
-                }
-            }
-        }
-        .textCase(nil)
-    }
-}
-
-/// One class in the Schedule: the class and one status chip.
+/// One class in the Schedule: the day (on a day's first row), the class, and
+/// one status chip.
 private struct ScheduleRow: View {
     let row: ScheduleView.Row
+    let showDate: Bool
+    let awayNote: String?
+    /// Not the day's first class / not its last: draws the bar that ties a day's classes together.
+    var continued = false
+    var more = false
 
     private var timeRange: String { row.occ.end.map { "\(row.occ.start)–\($0)" } ?? row.occ.start }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
+            VStack(spacing: 1) {
+                if showDate {
+                    let today = Calendar.current.isDateInToday(row.date)
+                    Text(today ? "Today" : row.date.formatted(.dateTime.weekday(.abbreviated)))
+                        .font(.headline.weight(.heavy)).foregroundStyle(today ? Theme.accent : .primary)
+                        .lineLimit(1).minimumScaleFactor(0.7).fixedSize(horizontal: false, vertical: true)
+                    Text(row.date.formatted(.dateTime.month(.defaultDigits).day()))
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(.primary.opacity(0.75))
+                        .monospacedDigit().fixedSize(horizontal: false, vertical: true)
+                }
+                if continued || more {
+                    // Runs past the row's top and bottom insets so the bars of one day join.
+                    Capsule().fill(Theme.weekDivider.opacity(0.45)).frame(width: 3)
+                        .frame(maxHeight: .infinity)
+                        .padding(.top, showDate ? 6 : -20)
+                        .padding(.bottom, more ? -20 : 4)
+                }
+            }
+            // Pinned to the top so the weekday lines up with the class name; centred,
+            // it sank in rows with a "Filled in" line.
+            .frame(width: 52)
+            .frame(maxHeight: .infinity, alignment: .top)
             VStack(alignment: .leading, spacing: 2) {
+                if let awayNote, showDate {
+                    Text(awayNote).font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                }
                 Text(row.occ.name).font(.body.weight(.medium))
                     .strikethrough(row.status.dropped, color: .secondary)
                 HStack(spacing: 6) {

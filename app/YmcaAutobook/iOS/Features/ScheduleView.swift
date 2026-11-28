@@ -365,13 +365,18 @@ private struct ScheduleRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(spacing: 0) {
+            VStack(spacing: 1) {
                 if showDate {
-                    Text(row.date.formatted(.dateTime.weekday(.abbreviated))).font(.caption.weight(.bold))
-                    Text(row.date.formatted(.dateTime.month(.defaultDigits).day())).font(.caption2).foregroundStyle(.secondary)
+                    let today = Calendar.current.isDateInToday(row.date)
+                    Text(today ? "Today" : row.date.formatted(.dateTime.weekday(.abbreviated)))
+                        .font(.headline.weight(.heavy)).foregroundStyle(today ? Theme.accent : .primary)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    Text(row.date.formatted(.dateTime.month(.defaultDigits).day()))
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(.primary.opacity(0.75))
+                        .monospacedDigit()
                 }
             }
-            .frame(width: 40)
+            .frame(width: 52)
             VStack(alignment: .leading, spacing: 2) {
                 if let awayNote, showDate {
                     Text(awayNote).font(.caption.weight(.semibold)).foregroundStyle(.orange)

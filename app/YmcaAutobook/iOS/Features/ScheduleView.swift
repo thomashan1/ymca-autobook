@@ -376,7 +376,10 @@ private struct ScheduleRow: View {
                         .monospacedDigit()
                 }
             }
+            // Pinned to the top so the weekday lines up with the class name; centred,
+            // it sank in rows with a "Filled in" line.
             .frame(width: 52)
+            .frame(maxHeight: .infinity, alignment: .top)
             VStack(alignment: .leading, spacing: 2) {
                 if let awayNote, showDate {
                     Text(awayNote).font(.caption.weight(.semibold)).foregroundStyle(.orange)
